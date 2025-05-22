@@ -2,11 +2,10 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator, MaxValueValidator
 
-
 class User(AbstractUser):
     email = models.EmailField(unique=True)
-    subscribed_products = models.TextField(
-        blank=True, null=True
+    subscribed_products = models.ManyToManyField(
+        'products.DepositProduct', blank=True, null=True
     )  # 쉼표로 구분된 상품 코드 저장
 
 
