@@ -29,26 +29,57 @@ const KAKAO_MAP_API_KEY = ref(null)
 const KAKAO_REST_API_KEY = ref(null) // REST API 키 저장용 변수
 const map = ref(null)
 const markers = ref([])
-const allPlaces = ref([]) // 원본 데이터를 저장할 ref
-const filteredPlaces = ref([]) // 필터링된 데이터를 저장할 ref
+const allPlaces = ref([]) // API 검색 결과를 저장할 ref (지도에 표시될 장소들)
+const cityInfoList = ref([]) // data.json의 mapInfo (도시 이름 및 지역 목록) 저장용
+const bankNameList = ref([]) // data.json의 bankInfo (은행 이름 목록) 저장용
+const filteredPlaces = ref([]) 
 const selectedBank = ref('')
 const selectedCity = ref('')
 const isLoading = ref(true)
 const error = ref(null)
 let clusterer = null // 마커 클러스터러 객체를 저장할 변수
+let searchDebounceTimer = null; // 검색 디바운싱을 위한 타이머 변수
 
 // data.json에서 은행 위치 데이터 로드
 async function loadBankData() {
   try {
     // public 폴더에 있는 data.json을 직접 참조
     const response = await axios.get('/data.json')
-    allPlaces.value = response.data
-    filterMarkers() // 데이터 로드 후 필터링 적용
-    return response.data
+    console.log('[loadBankData] response.data type:', typeof response.data);
+    console.log('[loadBankData] response.data content:', JSON.stringify(response.data, null, 2)); // 전체 데이터 구조 확인
+
+    if (response.data && Array.isArray(response.data.mapInfo)) {
+      cityInfoList.value = response.data.mapInfo;
+      console.log('[loadBankData] Assigned response.data.mapInfo to cityInfoList.value.');
+    } else {
+      console.warn('[loadBankData] response.data.mapInfo is missing or not an array.');
+      cityInfoList.value = [];
+    }
+
+    if (response.data && Array.isArray(response.data.bankInfo)) {
+      bankNameList.value = response.data.bankInfo;
+      console.log('[loadBankData] Assigned response.data.bankInfo to bankNameList.value.');
+    } else {
+      console.warn('[loadBankData] response.data.bankInfo is missing or not an array.');
+      bankNameList.value = [];
+    }
+    
+    // 현재 data.json은 드롭다운용 데이터만 제공합니다.
+    // allPlaces.value = []; // 명시적으로 비워둠 -> API 검색 결과를 담을 것이므로 초기화는 여기서 하지 않음.
+    console.log('[loadBankData] allPlaces.value (for map markers) will be populated by API search results.');
+
+    // filterMarkers() // 데이터 로드 후 필터링 적용 -> 초기 로드 시에는 검색 전이므로 호출 불필요
+    // 초기에는 아무것도 검색하지 않으므로 빈 지도를 보여주거나, 기본 검색 실행 가능
+    // 여기서는 초기에는 빈 지도를 보여주고, 사용자 선택에 따라 검색 실행
+    return response.data 
   } catch (err) {
     console.error('은행 데이터를 불러오는 데 실패했습니다:', err)
-    error.value = '은행 데이터를 불러오는 데 실패했습니다. 나중에 다시 시도해주세요.'
-    return [] // 오류 발생 시 빈 배열 반환
+    console.error('Error stack:', err.stack); // Log the stack trace of the caught error
+    cityInfoList.value = [];
+    bankNameList.value = [];
+    allPlaces.value = [] // 오류 발생 시 allPlaces가 배열인지 확인
+    error.value = '드롭다운 및 지도 데이터를 불러오는 데 실패했습니다.'; // 에러 메시지 업데이트
+    return null // 오류 발생 시 null 반환
   }
 }
 
@@ -78,11 +109,11 @@ function loadKakaoMapSdk(apiKey) {
 }
 
 // 지도 초기화 및 마커 생성
-async function initMap(placesData) {
-  if (!window.kakao || !window.kakao.maps || !placesData) {
-    console.error('카카오맵 SDK 또는 장소 데이터가 준비되지 않았습니다.')
+async function initMap() { 
+  if (!window.kakao || !window.kakao.maps) {
+    console.error('카카오맵 SDK가 준비되지 않았습니다.')
     isLoading.value = false
-    if (!error.value) { // 기존 에러 메시지가 없다면 설정
+    if (!error.value) { 
         error.value = '지도 초기화에 필요한 데이터가 준비되지 않았습니다.'
     }
     return
@@ -96,135 +127,170 @@ async function initMap(placesData) {
     return
   }
 
-  // 기본 중심 위치 (예: 서울 시청) 및 확대 레벨 설정
   const defaultCenter = new window.kakao.maps.LatLng(37.566826, 126.9786567)
   const options = {
     center: defaultCenter,
-    level: 7 // 확대 레벨
+    level: 7 
   }
 
   map.value = new window.kakao.maps.Map(mapContainer, options)
   console.log('지도 객체 생성 완료:', map.value)
-
-  // 마커 클러스터러 생성
-  if (window.kakao.maps.MarkerClusterer) {
-    clusterer = new window.kakao.maps.MarkerClusterer({
-        map: map.value, // 마커들을 클러스터로 관리하고 표시할 지도 객체
-        averageCenter: true, // 클러스터에 포함된 마커들의 평균 위치를 클러스터 마커 위치로 설정
-        minLevel: 8, // 클러스터 할 최소 지도 레벨
-        disableClickZoom: false // 클러스터 마커를 클릭했을 때 지도가 확대되지 않도록 설정 (커스텀 오버레이 사용 시 유용)
-    })
-    console.log('마커 클러스터러 생성 완료')
-  } else {
-    console.warn('마커 클러스터러 라이브러리를 사용할 수 없습니다.')
-  }
-
-
-  updateMarkers(placesData) // 초기 마커 표시
-  isLoading.value = false // 로딩 완료
+  // clusterer = null; // 클러스터러를 사용하지 않으므로 이 변수 자체가 필요 없음
+  isLoading.value = false 
 }
 
 // 마커 및 인포윈도우 업데이트
-function updateMarkers(places) {
-  if (!map.value || !window.kakao || !window.kakao.maps) return
-
-  // 기존 마커와 클러스터러 내용 제거
-  if (clusterer) {
-    clusterer.clear()
-  } else {
-    markers.value.forEach(marker => marker.setMap(null))
+function updateMarkers(places) { 
+  if (!map.value || !window.kakao || !window.kakao.maps) {
+    console.warn('[updateMarkers] Map object or Kakao Maps SDK not available. Skipping.');
+    return;
   }
-  markers.value = []
+
+  // 기존 마커들을 지도에서 제거
+  markers.value.forEach(marker => marker.setMap(null));
+  markers.value = []; 
 
   if (!places || places.length === 0) {
-    console.log('표시할 장소가 없습니다.')
-    // 필요하다면 사용자에게 "결과 없음" 메시지를 표시할 수 있습니다.
-    return
+    console.log('[updateMarkers] No places to display.');
+    return;
   }
+
+  console.log(`[updateMarkers] Updating markers for ${places.length} places.`);
 
   const newMarkers = places.map(place => {
-    if (!place.LAT || !place.LNG) {
-      console.warn('위치 정보가 없는 데이터:', place.지점명)
-      return null // 유효하지 않은 데이터는 건너뜀
+    if (!place.y || !place.x) {
+      console.warn('위치 정보(y, x)가 없는 데이터:', place.place_name);
+      return null; 
     }
-    const position = new window.kakao.maps.LatLng(parseFloat(place.LAT), parseFloat(place.LNG))
+    const position = new window.kakao.maps.LatLng(parseFloat(place.y), parseFloat(place.x))
     const marker = new window.kakao.maps.Marker({
       position: position,
-      clickable: true // 마커를 클릭할 수 있도록 설정
+      clickable: true 
     })
 
-    // 인포윈도우 생성 (기본적으로 닫힌 상태)
+    const infowindowContent = 
+      `<div style="padding:5px;font-size:12px;">
+        <strong>${place.place_name}</strong><br>
+        ${place.road_address_name || place.address_name || '주소 정보 없음'}<br>
+        ${place.phone ? `전화: ${place.phone}<br>` : ''}
+        ${place.category_name ? `카테고리: ${place.category_name}` : ''}
+       </div>`;
+
     const infowindow = new window.kakao.maps.InfoWindow({
-      content: `<div style="padding:5px;font-size:12px;">${place.지점명}<br>${place.주소}</div>`,
-      removable: true // 인포윈도우를 닫을 수 있는 x 버튼 표시
+      content: infowindowContent,
+      removable: true 
     })
 
-    // 마커 클릭 시 인포윈도우 표시/숨김 토글
     window.kakao.maps.event.addListener(marker, 'click', function() {
       if (infowindow.getMap()) {
-        infowindow.close()
+        infowindow.close();
       } else {
-        infowindow.open(map.value, marker)
+        infowindow.open(map.value, marker);
       }
-    })
-    return marker
-  }).filter(marker => marker !== null) // null 값(잘못된 데이터) 제거
+    });
+    return marker;
+  }).filter(marker => marker !== null); 
 
-  markers.value = newMarkers
-  if (clusterer) {
-    clusterer.addMarkers(newMarkers)
-    console.log(`${newMarkers.length}개의 마커가 클러스터러에 추가되었습니다.`)
-  } else if (map.value && newMarkers.length > 0) {
-    newMarkers.forEach(marker => marker.setMap(map.value))
-    console.log(`${newMarkers.length}개의 마커가 지도에 직접 추가되었습니다.`)
+  markers.value = newMarkers;
+
+  if (map.value && newMarkers.length > 0) {
+    console.log('[updateMarkers] Adding markers directly to map.');
+    newMarkers.forEach(marker => marker.setMap(map.value));
+    console.log(`${newMarkers.length}개의 마커가 지도에 직접 추가되었습니다.`);
+  } else if (newMarkers.length === 0) {
+    console.log('[updateMarkers] No new markers to add.');
   }
 
-  // 필터링된 장소가 있을 경우, 첫 번째 장소로 지도 중심 이동 (선택적)
-  if (places.length > 0 && places[0].LAT && places[0].LNG) {
-    const firstPlacePosition = new window.kakao.maps.LatLng(parseFloat(places[0].LAT), parseFloat(places[0].LNG))
+  if (places.length > 0 && places[0].y && places[0].x) {
+    const firstPlacePosition = new window.kakao.maps.LatLng(parseFloat(places[0].y), parseFloat(places[0].x))
     map.value.panTo(firstPlacePosition)
   } else if (places.length === 0 && (selectedBank.value || selectedCity.value)) {
-    // 필터링 결과가 없음을 사용자에게 알릴 수 있습니다.
-    // 예: alert('선택한 조건에 맞는 은행이 없습니다.')
     console.log('선택한 조건에 맞는 장소가 없습니다.')
   }
 }
 
-
 // 필터링된 은행 목록 가져오기 (중복 제거)
 const uniqueBanks = computed(() => {
-  const banks = allPlaces.value.map(place => place.금융회사명).filter(Boolean) // null이나 undefined 제외
-  return [...new Set(banks)].sort()
+  // bankNameList에서 직접 은행 목록을 가져옵니다.
+  if (!Array.isArray(bankNameList.value)) return []
+  console.log('[uniqueBanks] bankNameList.value:', bankNameList.value);
+  return [...new Set(bankNameList.value)].sort()
 })
 
 // 필터링된 도시 목록 가져오기 (중복 제거)
 const uniqueCities = computed(() => {
-  const cities = allPlaces.value.map(place => place.CITY).filter(Boolean)
+  // cityInfoList에서 도시 이름 목록을 가져옵니다.
+  if (!Array.isArray(cityInfoList.value)) return []
+  const cities = cityInfoList.value.map(place => place.name).filter(Boolean) // 각 항목의 'name' 속성 사용
+  console.log('[uniqueCities] Extracted cities:', cities);
   return [...new Set(cities)].sort()
 })
 
-// 마커 필터링 로직
+// filterMarkers 함수는 더 이상 사용되지 않으므로 삭제 또는 주석 처리
+/*
 function filterMarkers() {
-  let tempPlaces = [...allPlaces.value]
-
-  if (selectedBank.value) {
-    tempPlaces = tempPlaces.filter(place => place.금융회사명 === selectedBank.value)
-  }
-  if (selectedCity.value) {
-    tempPlaces = tempPlaces.filter(place => place.CITY === selectedCity.value)
-  }
-  filteredPlaces.value = tempPlaces
+  console.log('[filterMarkers] This function is no longer used.');
 }
+*/
 
-// selectedBank 또는 selectedCity 변경 시 마커 업데이트
-watch([selectedBank, selectedCity], filterMarkers)
-
-// filteredPlaces 변경 시 지도 마커 업데이트
-watch(filteredPlaces, (newPlaces) => {
-  if (map.value) { // 지도가 초기화된 후에만 마커 업데이트
-    updateMarkers(newPlaces)
+// selectedBank 또는 selectedCity 변경 시 장소 검색 (디바운싱 적용됨)
+watch([selectedBank, selectedCity], () => {
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer);
   }
-})
+  searchDebounceTimer = setTimeout(() => {
+    searchPlaces(); // 은행 또는 도시 선택 변경 시 장소 검색
+  }, 500); // 500ms 디바운스
+});
+
+// 카카오맵 장소 검색 API 호출 함수
+async function searchPlaces() {
+  if (!selectedBank.value && !selectedCity.value) {
+    allPlaces.value = [];
+    updateMarkers(allPlaces.value); // 선택된 값이 없으면 마커 클리어
+    return;
+  }
+
+  isLoading.value = true;
+  error.value = null;
+
+  let searchQuery = selectedBank.value; // 기본 검색어는 은행 이름
+  if (selectedCity.value) {
+    searchQuery += ' ' + selectedCity.value; // 도시 이름이 있으면 추가
+  }
+
+  console.log(`[searchPlaces] Searching for: ${searchQuery}`);
+
+  try {
+    const response = await axios.get(
+      'https://dapi.kakao.com/v2/local/search/keyword.json',
+      {
+        params: {
+          query: searchQuery,
+          size: 15 // 한 번에 가져올 검색 결과 수 (최대 15)
+        },
+        headers: {
+          Authorization: `KakaoAK ${KAKAO_REST_API_KEY.value}`,
+        },
+      }
+    );
+
+    if (response.data && response.data.documents) {
+      console.log('[searchPlaces] API Response:', response.data.documents);
+      allPlaces.value = response.data.documents; 
+    } else {
+      console.warn('[searchPlaces] No documents found or unexpected API response.');
+      allPlaces.value = [];
+    }
+  } catch (err) {
+    console.error('[searchPlaces] Error searching places:', err);
+    error.value = '장소 검색 중 오류가 발생했습니다.';
+    allPlaces.value = [];
+  } finally {
+    isLoading.value = false;
+    updateMarkers(allPlaces.value); // 검색 완료 후 마커 업데이트 (성공/실패/결과없음 모두 포함)
+  }
+}
 
 // 컴포넌트 마운트 시 실행
 onMounted(async () => {
@@ -243,14 +309,15 @@ onMounted(async () => {
     console.log('Kakao JS API Key:', KAKAO_MAP_API_KEY.value)
     console.log('Kakao REST API Key:', KAKAO_REST_API_KEY.value)
 
-
     await loadKakaoMapSdk(KAKAO_MAP_API_KEY.value) // 지도 SDK 로드
-    const bankData = await loadBankData() // 은행 데이터 로드
-    if (bankData.length > 0) {
-      await initMap(filteredPlaces.value) // 필터링된 데이터로 지도 초기화
-    } else if (!error.value) { // 데이터 로드 실패했고, 아직 에러 메시지 설정 안됐으면
-      error.value = '은행 데이터를 불러올 수 없어 지도를 초기화할 수 없습니다.'
-    }
+    await loadBankData() // 드롭다운용 데이터 로드 (data.json)
+    // bankData는 이제 드롭다운용 데이터만 포함하므로, initMap은 placesData 없이 호출
+    await initMap() // 지도만 초기화 (마커 표시는 searchPlaces가 담당)
+    
+    // 초기 로드 시 기본 검색을 원한다면 여기서 searchPlaces() 호출 가능
+    // 예: searchPlaces(); // 기본값(아마도 빈 값)으로 검색 시도 또는 특정 기본값 설정
+    // 또는 사용자가 명시적으로 선택할 때까지는 검색 안 함
+
   } catch (err) {
     console.error('페이지 초기화 중 오류 발생:', err)
     if (!error.value) { // 기존 에러 메시지가 없다면 설정
