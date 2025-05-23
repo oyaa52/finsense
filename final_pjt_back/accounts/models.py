@@ -5,7 +5,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 class User(AbstractUser):
     email = models.EmailField(unique=True)
     subscribed_products = models.ManyToManyField(
-        'products.DepositProduct', blank=True, null=True
+        'products.DepositProduct', blank=True
     )  # 쉼표로 구분된 상품 코드 저장
 
 

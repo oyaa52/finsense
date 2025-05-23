@@ -9,10 +9,10 @@ class CustomRegisterSerializer(RegisterSerializer):
         required=False
     )
 
-    def get_cleaned_data(self):
-        data = super().get_cleaned_data()
-        data['subscribed_products'] = self.validated_data.get('subscribed_products', [])
-        return data
+    # def get_cleaned_data(self):
+    #     data = super().get_cleaned_data()
+    #     data['subscribed_products'] = self.validated_data.get('subscribed_products', [])
+    #     return data
 
     def save(self, request):
         user = super().save(request)
