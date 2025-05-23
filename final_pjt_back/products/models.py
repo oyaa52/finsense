@@ -182,18 +182,3 @@ class SavingSubscription(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.product.fin_prdt_nm}"
-
-
-# 현물 가격 (ERD대로 유지)
-class AssetPrice(models.Model):
-    asset_name = models.CharField(max_length=50)
-    date = models.DateField()
-    price = models.DecimalField(max_digits=12, decimal_places=2)
-
-    class Meta:
-        unique_together = (("asset_name", "date"),)
-        verbose_name = "현물 가격"
-        verbose_name_plural = "현물 가격 목록"
-
-    def __str__(self):
-        return f"{self.asset_name} ({self.date}): {self.price}"
