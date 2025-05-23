@@ -2,11 +2,13 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator, MaxValueValidator
 
+
 class User(AbstractUser):
     email = models.EmailField(unique=True)
-    subscribed_products = models.ManyToManyField(
-        'products.DepositProduct', blank=True
-    )  # 쉼표로 구분된 상품 코드 저장
+
+    # products/models.py에 있는 DepositProduct,SavingProduct (중간 테이블 역할)
+    # username, password 등은 AbstractUser에서 상속받음
+    # 필요한 경우 여기에 추가 필드를 정의할 수 있음
 
 
 class Profile(models.Model):
