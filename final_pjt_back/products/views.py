@@ -1,9 +1,16 @@
 from django.shortcuts import render
 from rest_framework.response import Response
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework import status
 from django.conf import settings
-from .models import DepositProduct, DepositOption, SavingProduct, SavingOption
+from .models import (
+    DepositProduct,
+    DepositOption,
+    SavingProduct,
+    SavingOption,
+    DepositSubscription,
+    SavingSubscription,
+)
 from .serializers import (
     DepositProductSerializer,
     DepositOptionSerializer,
@@ -12,7 +19,9 @@ from .serializers import (
 )
 import requests
 from rest_framework import generics
-from rest_framework.permissions import AllowAny  # 상품 조회는 회원이 아니더라도 가능
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.views import APIView
+from django.shortcuts import get_object_or_404
 
 # 금융위원회 API 키 설정
 FIN_API_KEY = settings.FIN_API_KEY
@@ -219,6 +228,76 @@ def save_saving_data(base_list, option_list):
             # 로깅 권장: print(f"Error saving saving option for product {entry['fin_prdt_cd']}: {str(e)}")
             continue
 
+# 사용자가 특정 예금 상품에 가입
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def deposit_product_subscribe(request, fin_prdt_cd):
+    product = get_object_or_404(DepositProduct, fin_prdt_cd=fin_prdt_cd)
+    user = request.user
+
+    subscription, created = DepositSubscription.objects.get_or_create(
+        user=user, deposit_product=product
+    )
+
+    if created:
+        return Response(
+            {"message": f"'{product.fin_prdt_nm}' 상품에 가입되었습니다."},
+            status=status.HTTP_201_CREATED,
+        )
+    else:
+        return Response(
+            {"message": f"이미 '{product.fin_prdt_nm}' 상품에 가입되어 있습니다."},
+            status=status.HTTP_200_OK,
+        )
+
+# 사용자가 특정 적금 상품에 가입
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def saving_product_subscribe(request, fin_prdt_cd):
+    product = get_object_or_404(SavingProduct, fin_prdt_cd=fin_prdt_cd)
+    user = request.user
+
+    subscription, created = SavingSubscription.objects.get_or_create(
+        user=user, saving_product=product
+    )
+
+    if created:
+        return Response(
+            {"message": f"'{product.fin_prdt_nm}' 상품에 가입되었습니다."},
+            status=status.HTTP_201_CREATED,
+        )
+    else:
+        return Response(
+            {"message": f"이미 '{product.fin_prdt_nm}' 상품에 가입되어 있습니다."},
+            status=status.HTTP_200_OK,
+        )
+
+
+# 가입한 상품 목록 조회 API (FBV)도 여기에 추가될 예정
+
+
+# 현재 로그인한 사용자가 가입한 예금 상품 목록을 조회
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def subscribed_deposit_products_list(request):
+    user = request.user
+    subscriptions = DepositSubscription.objects.filter(user=user)
+    subscribed_products = [sub.deposit_product for sub in subscriptions]
+    serializer = DepositProductSerializer(subscribed_products, many=True)
+    return Response(serializer.data)
+
+
+# 현재 로그인한 사용자가 가입한 적금 상품 목록을 조회
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def subscribed_saving_products_list(request):
+    user = request.user
+    subscriptions = SavingSubscription.objects.filter(user=user)
+    subscribed_products = [sub.saving_product for sub in subscriptions]
+    serializer = SavingProductSerializer(subscribed_products, many=True)
+    return Response(serializer.data)
+
 
 # 예금 상품 목록 및 상세 조회
 class DepositProductListAPIView(generics.ListAPIView):
@@ -248,64 +327,3 @@ class SavingProductDetailAPIView(generics.RetrieveAPIView):
     permission_classes = [AllowAny]  # 모든 유저에게 조회 기능 제공
 
 
-# 추후 DB에 조회 시 필요할 경우 사용할 함수들, 유동적으로 사용 예정 (05/23)
-
-# @api_view(['GET'])
-# def deposit_product_options(request, fin_prdt_cd):
-#     """
-#     특정 예금 상품의 옵션 정보를 조회하는 함수
-
-#     Args:
-#         request: HTTP 요청 객체
-#         fin_prdt_cd (str): 상품 코드
-#     """
-#     product = DepositProduct.objects.get(fin_prdt_cd=fin_prdt_cd)
-#     option = DepositOption.objects.filter(fin_prdt_cd=product)  # 필드명을 fin_prdt_cd로 수정
-#     serializer = DepositOptionsSerializer(option, many=True)
-#     return Response(serializer.data, status=status.HTTP_200_OK)
-
-# @api_view(['GET'])
-# def top_rate(request):
-#     """
-#     가장 높은 우대금리를 가진 예금 상품 정보를 조회하는 함수
-#     """
-#     high_rate_option = DepositOption.objects.order_by('-intr_rate2').first()
-#     high_rate_product = DepositProduct.objects.get(fin_prdt_cd=high_rate_option.fin_prdt_cd)  # 필드명 수정
-#     data = {
-#         'product': DepositProductsSerializer(high_rate_product).data,
-#         'option': DepositOptionsSerializer(high_rate_option).data
-#     }
-#     return Response(data)
-
-# @api_view(['GET', 'POST'])
-# def deposit_products(request):
-#     """
-#     예금 상품 목록을 조회하거나 새로운 상품을 등록하는 함수
-
-#     GET: 모든 예금 상품 목록 조회
-#     POST: 새로운 예금 상품 등록
-#     """
-#     if request.method == 'GET':
-#         products = DepositProduct.objects.all()
-#         serializer = DepositProductsSerializer(products, many=True)
-#         return Response(serializer.data, status=status.HTTP_200_OK)
-#     elif request.method == 'POST':
-#         serializer = DepositProductsSerializer(data=request.data)
-#         if serializer.is_valid():
-#             serializer.save()
-#             return Response(serializer.data, status=status.HTTP_201_CREATED)
-#         return Response(
-#             {"message": "이미 있는 데이터이거나, 데이터가 잘못 입력되었습니다."},
-#             status=status.HTTP_400_BAD_REQUEST
-#         )
-
-# (선택적) 옵션 정보를 직접 CRUD 할 수 있는 API가 필요하다면 추가 구현 가능
-# 예를 들어, 특정 예금 상품의 특정 옵션만 조회/수정/삭제하는 API
-# class DepositOptionDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
-#     queryset = DepositOption.objects.all()
-#     serializer_class = DepositOptionSerializer
-#     # permission_classes = [IsAdminUser] # 관리자만 접근 가능하도록 설정 등
-
-# class SavingOptionDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
-#     queryset = SavingOption.objects.all()
-#     serializer_class = SavingOptionSerializer
