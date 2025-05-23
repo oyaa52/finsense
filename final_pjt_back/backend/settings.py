@@ -15,14 +15,15 @@ from pathlib import Path
 import environ
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
 # 환경변수 초기화
-env = environ.Env()
+env = environ.Env(DEBUG=(bool, False))
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
+FIN_API_KEY = env('FIN_API_KEY')
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-# API Keys from .env file
-GPT_API_KEY = env('GPT_API_KEY', default='')
-YOUTUBE_API_KEY = env('YOUTUBE_API_KEY', default='')
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
@@ -146,10 +147,10 @@ USE_TZ = True
 
 # 정적/미디어
 STATIC_URL = 'static/'
-STATICFILES_DIRS = [BASE_DIR / "static"]
-STATIC_ROOT = BASE_DIR / "staticfiles"
-MEDIA_URL = 'media/'
-MEDIA_ROOT = BASE_DIR / "media"
+# STATICFILES_DIRS = [BASE_DIR / "static"]
+# STATIC_ROOT = BASE_DIR / "staticfiles"
+# MEDIA_URL = 'media/'
+# MEDIA_ROOT = BASE_DIR / "media"
 
 # Django REST Framework 설정
 REST_FRAMEWORK = {
@@ -157,9 +158,9 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
-    ]
+    # 'DEFAULT_PERMISSION_CLASSES': [
+    #     'rest_framework.permissions.IsAuthenticated',
+    # ]
 }
 
 # dj-rest-auth & allauth 설정
