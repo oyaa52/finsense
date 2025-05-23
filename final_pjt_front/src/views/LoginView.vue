@@ -2,22 +2,26 @@
   <div class="login-page-container" data-aos="fade-in">
     <div class="login-form-wrapper">
       <div class="logo-container">
-        <img src="@/assets/FS_logo.png" alt="Fin Sense Logo" class="login-logo"/>
+        <router-link to="/main">
+          <img src="@/assets/FS_logo.png" alt="Fin Sense Logo" class="login-logo"/>
+        </router-link>
         <h2>Fin Sense 로그인</h2>
       </div>
 
       <form @submit.prevent="handleLogin" class="login-form">
         <div class="form-group">
-          <label for="username">아이디 (이메일)</label>
+          <label for="username">아이디</label>
           <input type="text" id="username" v-model="username" placeholder="아이디를 입력하세요" required />
+          <span v-if="fieldErrors && fieldErrors.username" class="field-error-message">{{ fieldErrors.username }}</span>
         </div>
         <div class="form-group">
           <label for="password">비밀번호</label>
           <input type="password" id="password" v-model="password" placeholder="비밀번호를 입력하세요" required />
+          <span v-if="fieldErrors && fieldErrors.password" class="field-error-message">{{ fieldErrors.password }}</span>
         </div>
         
-        <div v-if="authError" class="error-message">
-          <p>{{ authError }}</p>
+        <div v-if="generalErrorMessage" class="error-message">
+          <pre>{{ generalErrorMessage }}</pre>
         </div>
 
         <button type="submit" class="login-button">로그인</button>
@@ -49,7 +53,29 @@ const password = ref('')
 const router = useRouter()
 const authStore = useAuthStore()
 
-const authError = computed(() => authStore.getLoginError)
+const loginError = computed(() => authStore.getLoginError)
+
+const fieldErrors = computed(() => {
+  const error = loginError.value;
+  return (typeof error === 'object' && error !== null && !Array.isArray(error)) ? error : null;
+})
+
+const generalErrorMessage = computed(() => {
+  const error = loginError.value;
+  if (typeof error === 'string') {
+    return error;
+  }
+  if (error && error.detail) {
+    return error.detail;
+  }
+  if (error && Array.isArray(error.non_field_errors)) {
+    return error.non_field_errors.join('\n');
+  }
+  if (Array.isArray(error)) {
+    return error.join('\n');
+  }
+  return null;
+})
 
 const handleLogin = async () => {
   const success = await authStore.login({ 
@@ -162,6 +188,13 @@ onMounted(() => {
   transform: translateY(-2px);
 }
 
+.field-error-message {
+  display: block;
+  color: #ff4d4d; /* 에러 색상 */
+  font-size: 0.8rem;
+  margin-top: 4px;
+}
+
 .error-message {
   background-color: rgba(255, 0, 0, 0.1);
   color: #ff4d4d;
@@ -170,6 +203,14 @@ onMounted(() => {
   margin-bottom: 15px;
   font-size: 0.9rem;
   border: 1px solid #ff4d4d;
+  text-align: left; /* 텍스트 왼쪽 정렬 추가 */
+}
+
+.error-message pre {
+  white-space: pre-wrap; /* 공백과 줄바꿈 유지 */
+  word-wrap: break-word; /* 긴 단어 자동 줄바꿈 */
+  margin: 0; /* pre 태그 기본 마진 제거 */
+  font-family: inherit; /* 부모 폰트 상속 */
 }
 
 .links {

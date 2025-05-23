@@ -13,16 +13,16 @@ class User(AbstractUser):
 
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    age = models.IntegerField(validators=[MinValueValidator(0), MaxValueValidator(120)])
-    gender = models.CharField(max_length=10)
-    occupation = models.CharField(max_length=50)
-    marital_status = models.CharField(max_length=20)
-    monthly_income = models.DecimalField(max_digits=12, decimal_places=2)
-    amount_available = models.DecimalField(max_digits=12, decimal_places=2)
-    investment_purpose = models.CharField(max_length=100)
-    investment_term = models.IntegerField()  # 개월 단위
+    age = models.IntegerField(validators=[MinValueValidator(0), MaxValueValidator(120)], null=True, blank=True)
+    gender = models.CharField(max_length=10, null=True, blank=True)
+    occupation = models.CharField(max_length=50, null=True, blank=True)
+    marital_status = models.CharField(max_length=20, null=True, blank=True)
+    monthly_income = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
+    amount_available = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
+    investment_purpose = models.CharField(max_length=100, null=True, blank=True)
+    investment_term = models.IntegerField(null=True, blank=True)  # 개월 단위
     investment_tendency = models.CharField(
-        max_length=20
+        max_length=20, null=True, blank=True
     )  # 안정형, 안정추구형, 위험중립형, 적극투자형, 공격투자형
 
     def __str__(self):

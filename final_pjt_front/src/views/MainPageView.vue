@@ -3,7 +3,9 @@
     <!-- 좌측 사이드바 -->
     <aside class="sidebar" data-aos="fade-right">
       <div class="logo-container">
-        <img src="@/assets/FS_logo.png" alt="Fin Sense Logo" class="sidebar-logo"/>
+        <router-link to="/main">
+          <img src="@/assets/FS_logo.png" alt="Fin Sense Logo" class="sidebar-logo"/>
+        </router-link>
         <!-- 로고 이미지가 어두운 배경에 잘 보이도록 흰색 버전이나 대비가 높은 로고로 교체하는 것이 좋습니다. -->
         <!-- 없다면 일단 기존 로고를 사용합니다. -->
       </div>
@@ -13,8 +15,11 @@
         <router-link to="/signup" class="auth-button signup-button">회원가입</router-link>
       </div>
       <div v-else class="user-info">
-        <img :src="userInfo.profileImage || '@/assets/default_profile.png'" alt="User Profile" class="profile-image"/>
-        <p>{{ userInfo.name }}님, 환영합니다!</p>
+        <!-- currentUser가 null이 아닐 때만 프로필 이미지와 사용자 이름 표시 -->
+        <template v-if="currentUser">
+          <img :src="currentUser.profile_image || '@/assets/default_profile.png'" alt="User Profile" class="profile-image"/>
+          <p>{{ currentUser.username || '사용자' }}님, 환영합니다!</p>
+        </template>
         <button @click="logout" class="auth-button logout-button">로그아웃</button>
       </div>
       
@@ -61,36 +66,29 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router' // useRoute import
 import AOS from 'aos'
 import 'aos/dist/aos.css'
+import { useAuthStore } from '@/stores/authStore' // authStore 임포트
 
-// 실제 로그인 상태 및 사용자 정보는 Vuex/Pinia 또는 API 호출을 통해 관리해야 합니다.
-const isLoggedIn = ref(false) // 초기값: 로그아웃 상태
-const userInfo = ref({
-  name: '김핀센스', // 예시 사용자 이름
-  profileImage: '' // 예시 프로필 이미지 경로, 없을 경우 기본 이미지 사용
-})
-
+const authStore = useAuthStore() // authStore 인스턴스 생성
 const router = useRouter()
 const route = useRoute() // 현재 라우트 정보를 가져오기 위해 추가
 
-// 로그인/로그아웃 함수 (예시)
-const login = () => {
-  isLoggedIn.value = true
-  // 실제 로그인 로직 후 사용자 정보 업데이트
-  userInfo.value.name = '김핀센스' // 예시
-}
+// authStore의 상태를 computed 속성으로 사용
+const isLoggedIn = computed(() => authStore.isAuthenticated)
+const currentUser = computed(() => authStore.currentUser) // dj-rest-auth/user/의 응답을 기반으로 함
 
-const logout = () => {
-  isLoggedIn.value = false
-  // 실제 로그아웃 로직 (예: 토큰 삭제 등)
+// 로그아웃 함수
+const logout = async () => {
+  await authStore.logoutAction() // 스토어의 로그아웃 액션 호출
   router.push('/') // 로그아웃 후 랜딩 페이지 등으로 이동
 }
 
-// 테스트용으로 2초 후 로그인 상태로 변경
 onMounted(() => {
   AOS.init()
-  // setTimeout(() => {
-  //   login()
-  // }, 2000)
+  // authStore.initializeAuth()가 App.vue에서 이미 호출되므로 여기서 별도 호출 필요 없을 수 있음
+  // 만약 사용자가 직접 /main으로 접근했을 때 사용자 정보를 가져오고 싶다면 다음을 고려:
+  // if (isLoggedIn.value && !currentUser.value) {
+  //   authStore.fetchUser(); 
+  // }
 })
 
 // 현재 라우트가 MainPageView의 기본 경로인지 확인하는 computed 속성

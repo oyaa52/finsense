@@ -3,6 +3,9 @@ import LandingPageView from '@/views/LandingPageView.vue'
 import MainPageView from '@/views/MainPageView.vue'
 import KakaomapPageView from '@/views/KakaomapPageView.vue'
 import LoginView from '@/views/LoginView.vue'
+import SignupView from '@/views/SignupView.vue'
+import ProfileManagementView from '@/views/ProfileManagementView.vue'
+import { useAuthStore } from '@/stores/authStore'
 
 // 임시 플레이스홀더 컴포넌트 (실제 컴포넌트로 교체 필요)
 const PlaceholderComponent = (text) => ({
@@ -73,7 +76,16 @@ const router = createRouter({
           path: 'profile-management',
           name: 'profileManagement',
           components: {
-            mainServiceView: PlaceholderComponent('회원정보관리')
+            mainServiceView: ProfileManagementView
+          },
+          beforeEnter: (to, from, next) => {
+            const authStore = useAuthStore()
+            if (authStore.isAuthenticated) {
+              next()
+            } else {
+              alert('로그인이 필요한 서비스입니다.')
+              next({ name: 'login' })
+            }
           }
         },
         {
@@ -89,6 +101,11 @@ const router = createRouter({
       path: '/login',
       name: 'login',
       component: LoginView
+    },
+    {
+      path: '/signup',
+      name: 'signup',
+      component: SignupView,
     },
   ],
 })
