@@ -7,5 +7,6 @@ urlpatterns = [
     path("dj-rest-auth/registration/", include("dj_rest_auth.registration.urls")),
     path("api/v1/products/", include("products.urls")),
     path('api/v1/kakaomap/', include('kakaomap.urls')),
+    path('api/v1/assetinfo/', include('assetinfo.urls')),
 ]
 
