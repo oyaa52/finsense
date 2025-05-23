@@ -3,12 +3,20 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework import status
 from django.conf import settings
-from .models import DepositProduct, DepositOption
-from .serializers import DepositProductsSerializer, DepositOptionsSerializer
+from .models import DepositProduct, DepositOption, SavingProduct, SavingOption
+from .serializers import (
+    DepositProductSerializer,
+    DepositOptionSerializer,
+    SavingProductSerializer,
+    SavingOptionSerializer,
+)
 import requests
+from rest_framework import generics
+from rest_framework.permissions import AllowAny  # 상품 조회는 회원이 아니더라도 가능
 
 # 금융위원회 API 키 설정
 FIN_API_KEY = settings.FIN_API_KEY
+
 
 @api_view(["GET"])
 def save_deposit_products(request):
@@ -21,107 +29,224 @@ def save_deposit_products(request):
             f"http://finlife.fss.or.kr/finlifeapi/depositProductsSearch.json?auth={FIN_API_KEY}&topFinGrpNo=020000&pageNo=1"
         )
         response = r.json()
-        print("API Response:", response)
 
-        # API 응답 형식 검증
-        if 'result' not in response:
-            print("Error: 'result' key not found in response")
-            return Response({"error": "Invalid API response format"}, status=status.HTTP_400_BAD_REQUEST)
+        if "result" not in response:
+            return Response(
+                {"error": "Invalid API response format"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        # 기본 상품 정보와 옵션 정보 추출
         base_lst = response.get("result", {}).get("baseList", [])
         option_lst = response.get("result", {}).get("optionList", [])
 
-        # 데이터 존재 여부 확인
         if not base_lst or not option_lst:
-            print("Error: No data in baseList or optionList")
-            return Response({"error": "No data available"}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "No data available"}, status=status.HTTP_404_NOT_FOUND
+            )
 
-        # 데이터베이스에 저장
-        save(base_lst, option_lst)
+        save_deposit_data(
+            base_lst, option_lst
+        )  # 함수 이름 명확하게 변경: save -> save_deposit_data
 
-        return Response(response, status=status.HTTP_200_OK)
+        return Response(
+            {"message": "예금 상품 정보 저장 성공"}, status=status.HTTP_200_OK
+        )
     except requests.exceptions.RequestException as e:
-        print("Request Error:", str(e))
-        return Response({"error": "Failed to fetch data from API"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(
+            {"error": "Failed to fetch data from API"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
     except Exception as e:
-        print("Unexpected Error:", str(e))
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-def save(base_lst, option_lst):
+
+def save_deposit_data(base_lst, option_lst):
     """
     API에서 받아온 예금 상품 정보를 데이터베이스에 저장하는 함수
-    
-    Args:
-        base_lst (list): 기본 상품 정보 리스트
-        option_lst (list): 상품 옵션 정보 리스트
     """
-    # 기본 상품 정보 저장
     for entry in base_lst:
+        # DepositProduct 모델 필드에 맞게 API 응답 필드 매핑
+        product_data = {
+            "kor_co_nm": entry.get("kor_co_nm"),
+            "fin_prdt_nm": entry.get("fin_prdt_nm"),
+            "join_way": entry.get("join_way"),
+            "mtrt_int": entry.get("mtrt_int"),
+            "spcl_cnd": entry.get("spcl_cnd"),
+            "join_deny": entry.get("join_deny"),
+            "join_member": entry.get("join_member"),
+            "etc_note": entry.get("etc_note"),
+            "max_limit": entry.get("max_limit"),
+            "dcls_strt_day": entry.get("dcls_strt_day"),
+            "dcls_end_day": entry.get("dcls_end_day"),
+            "fin_co_subm_day": entry.get("fin_co_subm_day"),
+        }
+        # null=True, blank=True가 아닌 필드 중 API에 없을 수 있는 필드는 .get(key, default_value) 처리 필요
         DepositProduct.objects.update_or_create(
-            fin_prdt_cd=entry['fin_prdt_cd'],
-            defaults={
-                "kor_co_nm": entry["kor_co_nm"],        # 은행명
-                "fin_prdt_nm": entry["fin_prdt_nm"],    # 상품명
-                "etc_note": entry["etc_note"],          # 상품설명
-                "join_deny": entry["join_deny"],        # 가입제한
-                "join_member": entry["join_member"],    # 가입대상
-                "join_way": entry["join_way"],          # 가입방법
-                "spcl_cnd": entry["spcl_cnd"],          # 특별조건
-            }
+            fin_prdt_cd=entry["fin_prdt_cd"],
+            defaults=product_data,
         )
 
-    # 상품 옵션 정보 저장
     for entry in option_lst:
-        # 해당 상품 찾기
-        parent = DepositProduct.objects.get(fin_prdt_cd=entry['fin_prdt_cd'])
-
-        # save_trm 값 처리 (숫자형으로 변환, None 또는 빈 문자열일 경우 기본값 0 사용)
-        raw_save_trm = entry.get('save_trm')
-        if raw_save_trm is None or str(raw_save_trm).strip() == '':
-            processed_save_trm = 0
-        else:
-            try:
-                processed_save_trm = int(raw_save_trm)
-            except (ValueError, TypeError):
-                print(f"Warning: Invalid save_trm value '{raw_save_trm}' for option linked to product {entry['fin_prdt_cd']}. Using default 0.")
-                processed_save_trm = 0
-        
-        # intr_rate 값 처리 (숫자형으로 변환, None 또는 빈 문자열일 경우 기본값 -1.0 사용)
-        raw_intr_rate = entry.get('intr_rate')
-        if raw_intr_rate is None or str(raw_intr_rate).strip() == '':
-            processed_intr_rate = -1.0
-        else:
-            try:
-                processed_intr_rate = float(raw_intr_rate)
-            except (ValueError, TypeError):
-                print(f"Warning: Invalid intr_rate value '{raw_intr_rate}' for option linked to product {entry['fin_prdt_cd']}. Using default -1.0.")
-                processed_intr_rate = -1.0
-
-        # intr_rate2 값 처리 (숫자형으로 변환, None 또는 빈 문자열일 경우 기본값 -1.0 사용)
-        raw_intr_rate2 = entry.get('intr_rate2')
-        if raw_intr_rate2 is None or str(raw_intr_rate2).strip() == '':
-            processed_intr_rate2 = -1.0
-        else:
-            try:
-                processed_intr_rate2 = float(raw_intr_rate2)
-            except (ValueError, TypeError):
-                print(f"Warning: Invalid intr_rate2 value '{raw_intr_rate2}' for option linked to product {entry['fin_prdt_cd']}. Using default -1.0.")
-                processed_intr_rate2 = -1.0
-        
-        # 옵션 정보 저장 또는 업데이트
-        DepositOption.objects.update_or_create(
-            fin_prdt_cd=parent,
-            intr_rate_type_nm=entry['intr_rate_type_nm'], # 이 값은 항상 유효하다고 가정
-            save_trm=processed_save_trm, # 처리된 정수 값 사용
-            defaults={
-                "fin_prdt_cd": parent,
-                "intr_rate_type_nm": entry["intr_rate_type_nm"],
-                "intr_rate": processed_intr_rate,       # 처리된 실수 값 사용
-                "intr_rate2": processed_intr_rate2,     # 처리된 실수 값 사용
-                "save_trm": processed_save_trm,         # 처리된 정수 값 사용
+        try:
+            parent_product = DepositProduct.objects.get(
+                fin_prdt_cd=entry["fin_prdt_cd"]
+            )
+            # DepositOption 모델 필드에 맞게 API 응답 필드 매핑
+            option_data = {
+                "intr_rate_type": entry.get("intr_rate_type"),
+                "intr_rate_type_nm": entry.get("intr_rate_type_nm"),
+                "save_trm": entry.get("save_trm"),
+                "intr_rate": entry.get("intr_rate"),
+                "intr_rate2": entry.get("intr_rate2"),
             }
+            # 숫자형 필드, 필수 필드에 대한 유효성 검사 및 형 변환 강화 권장
+            # 예를 들어, intr_rate, intr_rate2가 null일 경우 Decimal로 변환 시 오류 방지
+            for key in ["intr_rate", "intr_rate2"]:
+                if option_data[key] is None:
+                    option_data[key] = None  # 또는 Decimal('0.00') 등 기본값
+
+            DepositOption.objects.update_or_create(
+                product=parent_product,
+                intr_rate_type=option_data["intr_rate_type"],
+                save_trm=option_data["save_trm"],
+                defaults=option_data,
+            )
+        except DepositProduct.DoesNotExist:
+            continue  # 해당 상품이 없으면 옵션 저장 건너뛰기
+        except Exception as e:
+            continue
+
+
+@api_view(["GET"])
+def save_saving_products(request):
+    """
+    금융위원회 API에서 적금 상품 정보를 가져와서 데이터베이스에 저장하는 함수
+    """
+    api_url = f"http://finlife.fss.or.kr/finlifeapi/savingProductsSearch.json?auth={FIN_API_KEY}&topFinGrpNo=020000&pageNo=1"
+    try:
+        response = requests.get(api_url)
+        response.raise_for_status()  # HTTP 오류 발생 시 예외 발생
+        data = response.json()
+
+        if "result" not in data:
+            return Response(
+                {"error": "Invalid API response format from savingProductsSearch"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        base_list = data.get("result", {}).get("baseList", [])
+        option_list = data.get("result", {}).get("optionList", [])
+
+        if not base_list:
+            return Response(
+                {"error": "No base data available for saving products"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        # 옵션 리스트는 비어있을 수도 있음 (상품은 있으나 옵션 정보가 없는 경우)
+
+        save_saving_data(base_list, option_list)
+
+        return Response(
+            {"message": "적금 상품 정보 저장 성공"}, status=status.HTTP_200_OK
         )
+    except requests.exceptions.RequestException as e:
+        return Response(
+            {"error": f"Failed to fetch saving products data from API: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+    except Exception as e:
+        return Response(
+            {
+                "error": f"An unexpected error occurred while saving saving products: {str(e)}"
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+def save_saving_data(base_list, option_list):
+    """
+    API에서 받아온 적금 상품 정보를 데이터베이스에 저장하는 함수
+    """
+    for entry in base_list:
+        product_data = {
+            "kor_co_nm": entry.get("kor_co_nm"),
+            "fin_prdt_nm": entry.get("fin_prdt_nm"),
+            "join_way": entry.get("join_way"),
+            "mtrt_int": entry.get("mtrt_int"),
+            "spcl_cnd": entry.get("spcl_cnd"),
+            "join_deny": entry.get("join_deny"),
+            "join_member": entry.get("join_member"),
+            "etc_note": entry.get("etc_note"),
+            "max_limit": entry.get("max_limit"),
+            "dcls_strt_day": entry.get("dcls_strt_day"),
+            "dcls_end_day": entry.get("dcls_end_day"),
+            "fin_co_subm_day": entry.get("fin_co_subm_day"),
+            # 적금 특화 필드 추가
+            "rsrv_type": entry.get("rsrv_type"),
+            "rsrv_type_nm": entry.get("rsrv_type_nm"),
+        }
+        SavingProduct.objects.update_or_create(
+            fin_prdt_cd=entry["fin_prdt_cd"],
+            defaults=product_data,
+        )
+
+    for entry in option_list:
+        try:
+            parent_product = SavingProduct.objects.get(fin_prdt_cd=entry["fin_prdt_cd"])
+            option_data = {
+                "intr_rate_type": entry.get("intr_rate_type"),
+                "intr_rate_type_nm": entry.get("intr_rate_type_nm"),
+                "save_trm": entry.get("save_trm"),
+                "intr_rate": entry.get("intr_rate"),
+                "intr_rate2": entry.get("intr_rate2"),
+                # 적금 옵션 특화 필드 추가
+                "acc_type_nm": entry.get("acc_type_nm"),
+            }
+            for key in ["intr_rate", "intr_rate2"]:
+                if option_data[key] is None:
+                    option_data[key] = None
+
+            SavingOption.objects.update_or_create(
+                product=parent_product,
+                intr_rate_type=option_data["intr_rate_type"],
+                save_trm=option_data["save_trm"],
+                defaults=option_data,
+            )
+        except SavingProduct.DoesNotExist:
+            # 로깅 권장: print(f"Warning: Saving product with code {entry['fin_prdt_cd']} not found for option. Skipping option.")
+            continue
+        except Exception as e:
+            # 로깅 권장: print(f"Error saving saving option for product {entry['fin_prdt_cd']}: {str(e)}")
+            continue
+
+
+# 예금 상품 목록 및 상세 조회
+class DepositProductListAPIView(generics.ListAPIView):
+    queryset = DepositProduct.objects.all()
+    serializer_class = DepositProductSerializer
+    permission_classes = [AllowAny]  # 모든 유저에게 조회 기능 제공
+
+
+class DepositProductDetailAPIView(generics.RetrieveAPIView):
+    queryset = DepositProduct.objects.all()
+    serializer_class = DepositProductSerializer
+    lookup_field = "fin_prdt_cd"  # URL에서 상품 코드로 조회
+    permission_classes = [AllowAny]  # 모든 유저에게 조회 기능 제공
+
+
+# 적금 상품 목록 및 상세 조회
+class SavingProductListAPIView(generics.ListAPIView):
+    queryset = SavingProduct.objects.all()
+    serializer_class = SavingProductSerializer
+    permission_classes = [AllowAny]  # 모든 유저에게 조회 기능 제공
+
+
+class SavingProductDetailAPIView(generics.RetrieveAPIView):
+    queryset = SavingProduct.objects.all()
+    serializer_class = SavingProductSerializer
+    lookup_field = "fin_prdt_cd"  # URL에서 상품 코드로 조회
+    permission_classes = [AllowAny]  # 모든 유저에게 조회 기능 제공
+
 
 # 추후 DB에 조회 시 필요할 경우 사용할 함수들, 유동적으로 사용 예정 (05/23)
 
@@ -129,7 +254,7 @@ def save(base_lst, option_lst):
 # def deposit_product_options(request, fin_prdt_cd):
 #     """
 #     특정 예금 상품의 옵션 정보를 조회하는 함수
-    
+
 #     Args:
 #         request: HTTP 요청 객체
 #         fin_prdt_cd (str): 상품 코드
@@ -156,7 +281,7 @@ def save(base_lst, option_lst):
 # def deposit_products(request):
 #     """
 #     예금 상품 목록을 조회하거나 새로운 상품을 등록하는 함수
-    
+
 #     GET: 모든 예금 상품 목록 조회
 #     POST: 새로운 예금 상품 등록
 #     """
@@ -173,3 +298,14 @@ def save(base_lst, option_lst):
 #             {"message": "이미 있는 데이터이거나, 데이터가 잘못 입력되었습니다."},
 #             status=status.HTTP_400_BAD_REQUEST
 #         )
+
+# (선택적) 옵션 정보를 직접 CRUD 할 수 있는 API가 필요하다면 추가 구현 가능
+# 예를 들어, 특정 예금 상품의 특정 옵션만 조회/수정/삭제하는 API
+# class DepositOptionDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
+#     queryset = DepositOption.objects.all()
+#     serializer_class = DepositOptionSerializer
+#     # permission_classes = [IsAdminUser] # 관리자만 접근 가능하도록 설정 등
+
+# class SavingOptionDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
+#     queryset = SavingOption.objects.all()
+#     serializer_class = SavingOptionSerializer
