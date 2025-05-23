@@ -1,19 +1,88 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Main from '@/components/Main.vue'
 import LandingPageView from '@/views/LandingPageView.vue'
+import MainPageView from '@/views/MainPageView.vue'
+import KakaomapPageView from '@/views/KakaomapPageView.vue'
+
+// 임시 플레이스홀더 컴포넌트 (실제 컴포넌트로 교체 필요)
+const PlaceholderComponent = (text) => ({
+  template: `<div><h2>${text}</h2><p>이 페이지는 현재 개발 중입니다.</p></div>`,
+  props: ['text']
+})
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/',
-      name: 'landing',
-      component: LandingPageView,
+      name: 'landingPage',
+      component: LandingPageView
     },
     {
       path: '/main',
-      name: 'main',
-      component: Main,
+      name: 'mainPage',
+      component: MainPageView,
+      children: [
+        {
+          path: '',
+          name: 'mainPageDefault',
+        },
+        {
+          path: 'deposit-comparison',
+          name: 'depositComparison',
+          components: {
+            mainServiceView: PlaceholderComponent('예적금 금리 비교')
+          }
+        },
+        {
+          path: 'commodity-comparison',
+          name: 'commodityComparison',
+          components: {
+            mainServiceView: PlaceholderComponent('현물 상품 비교')
+          }
+        },
+        {
+          path: 'product-recommendation',
+          name: 'productRecommendation',
+          components: {
+            mainServiceView: PlaceholderComponent('금융상품 추천')
+          }
+        },
+        {
+          path: 'stock-search',
+          name: 'stockSearch',
+          components: {
+            mainServiceView: PlaceholderComponent('관심 종목 정보 검색')
+          }
+        },
+        {
+          path: 'nearby-banks',
+          name: 'nearbyBanks',
+          components: {
+            mainServiceView: KakaomapPageView
+          }
+        },
+        {
+          path: 'community',
+          name: 'community',
+          components: {
+            mainServiceView: PlaceholderComponent('커뮤니티')
+          }
+        },
+        {
+          path: 'profile-management',
+          name: 'profileManagement',
+          components: {
+            mainServiceView: PlaceholderComponent('회원정보관리')
+          }
+        },
+        {
+          path: 'settings',
+          name: 'settings',
+          components: {
+            mainServiceView: PlaceholderComponent('설정')
+          }
+        }
+      ]
     },
   ],
 })
