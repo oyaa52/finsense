@@ -10,6 +10,7 @@ environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 FIN_API_KEY = env('FIN_API_KEY')
 KAKAO_API_KEY = env('KAKAO_API_KEY')
+KAKAO_REST_API_KEY = env('KAKAO_REST_API_KEY')
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 
@@ -70,6 +71,10 @@ MIDDLEWARE = [
     'allauth.account.middleware.AccountMiddleware'
 ]
 
+CORS_ALLOWED_ORIGINS = [
+    "http://127.0.0.1:5173",
+]
+
 ROOT_URLCONF = 'backend.urls'
 
 TEMPLATES = [
@@ -87,6 +92,8 @@ TEMPLATES = [
         },
     },
 ]
+
+CORS_ALLOW_ALL_ORIGINS = True
 
 WSGI_APPLICATION = 'backend.wsgi.application'
 
@@ -167,9 +174,9 @@ ACCOUNT_EMAIL_REQUIRED = False
 
 AUTH_USER_MODEL = 'accounts.User'
 
-REST_AUTH = {
-    'REGISTER_SERIALIZER': 'accounts.serializers.CustomRegisterSerializer',
-}
+# REST_AUTH = {
+#     'REGISTER_SERIALIZER': 'accounts.serializers.CustomRegisterSerializer',
+# }
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
