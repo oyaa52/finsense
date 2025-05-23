@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import LandingPageView from '@/views/LandingPageView.vue'
 import MainPageView from '@/views/MainPageView.vue'
 import KakaomapPageView from '@/views/KakaomapPageView.vue'
+import LoginView from '@/views/LoginView.vue'
 
 // 임시 플레이스홀더 컴포넌트 (실제 컴포넌트로 교체 필요)
 const PlaceholderComponent = (text) => ({
@@ -83,6 +84,11 @@ const router = createRouter({
           }
         }
       ]
+    },
+    {
+      path: '/login',
+      name: 'login',
+      component: LoginView
     },
   ],
 })

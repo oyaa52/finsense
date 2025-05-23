@@ -6,6 +6,9 @@
 import { onMounted } from 'vue'
 import AOS from 'aos'
 import 'aos/dist/aos.css'
+import { useAuthStore } from '@/stores/authStore'
+
+const authStore = useAuthStore()
 
 onMounted(() => {
   // 메인 App 컴포넌트가 마운트될 때 AOS 라이브러리를 초기화
@@ -15,6 +18,7 @@ onMounted(() => {
     once: false,    // 애니메이션이 한 번만 실행되어야 하는지 여부 (스크롤 내릴 때)
     offset: 100     // 원래 트리거 지점에서의 오프셋 (픽셀 단위)
   })
+  authStore.initializeAuth() // 앱 시작 시 인증 상태 초기화
 })
 </script>
 
@@ -32,4 +36,17 @@ html, body, #app {
   box-sizing: inherit;
 }
 
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f4f6f8; /* 기본 배경색 변경 가능 */
+}
+
+#app {
+  /* 필요한 경우 #app에 대한 스타일 */
+}
 </style>
