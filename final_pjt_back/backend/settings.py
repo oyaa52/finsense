@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'community',
     'products',
     'recommendations',
+    'assetinfo',
     
     # 서드파티 앱
     'rest_framework',
