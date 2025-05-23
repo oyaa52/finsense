@@ -123,6 +123,8 @@ def save(base_lst, option_lst):
             }
         )
 
+# 추후 DB에 조회 시 필요할 경우 사용할 함수들, 유동적으로 사용 예정 (05/23)
+
 # @api_view(['GET'])
 # def deposit_product_options(request, fin_prdt_cd):
 #     """
@@ -171,12 +173,3 @@ def save(base_lst, option_lst):
 #             {"message": "이미 있는 데이터이거나, 데이터가 잘못 입력되었습니다."},
 #             status=status.HTTP_400_BAD_REQUEST
 #         )
-
-# 카카오맵 API 키를 반환하는 뷰
-@api_view(['GET'])
-def get_kakao_map_api_key(request):
-    api_key = getattr(settings, 'KAKAO_MAP_API_KEY', None)
-    if api_key:
-        return Response({'kakao_map_api_key': api_key}, status=status.HTTP_200_OK)
-    else:
-        return Response({'error': 'Kakao MAP API Key not found in settings.'}, status=status.HTTP_404_NOT_FOUND)
