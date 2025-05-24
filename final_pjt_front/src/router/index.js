@@ -7,6 +7,7 @@ import SignupView from '@/views/SignupView.vue'
 import ProfileManagementView from '@/views/ProfileManagementView.vue'
 import DepositComparisonView from '@/views/DepositComparisonView.vue'
 import EconomicNewsView from '@/views/EconomicNewsView.vue'
+import MainPageDefaultView from '@/views/MainPageDefaultView.vue'
 import { useAuthStore } from '@/stores/authStore'
 
 // 임시 플레이스홀더 컴포넌트 (실제 컴포넌트로 교체 필요)
@@ -32,7 +33,7 @@ const router = createRouter({
           path: '',
           name: 'mainPageDefault',
           components: {
-            mainServiceView: PlaceholderComponent('예적금 금리 비교')
+            mainServiceView: MainPageDefaultView
           }
         },
         {

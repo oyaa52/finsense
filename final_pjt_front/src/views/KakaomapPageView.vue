@@ -153,38 +153,37 @@ async function loadBankData() {
 }
 
 // 지도 초기화 및 마커 생성
-async function initMap() { 
+async function initMap() {
   if (!window.kakao || !window.kakao.maps) {
     console.error('카카오맵 SDK가 준비되지 않았습니다.')
-    isLoading.value = false
-    if (!error.value) { 
-        error.value = '지도 초기화에 필요한 데이터가 준비되지 않았습니다.'
-    }
-    return
+    throw new Error('지도 초기화에 필요한 데이터가 준비되지 않았습니다.')
   }
 
   const mapContainer = document.getElementById('map')
   if (!mapContainer) {
     console.error('지도 컨테이너 요소를 찾을 수 없습니다.')
-    error.value = '지도 컨테이너 요소를 찾을 수 없습니다.'
-    isLoading.value = false
-    return
+    throw new Error('지도 컨테이너 요소를 찾을 수 없습니다.')
   }
 
-  // 삼성전기 부산사업장 위치로 초기화 (녹산산업단지)
+  // 지도 컨테이너가 보이도록 스타일 설정
+  mapContainer.style.visibility = 'visible'
+  mapContainer.style.height = '600px'
+
+  // 삼성전기 부산사업장 위치로 초기화
   const samsungPosition = new window.kakao.maps.LatLng(35.0993, 128.8581)
   const options = {
     center: samsungPosition,
-    level: 3 // 더 가까운 줌 레벨로 설정
+    level: 3
   }
 
   map.value = new window.kakao.maps.Map(mapContainer, options)
   console.log('지도 객체 생성 완료:', map.value)
 
-  // relayout 호출 추가 (DOM 렌더링 후)
+  // 지도 리사이즈 및 relayout
   await nextTick()
   if (map.value) {
     map.value.relayout()
+    window.dispatchEvent(new Event('resize'))
   }
 
   // 삼성전기 부산사업장 마커 생성
@@ -639,75 +638,35 @@ async function showRoute(place) {
   }
 }
 
-// 컴포넌트 마운트 시 실행 (원복된 버전)
+// onMounted 훅 수정
 onMounted(async () => {
-  console.log('[onMounted] 컴포넌트 마운트 시작. isLoading:', isLoading.value);
-  isLoading.value = true;
-  error.value = null;
-  
   try {
-    console.log('[onMounted] 페이지 초기화 로직 시작');
-    
-    console.log('[onMounted] API 키 요청 시작');
-    const response = await api.get('http://127.0.0.1:8000/api/v1/kakaomap/get_kakao_map_api_key/');
-    console.log('[onMounted] API 키 응답 받음:', response.data);
-    
-    if (!response.data || !response.data.kakaomap_api_key || !response.data.kakaomap_rest_api_key) {
-      throw new Error('유효하지 않은 API 키 응답입니다.');
-    }
-    
-    KAKAO_MAP_API_KEY.value = response.data.kakaomap_api_key; // 이 키를 loadKakaoMapSdk에 전달
-    KAKAO_REST_API_KEY.value = response.data.kakaomap_rest_api_key;
-    console.log('[onMounted] API 키 저장 완료.');
+    console.log('[onMounted] 시작')
+    isLoading.value = true
+    error.value = null
 
-    console.log('[onMounted] 카카오맵 SDK 로드 시작');
-    await loadKakaoMapSdk(KAKAO_MAP_API_KEY.value);
-    console.log('[onMounted] 카카오맵 SDK 로드 성공.');
-    
-    if (window.kakao && window.kakao.maps && window.kakao.maps.LatLng) {
-      startPosition.value = new window.kakao.maps.LatLng(35.0993, 128.8581);
-      console.log('[onMounted] startPosition 초기화 완료.');
-    } else {
-      // 이 시점에는 SDK 로드가 성공했어야 함
-      console.error('[onMounted] SDK 로드 성공 후에도 kakao.maps.LatLng을 사용할 수 없습니다.')
-      throw new Error('카카오맵 SDK 초기화 후 LatLng 생성자를 사용할 수 없습니다.');
-    }
-    
-    console.log('[onMounted] 은행 데이터 로드 시작');
-    await loadBankData();
-    console.log('[onMounted] 은행 데이터 로드 완료.');
-    
-    console.log('[onMounted] 지도 초기화 시작');
-    await initMap(); // initMap 내에 relayout 있음
-    console.log('[onMounted] 지도 초기화 완료.');
+    // 1. API 키 가져오기
+    const response = await axios.get('http://127.0.0.1:8000/api/v1/kakaomap/get_kakao_map_api_key/')
+    KAKAO_MAP_API_KEY.value = response.data.kakaomap_api_key
+    KAKAO_REST_API_KEY.value = response.data.kakaomap_rest_api_key
 
-    await nextTick(); // onMounted 끝부분의 relayout
-    if (map.value) {
-      map.value.relayout();
-      console.log('[onMounted] 최종 relayout 호출 완료.');
-    }
-    console.log('[onMounted] 페이지 초기화 성공적으로 완료.');
+    // 2. 카카오맵 SDK 로드
+    await loadKakaoMapSdk(KAKAO_MAP_API_KEY.value)
 
+    // 3. 은행 데이터 로드
+    await loadBankData()
+
+    // 4. 지도 초기화
+    await initMap()
+
+    console.log('[onMounted] 완료')
   } catch (err) {
-    console.error('[onMounted] 페이지 초기화 중 심각한 오류 발생:', err);
-    if (err.message && err.message.includes('API 키')) {
-      error.value = 'API 키를 가져오는데 실패했습니다. 서버 상태를 확인해주세요.';
-    } else if (err.message && err.message.includes('Network Error')) {
-      error.value = '서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.';
-    } else if (err.message && err.message.includes('카카오맵 SDK')) {
-      if (!error.value) error.value = err.message;
-    }
-    else {
-      error.value = (err && err.message) ? err.message : '페이지를 로드하는 중 문제가 발생했습니다. 다시 시도해주세요.';
-    }
-    console.error('[onMounted] 설정된 에러 메시지:', error.value);
-    
+    console.error('[onMounted] 에러 발생:', err)
+    error.value = err.message || '지도를 초기화하는 중 오류가 발생했습니다.'
   } finally {
-    isLoading.value = false;
-    console.log('[onMounted] finally 블록 실행. isLoading:', isLoading.value);
-    console.log('[onMounted] 페이지 초기화 로직 종료.');
+    isLoading.value = false
   }
-});
+})
 
 </script>
 

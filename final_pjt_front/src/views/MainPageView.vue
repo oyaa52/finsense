@@ -51,66 +51,6 @@
       <!-- 컨텐츠 표시 영역 -->
       <div class="content-area" data-aos="fade-up" data-aos-delay="200">
         <router-view name="mainServiceView"></router-view>
-        <!-- 기본 컨텐츠 영역 수정 -->
-        <div v-if="isMainPageDefaultView" class="default-content">
-          <!-- 상단 이미지 슬라이더 섹션 -->
-          <section class="main-image-slider-section">
-            <swiper
-              :modules="swiperModules"
-              :slides-per-view="1"
-              :space-between="0"
-              effect="fade"
-              :fade-effect="{ crossFade: true }"
-              :loop="true"
-              :autoplay="{ delay: 3000, disableOnInteraction: false }"
-              :speed="1500"
-              :navigation="{
-                nextEl: '.swiper-button-next',
-                prevEl: '.swiper-button-prev'
-              }"
-              :pagination="{ el: '.swiper-pagination', clickable: true }"
-              class="main-promo-slider"
-            >
-              <swiper-slide v-for="(slide, index) in promoSlides" :key="index">
-                <img :src="slide.src" :alt="slide.alt" class="promo-slide-image"/>
-                <!-- <div class="slide-caption">{{ slide.caption }}</div> -->
-              </swiper-slide>
-               <!-- 네비게이션 버튼 -->
-              <div class="swiper-button-prev"></div>
-              <div class="swiper-button-next"></div>
-              <!-- 페이지네이션 -->
-              <div class="swiper-pagination"></div>
-            </swiper>
-          </section>
-
-          <!-- 하단 금융 뉴스 섹션 -->
-          <section class="news-section">
-            <h2>오늘 주목할 금융 뉴스</h2>
-            <div v-if="videosLoading" class="loading-message">
-              <div class="loading-spinner"></div>
-              <p>영상을 불러오는 중입니다...</p>
-            </div>
-            <div v-else-if="videosError" class="error-message">
-              <p>{{ videosError }}</p>
-              <button @click="fetchYoutubeVideos" class="retry-button">다시 시도</button>
-            </div>
-            <div v-else-if="youtubeVideos.length > 0" class="youtube-videos-container">
-              <div v-for="video in youtubeVideos" :key="video.video_id" class="youtube-video-item">
-                <iframe 
-                  :src="`https://www.youtube.com/embed/${video.video_id}`" 
-                  frameborder="0" 
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                  allowfullscreen>
-                </iframe>
-                <h4 class="video-title" :title="video.title">{{ video.title }}</h4>
-              </div>
-            </div>
-            <div v-else class="no-videos-message">
-              <p>현재 표시할 영상이 없습니다.</p>
-              <button @click="fetchYoutubeVideos" class="retry-button">새로고침</button>
-            </div>
-          </section>
-        </div>
       </div>
     </main>
   </div>
@@ -223,16 +163,9 @@ onMounted(() => {
 })
 
 // 현재 라우트가 MainPageView의 기본 경로인지 확인하는 computed 속성
-// $route.name을 직접 사용하는 대신, $route.matched를 사용하여 nested routes에서도 정확히 작동하도록 수정
 const isMainPageDefaultView = computed(() => {
-  // 현재 활성화된 라우트 중 mainServiceView라는 이름을 가진 자식 라우트가 있는지 확인
-  const isDefault = !route.matched.some(record => record.components && record.components.mainServiceView)
-  // isMainPageDefaultView 값이 변경될 때, true가 되면 영상 다시 로드 시도 (라우트 변경으로 메인 돌아왔을때)
-  if (isDefault && youtubeVideos.value.length === 0 && !videosLoading.value) {
-     // fetchYoutubeVideos(); // 이 부분은 watch나 다른 방식으로 처리하는 것이 더 적합할 수 있음
-     console.log('[MainPageView] isMainPageDefaultView computed: 기본 뷰이고 영상 없음, 로드 필요 시 fetch 호출 (현재 주석 처리됨)')
-  }
-  return isDefault;
+  // 현재 경로가 /main이고 자식 라우트가 없는 경우
+  return route.path === '/main' && route.name === 'mainPageDefault'
 })
 
 // 라우트 변경 시 isMainPageDefaultView가 true로 바뀌면 영상 로드 (watch 사용)
