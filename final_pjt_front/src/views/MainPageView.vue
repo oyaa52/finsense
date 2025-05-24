@@ -41,7 +41,7 @@
             <li><router-link to="/main/deposit-comparison">예적금 금리 비교</router-link></li>
             <li><router-link to="/main/commodity-comparison">현물 상품 비교</router-link></li>
             <li><router-link to="/main/product-recommendation">금융상품 추천</router-link></li>
-            <li><router-link to="/main/stock-search">관심 종목 정보 검색</router-link></li>
+            <li><router-link to="/main/economic-news">경제 뉴스 검색</router-link></li>
             <li><router-link to="/main/nearby-banks">근처 은행 검색</router-link></li>
             <li><router-link to="/main/community">커뮤니티</router-link></li>
           </ul>

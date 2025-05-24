@@ -142,4 +142,49 @@ def search_youtube_financial_videos(query, max_results=5):
         print(f"YouTube 영상 검색 중 예기치 않은 오류 발생: {e}")
         return "YouTube 영상 검색 중 오류가 발생했습니다. 관리자에게 문의해주세요."
 
+def get_youtube_videos(query, max_results=12):
+    """
+    YouTube API를 사용하여 영상을 검색
+
+    :param query: str, 검색할 키워드
+    :param max_results: int, 가져올 최대 결과 수 (기본값: 12)
+    :return: list of dict, 검색된 영상 정보 리스트
+    """
+    try:
+        youtube = build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, 
+                        developerKey=settings.YOUTUBE_API_KEY)
+
+        search_response = youtube.search().list(
+            q=query,
+            part='snippet',
+            maxResults=max_results,
+            type='video',
+            relevanceLanguage='ko',
+            regionCode='KR'
+        ).execute()
+
+        videos = []
+        for search_result in search_response.get('items', []):
+            if search_result['id']['kind'] == 'youtube#video':
+                video_data = {
+                    'video_id': search_result['id']['videoId'],
+                    'title': search_result['snippet']['title'],
+                    'description': search_result['snippet']['description'],
+                    'thumbnail': search_result['snippet']['thumbnails']['default']['url'],
+                    'channel_title': search_result['snippet']['channelTitle'],
+                    'publish_time': search_result['snippet']['publishTime']
+                }
+                videos.append(video_data)
+        
+        return videos
+
+    except HttpError as e:
+        print(f"YouTube API HTTP 오류 발생: {e.resp.status}, {e._get_reason()}")
+        if e.resp.status == 403:
+            raise Exception("YouTube API 요청 할당량을 초과했거나 API 키에 문제가 있습니다.")
+        raise Exception("YouTube API에서 오류가 발생했습니다.")
+    except Exception as e:
+        print(f"YouTube 영상 검색 중 예기치 않은 오류 발생: {e}")
+        raise Exception("YouTube 영상 검색 중 오류가 발생했습니다.")
+
 

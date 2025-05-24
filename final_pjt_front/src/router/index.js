@@ -6,6 +6,7 @@ import LoginView from '@/views/LoginView.vue'
 import SignupView from '@/views/SignupView.vue'
 import ProfileManagementView from '@/views/ProfileManagementView.vue'
 import DepositComparisonView from '@/views/DepositComparisonView.vue'
+import EconomicNewsView from '@/views/EconomicNewsView.vue'
 import { useAuthStore } from '@/stores/authStore'
 
 // 임시 플레이스홀더 컴포넌트 (실제 컴포넌트로 교체 필요)
@@ -31,7 +32,7 @@ const router = createRouter({
           path: '',
           name: 'mainPageDefault',
           components: {
-            // mainServiceView: PlaceholderComponent('예적금 금리 비교') // 기존 코드 주석 처리 또는 삭제
+            mainServiceView: PlaceholderComponent('예적금 금리 비교')
           }
         },
         {
@@ -56,10 +57,10 @@ const router = createRouter({
           }
         },
         {
-          path: 'stock-search',
-          name: 'stockSearch',
+          path: 'economic-news',
+          name: 'economicNews',
           components: {
-            mainServiceView: PlaceholderComponent('관심 종목 정보 검색')
+            mainServiceView: EconomicNewsView
           }
         },
         {
@@ -109,9 +110,9 @@ const router = createRouter({
     {
       path: '/signup',
       name: 'signup',
-      component: SignupView,
-    },
-  ],
+      component: SignupView
+    }
+  ]
 })
 
 export default router

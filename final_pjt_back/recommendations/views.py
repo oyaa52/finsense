@@ -3,6 +3,11 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .utils import search_youtube_financial_videos # 만들어둔 유틸리티 함수 임포트
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from django.conf import settings
+import requests
+from .utils import get_youtube_videos
 
 # Create your views here.
 
@@ -35,3 +40,16 @@ class YoutubeVideoSearchAPIView(APIView):
             return Response({"message": "요청하신 검색어에 대한 금융 관련 영상을 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
 
         return Response(videos, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def search_youtube_videos(request):
+    query = request.GET.get('query', '')
+    if not query:
+        return Response({'error': '검색어를 입력해주세요.'}, status=400)
+    
+    try:
+        videos = get_youtube_videos(query)
+        return Response(videos)
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
