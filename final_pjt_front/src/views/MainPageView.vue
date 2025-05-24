@@ -248,7 +248,6 @@ body, html {
   max-width: 150px;
   height: auto;
   align-items: center;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05); /* 박스 그림자 */
 }
 
 .auth-links, .user-info-box { /* user-info 에서 user-info-box로 클래스명 변경 */
@@ -258,6 +257,7 @@ body, html {
   padding: 20px; /* 박스 형태를 위한 패딩 추가 */
   background-color: #ffffff; /* 박스 배경색 */
   border-radius: 8px; /* 박스 모서리 둥글게 */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05); /* 박스 그림자 */
 }
 
 .auth-button {
