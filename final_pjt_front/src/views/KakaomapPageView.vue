@@ -1,6 +1,5 @@
 <template>
   <div class="map-container">
-    <h1>은행 및 ATM 찾기</h1>
     <div class="controls">
       <select v-model="selectedBank" @change="filterMarkers">
         <option value="">모든 은행</option>
@@ -23,8 +22,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch, nextTick } from 'vue'
+import { ref, onMounted, computed, watch, nextTick, onUnmounted } from 'vue'
 import axios from 'axios'
+import { useKakaoMapStore } from '@/stores/kakaoMapStore'
 
 // axios 인스턴스 생성
 const api = axios.create({
@@ -55,61 +55,86 @@ const currentRouteInfoWindow = ref(null)
 let clusterer = null
 let searchDebounceTimer = null
 
-// 카카오맵 SDK 동적 로드 (원복된 버전)
+// 전역 변수로 SDK 로드 상태 관리
+const isSDKLoaded = ref(false)
+
+// 스토어 사용
+const kakaoMapStore = useKakaoMapStore()
+
+// 카카오맵 SDK 동적 로드 (개선된 버전)
 function loadKakaoMapSdk(apiKey) {
-  console.log('[loadKakaoMapSdk] SDK 로드 시도 시작.');
+  console.log('[loadKakaoMapSdk] SDK 로드 시도 시작.')
   return new Promise((resolve, reject) => {
-    if (window.kakao && window.kakao.maps) {
-      console.log('[loadKakaoMapSdk] 카카오맵 SDK가 이미 로드되어 있습니다.');
-      resolve();
-      return;
+    // SDK가 이미 로드되어 있는지 더 엄격하게 체크
+    if (window.kakao && window.kakao.maps && window.kakao.maps.LatLng) {
+      console.log('[loadKakaoMapSdk] 카카오맵 SDK가 이미 완전히 로드되어 있습니다.')
+      isSDKLoaded.value = true
+      resolve()
+      return
     }
 
-    const script = document.createElement('script');
-    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${apiKey}&libraries=services,clusterer,directions&autoload=false`;
-    console.log('[loadKakaoMapSdk] 스크립트 태그 생성:', script.src);
+    // 기존 스크립트 제거
+    const existingScript = document.querySelector('script[src*="dapi.kakao.com/v2/maps/sdk.js"]')
+    if (existingScript) {
+      existingScript.remove()
+    }
+
+    const script = document.createElement('script')
+    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${apiKey}&libraries=services,clusterer,directions&autoload=false`
+    console.log('[loadKakaoMapSdk] 스크립트 태그 생성:', script.src)
     
     const timeoutId = setTimeout(() => {
-      console.error('[loadKakaoMapSdk] SDK 로드 시간 초과!');
-      isLoading.value = false; 
-      reject(new Error('카카오맵 SDK 로드 시간이 초과되었습니다.'));
-    }, 15000); 
+      console.error('[loadKakaoMapSdk] SDK 로드 시간 초과!')
+      isLoading.value = false 
+      reject(new Error('카카오맵 SDK 로드 시간이 초과되었습니다.'))
+    }, 15000) 
 
     script.onload = () => {
-      clearTimeout(timeoutId);
-      console.log('[loadKakaoMapSdk] 스크립트 onload 이벤트 발생.');
-      if (window.kakao && window.kakao.maps) {
-        console.log('[loadKakaoMapSdk] window.kakao.maps.load 호출 시도 (약간 지연 후).');
-        setTimeout(() => {
-          try {
-            window.kakao.maps.load(() => {
-              console.log('[loadKakaoMapSdk] 카카오맵 SDK 로드 완료 (kakao.maps.load 콜백).');
-              resolve();
-            });
-          } catch (e) {
-            console.error('[loadKakaoMapSdk] kakao.maps.load 호출 중 예외 발생:', e);
-            isLoading.value = false;
-            reject(new Error('kakao.maps.load 호출 중 예외가 발생했습니다.'));
+      clearTimeout(timeoutId)
+      console.log('[loadKakaoMapSdk] 스크립트 onload 이벤트 발생.')
+      
+      // kakao.maps.load() 호출
+      window.kakao.maps.load(() => {
+        console.log('[loadKakaoMapSdk] 카카오맵 SDK 로드 완료 (kakao.maps.load 콜백).')
+        
+        // SDK가 완전히 로드될 때까지 추가 대기
+        let checkCount = 0
+        const maxChecks = 50 // 최대 5초 (100ms * 50)
+        
+        const checkSDK = () => {
+          if (window.kakao && window.kakao.maps && window.kakao.maps.LatLng) {
+            console.log('[loadKakaoMapSdk] SDK 초기화 완료 확인.')
+            isSDKLoaded.value = true
+            resolve()
+            return
           }
-        }, 100); 
-      } else {
-        console.error('[loadKakaoMapSdk] onload 후 window.kakao.maps 객체를 찾을 수 없음.');
-        isLoading.value = false; 
-        reject(new Error('카카오맵 SDK 로드 후 kakao.maps 객체를 찾을 수 없습니다.'));
-      }
-    };
+          
+          checkCount++
+          if (checkCount >= maxChecks) {
+            console.error('[loadKakaoMapSdk] SDK 초기화 시간 초과')
+            reject(new Error('카카오맵 SDK 초기화 시간이 초과되었습니다.'))
+            return
+          }
+          
+          console.log(`[loadKakaoMapSdk] SDK 초기화 대기 중... (${checkCount}/${maxChecks})`)
+          setTimeout(checkSDK, 100)
+        }
+        
+        checkSDK()
+      })
+    }
 
     script.onerror = (err) => {
-      clearTimeout(timeoutId);
-      console.error('[loadKakaoMapSdk] SDK 로드 실패 (onerror 이벤트):', err);
-      error.value = '카카오맵 SDK를 로드하는 데 실패했습니다. API 키 또는 네트워크 연결을 확인하세요.';
-      isLoading.value = false; 
-      reject(err);
-    };
+      clearTimeout(timeoutId)
+      console.error('[loadKakaoMapSdk] SDK 로드 실패 (onerror 이벤트):', err)
+      error.value = '카카오맵 SDK를 로드하는 데 실패했습니다. API 키 또는 네트워크 연결을 확인하세요.'
+      isLoading.value = false 
+      reject(err)
+    }
 
-    document.head.appendChild(script);
-    console.log('[loadKakaoMapSdk] 스크립트 태그를 document.head에 추가함.');
-  });
+    document.head.appendChild(script)
+    console.log('[loadKakaoMapSdk] 스크립트 태그를 document.head에 추가함.')
+  })
 }
 
 // data.json에서 은행 위치 데이터 로드
@@ -152,9 +177,9 @@ async function loadBankData() {
   }
 }
 
-// 지도 초기화 및 마커 생성
+// 지도 초기화 및 마커 생성 (개선된 버전)
 async function initMap() {
-  if (!window.kakao || !window.kakao.maps) {
+  if (!window.kakao || !window.kakao.maps || !window.kakao.maps.LatLng) {
     console.error('카카오맵 SDK가 준비되지 않았습니다.')
     throw new Error('지도 초기화에 필요한 데이터가 준비되지 않았습니다.')
   }
@@ -165,63 +190,65 @@ async function initMap() {
     throw new Error('지도 컨테이너 요소를 찾을 수 없습니다.')
   }
 
-  // 지도 컨테이너가 보이도록 스타일 설정
-  mapContainer.style.visibility = 'visible'
-  mapContainer.style.height = '600px'
+  try {
+    // 지도 컨테이너가 보이도록 스타일 설정
+    mapContainer.style.visibility = 'visible'
+    mapContainer.style.height = '600px'
 
-  // 삼성전기 부산사업장 위치로 초기화
-  const samsungPosition = new window.kakao.maps.LatLng(35.0993, 128.8581)
-  const options = {
-    center: samsungPosition,
-    level: 3
-  }
+    // 삼성전기 부산사업장 위치로 초기화
+    const samsungPosition = new window.kakao.maps.LatLng(35.0993, 128.8581)
+    const options = {
+      center: samsungPosition,
+      level: 3
+    }
 
-  map.value = new window.kakao.maps.Map(mapContainer, options)
-  console.log('지도 객체 생성 완료:', map.value)
+    map.value = new window.kakao.maps.Map(mapContainer, options)
+    console.log('지도 객체 생성 완료:', map.value)
 
-  // 지도 리사이즈 및 relayout
-  await nextTick()
-  if (map.value) {
-    map.value.relayout()
-    window.dispatchEvent(new Event('resize'))
-  }
-
-  // 삼성전기 부산사업장 마커 생성
-  const startMarker = new window.kakao.maps.Marker({
-    position: samsungPosition,
-    map: map.value
-  })
-
-  // 출발지 인포윈도우 생성
-  const startInfoWindow = new window.kakao.maps.InfoWindow({
-    content: `
-      <div style="padding:15px;font-size:13px;width:250px;word-break:break-all;">
-        <div style="font-size:15px;font-weight:bold;margin-bottom:8px;color:#333;line-height:1.4;">
-          삼성전기 부산사업장
-        </div>
-        <div style="color:#666;margin-bottom:5px;line-height:1.4;">
-          부산광역시 강서구 녹산산업중로 333
-        </div>
-        <div style="color:#666;line-height:1.4;">
-          전화: 051-500-4114
-        </div>
-      </div>
-    `,
-    removable: true,
-    zIndex: 3
-  })
-
-  // 출발지 인포윈도우 표시
-  startInfoWindow.open(map.value, startMarker)
-
-  // relayout 호출 추가 (약간의 지연 시간 후)
-  setTimeout(() => {
+    // 지도 리사이즈 및 relayout
+    await nextTick()
     if (map.value) {
       map.value.relayout()
+      window.dispatchEvent(new Event('resize'))
     }
-  }, 100) // 100ms 지연
 
-  isLoading.value = false 
+    // 삼성전기 부산사업장 마커 생성
+    const startMarker = new window.kakao.maps.Marker({
+      position: samsungPosition,
+      map: map.value
+    })
+
+    // 출발지 인포윈도우 생성
+    const startInfoWindow = new window.kakao.maps.InfoWindow({
+      content: `
+        <div style="padding:15px;font-size:13px;width:250px;word-break:break-all;">
+          <div style="font-size:15px;font-weight:bold;margin-bottom:8px;color:#333;line-height:1.4;">
+            삼성전기 부산사업장
+          </div>
+          <div style="color:#666;margin-bottom:5px;line-height:1.4;">
+            부산광역시 강서구 녹산산업중로 333
+          </div>
+        </div>
+      `,
+      removable: true,
+      zIndex: 3
+    })
+
+    // 출발지 인포윈도우 표시
+    startInfoWindow.open(map.value, startMarker)
+
+    // relayout 호출 추가
+    setTimeout(() => {
+      if (map.value) {
+        map.value.relayout()
+      }
+    }, 100)
+
+    isLoading.value = false
+  } catch (error) {
+    console.error('지도 초기화 중 에러 발생:', error)
+    throw error
+  }
 }
 
 // 필터링 함수 구현
@@ -650,14 +677,18 @@ onMounted(async () => {
     KAKAO_MAP_API_KEY.value = response.data.kakaomap_api_key
     KAKAO_REST_API_KEY.value = response.data.kakaomap_rest_api_key
 
-    // 2. 카카오맵 SDK 로드
+    // 2. 카카오맵 SDK 로드 (Promise가 완료될 때까지 기다림)
     await loadKakaoMapSdk(KAKAO_MAP_API_KEY.value)
 
     // 3. 은행 데이터 로드
     await loadBankData()
 
-    // 4. 지도 초기화
-    await initMap()
+    // 4. 지도 초기화 (SDK가 로드된 후에만 실행)
+    if (isSDKLoaded.value) {
+      await initMap()
+    } else {
+      throw new Error('SDK가 로드되지 않았습니다.')
+    }
 
     console.log('[onMounted] 완료')
   } catch (err) {
@@ -667,6 +698,20 @@ onMounted(async () => {
     isLoading.value = false
   }
 })
+
+// 컴포넌트가 언마운트될 때 정리
+onUnmounted(() => {
+  // 지도 인스턴스 정리
+  if (map.value) {
+    map.value = null;
+  }
+  // 마커 배열 정리
+  markers.value = [];
+  // 필터링된 장소 배열 정리
+  filteredPlaces.value = [];
+  // SDK 로드 상태 초기화
+  isSDKLoaded.value = false;
+});
 
 </script>
 
