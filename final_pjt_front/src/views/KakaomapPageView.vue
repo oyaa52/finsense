@@ -23,7 +23,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, nextTick } from 'vue'
 import axios from 'axios'
 
 // axios 인스턴스 생성
@@ -54,6 +54,63 @@ const currentRouteInfoWindow = ref(null)
 
 let clusterer = null
 let searchDebounceTimer = null
+
+// 카카오맵 SDK 동적 로드 (원복된 버전)
+function loadKakaoMapSdk(apiKey) {
+  console.log('[loadKakaoMapSdk] SDK 로드 시도 시작.');
+  return new Promise((resolve, reject) => {
+    if (window.kakao && window.kakao.maps) {
+      console.log('[loadKakaoMapSdk] 카카오맵 SDK가 이미 로드되어 있습니다.');
+      resolve();
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${apiKey}&libraries=services,clusterer,directions&autoload=false`;
+    console.log('[loadKakaoMapSdk] 스크립트 태그 생성:', script.src);
+    
+    const timeoutId = setTimeout(() => {
+      console.error('[loadKakaoMapSdk] SDK 로드 시간 초과!');
+      isLoading.value = false; 
+      reject(new Error('카카오맵 SDK 로드 시간이 초과되었습니다.'));
+    }, 15000); 
+
+    script.onload = () => {
+      clearTimeout(timeoutId);
+      console.log('[loadKakaoMapSdk] 스크립트 onload 이벤트 발생.');
+      if (window.kakao && window.kakao.maps) {
+        console.log('[loadKakaoMapSdk] window.kakao.maps.load 호출 시도 (약간 지연 후).');
+        setTimeout(() => {
+          try {
+            window.kakao.maps.load(() => {
+              console.log('[loadKakaoMapSdk] 카카오맵 SDK 로드 완료 (kakao.maps.load 콜백).');
+              resolve();
+            });
+          } catch (e) {
+            console.error('[loadKakaoMapSdk] kakao.maps.load 호출 중 예외 발생:', e);
+            isLoading.value = false;
+            reject(new Error('kakao.maps.load 호출 중 예외가 발생했습니다.'));
+          }
+        }, 100); 
+      } else {
+        console.error('[loadKakaoMapSdk] onload 후 window.kakao.maps 객체를 찾을 수 없음.');
+        isLoading.value = false; 
+        reject(new Error('카카오맵 SDK 로드 후 kakao.maps 객체를 찾을 수 없습니다.'));
+      }
+    };
+
+    script.onerror = (err) => {
+      clearTimeout(timeoutId);
+      console.error('[loadKakaoMapSdk] SDK 로드 실패 (onerror 이벤트):', err);
+      error.value = '카카오맵 SDK를 로드하는 데 실패했습니다. API 키 또는 네트워크 연결을 확인하세요.';
+      isLoading.value = false; 
+      reject(err);
+    };
+
+    document.head.appendChild(script);
+    console.log('[loadKakaoMapSdk] 스크립트 태그를 document.head에 추가함.');
+  });
+}
 
 // data.json에서 은행 위치 데이터 로드
 async function loadBankData() {
@@ -95,42 +152,6 @@ async function loadBankData() {
   }
 }
 
-// 카카오맵 SDK 동적 로드
-function loadKakaoMapSdk(apiKey) {
-  return new Promise((resolve, reject) => {
-    if (window.kakao && window.kakao.maps) {
-      console.log('카카오맵 SDK가 이미 로드되어 있습니다.')
-      resolve()
-      return
-    }
-
-    const script = document.createElement('script')
-    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${apiKey}&libraries=services,clusterer,directions&autoload=false`
-    
-    // 타임아웃 설정
-    const timeout = setTimeout(() => {
-      reject(new Error('카카오맵 SDK 로드 시간이 초과되었습니다.'))
-    }, 10000) // 10초 타임아웃
-
-    script.onload = () => {
-      clearTimeout(timeout)
-      window.kakao.maps.load(() => {
-        console.log('카카오맵 SDK 로드 완료')
-        resolve()
-      })
-    }
-
-    script.onerror = (err) => {
-      clearTimeout(timeout)
-      console.error('카카오맵 SDK 로드 실패:', err)
-      error.value = '카카오맵 SDK를 로드하는 데 실패했습니다. API 키 또는 네트워크 연결을 확인하세요.'
-      reject(err)
-    }
-
-    document.head.appendChild(script)
-  })
-}
-
 // 지도 초기화 및 마커 생성
 async function initMap() { 
   if (!window.kakao || !window.kakao.maps) {
@@ -160,6 +181,12 @@ async function initMap() {
   map.value = new window.kakao.maps.Map(mapContainer, options)
   console.log('지도 객체 생성 완료:', map.value)
 
+  // relayout 호출 추가 (DOM 렌더링 후)
+  await nextTick()
+  if (map.value) {
+    map.value.relayout()
+  }
+
   // 삼성전기 부산사업장 마커 생성
   const startMarker = new window.kakao.maps.Marker({
     position: samsungPosition,
@@ -187,6 +214,13 @@ async function initMap() {
 
   // 출발지 인포윈도우 표시
   startInfoWindow.open(map.value, startMarker)
+
+  // relayout 호출 추가 (약간의 지연 시간 후)
+  setTimeout(() => {
+    if (map.value) {
+      map.value.relayout()
+    }
+  }, 100) // 100ms 지연
 
   isLoading.value = false 
 }
@@ -336,7 +370,7 @@ async function searchPlaces() {
 }
 
 // 마커 업데이트 함수 개선
-function updateMarkers(places) {
+async function updateMarkers(places) {
   if (!map.value || !window.kakao || !window.kakao.maps) {
     console.warn('[updateMarkers] Map object or Kakao Maps SDK not available.')
     return
@@ -391,6 +425,12 @@ function updateMarkers(places) {
     
     // 지도 영역 조정 (여유 공간 추가)
     map.value.setBounds(bounds, 100) // 패딩 값 증가
+
+    // relayout 호출 추가
+    await nextTick()
+    if (map.value) {
+        map.value.relayout()
+    }
   }
 }
 
@@ -599,65 +639,75 @@ async function showRoute(place) {
   }
 }
 
-// 컴포넌트 마운트 시 실행
+// 컴포넌트 마운트 시 실행 (원복된 버전)
 onMounted(async () => {
-  isLoading.value = true
-  error.value = null
+  console.log('[onMounted] 컴포넌트 마운트 시작. isLoading:', isLoading.value);
+  isLoading.value = true;
+  error.value = null;
   
   try {
-    console.log('페이지 초기화 시작')
+    console.log('[onMounted] 페이지 초기화 로직 시작');
     
-    // 백엔드에서 API 키 가져오기
-    console.log('API 키 요청 시작')
-    const response = await api.get('http://127.0.0.1:8000/api/v1/kakaomap/get_kakao_map_api_key/')
+    console.log('[onMounted] API 키 요청 시작');
+    const response = await api.get('http://127.0.0.1:8000/api/v1/kakaomap/get_kakao_map_api_key/');
+    console.log('[onMounted] API 키 응답 받음:', response.data);
     
     if (!response.data || !response.data.kakaomap_api_key || !response.data.kakaomap_rest_api_key) {
-      throw new Error('유효하지 않은 API 키 응답입니다.')
+      throw new Error('유효하지 않은 API 키 응답입니다.');
     }
     
-    console.log('API 키 응답:', response.data)
-    KAKAO_MAP_API_KEY.value = response.data.kakaomap_api_key
-    KAKAO_REST_API_KEY.value = response.data.kakaomap_rest_api_key
+    KAKAO_MAP_API_KEY.value = response.data.kakaomap_api_key; // 이 키를 loadKakaoMapSdk에 전달
+    KAKAO_REST_API_KEY.value = response.data.kakaomap_rest_api_key;
+    console.log('[onMounted] API 키 저장 완료.');
 
-    // 카카오맵 SDK 로드
-    console.log('카카오맵 SDK 로드 시작')
-    await loadKakaoMapSdk(KAKAO_MAP_API_KEY.value)
-    console.log('카카오맵 SDK 로드 완료')
+    console.log('[onMounted] 카카오맵 SDK 로드 시작');
+    await loadKakaoMapSdk(KAKAO_MAP_API_KEY.value);
+    console.log('[onMounted] 카카오맵 SDK 로드 성공.');
     
-    // SDK 로드 후 startPosition 초기화
-    startPosition.value = new window.kakao.maps.LatLng(35.0993, 128.8581)
+    if (window.kakao && window.kakao.maps && window.kakao.maps.LatLng) {
+      startPosition.value = new window.kakao.maps.LatLng(35.0993, 128.8581);
+      console.log('[onMounted] startPosition 초기화 완료.');
+    } else {
+      // 이 시점에는 SDK 로드가 성공했어야 함
+      console.error('[onMounted] SDK 로드 성공 후에도 kakao.maps.LatLng을 사용할 수 없습니다.')
+      throw new Error('카카오맵 SDK 초기화 후 LatLng 생성자를 사용할 수 없습니다.');
+    }
     
-    // 은행 데이터 로드
-    console.log('은행 데이터 로드 시작')
-    await loadBankData()
-    console.log('은행 데이터 로드 완료')
+    console.log('[onMounted] 은행 데이터 로드 시작');
+    await loadBankData();
+    console.log('[onMounted] 은행 데이터 로드 완료.');
     
-    // 지도 초기화
-    console.log('지도 초기화 시작')
-    await initMap()
-    console.log('지도 초기화 완료')
+    console.log('[onMounted] 지도 초기화 시작');
+    await initMap(); // initMap 내에 relayout 있음
+    console.log('[onMounted] 지도 초기화 완료.');
+
+    await nextTick(); // onMounted 끝부분의 relayout
+    if (map.value) {
+      map.value.relayout();
+      console.log('[onMounted] 최종 relayout 호출 완료.');
+    }
+    console.log('[onMounted] 페이지 초기화 성공적으로 완료.');
 
   } catch (err) {
-    console.error('페이지 초기화 중 오류 발생:', err)
-    
-    // 에러 메시지 설정
-    if (err.message.includes('API 키')) {
-      error.value = 'API 키를 가져오는데 실패했습니다. 서버 상태를 확인해주세요.'
-    } else if (err.message.includes('Network Error')) {
-      error.value = '서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.'
-    } else {
-      error.value = err.message || '페이지를 로드하는 중 문제가 발생했습니다. 다시 시도해주세요.'
+    console.error('[onMounted] 페이지 초기화 중 심각한 오류 발생:', err);
+    if (err.message && err.message.includes('API 키')) {
+      error.value = 'API 키를 가져오는데 실패했습니다. 서버 상태를 확인해주세요.';
+    } else if (err.message && err.message.includes('Network Error')) {
+      error.value = '서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.';
+    } else if (err.message && err.message.includes('카카오맵 SDK')) {
+      if (!error.value) error.value = err.message;
     }
+    else {
+      error.value = (err && err.message) ? err.message : '페이지를 로드하는 중 문제가 발생했습니다. 다시 시도해주세요.';
+    }
+    console.error('[onMounted] 설정된 에러 메시지:', error.value);
     
-    // 에러 발생 시 로딩 상태 해제
-    isLoading.value = false
-    return
   } finally {
-    // 최종적으로 로딩 상태 해제
-    isLoading.value = false
-    console.log('페이지 초기화 완료')
+    isLoading.value = false;
+    console.log('[onMounted] finally 블록 실행. isLoading:', isLoading.value);
+    console.log('[onMounted] 페이지 초기화 로직 종료.');
   }
-})
+});
 
 </script>
 
