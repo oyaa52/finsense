@@ -10,6 +10,7 @@
         <option value="">모든 도시</option>
         <option v-for="city in uniqueCities" :key="city" :value="city">{{ city }}</option>
       </select>
+      <button @click="searchPlaces" class="search-button">검색</button>
     </div>
     <div id="map" class="map-view"></div>
     <div v-if="isLoading" class="loading-indicator">
@@ -30,63 +31,67 @@ const api = axios.create({
   baseURL: 'http://localhost:5173'  // Vite 개발 서버 주소
 })
 
+// 전역 변수 선언 부분
 const KAKAO_MAP_API_KEY = ref(null)
-const KAKAO_REST_API_KEY = ref(null) // REST API 키 저장용 변수
+const KAKAO_REST_API_KEY = ref(null)
 const map = ref(null)
 const markers = ref([])
-const allPlaces = ref([]) // API 검색 결과를 저장할 ref (지도에 표시될 장소들)
-const cityInfoList = ref([]) // data.json의 mapInfo (도시 이름 및 지역 목록) 저장용
-const bankNameList = ref([]) // data.json의 bankInfo (은행 이름 목록) 저장용
-const filteredPlaces = ref([]) 
+const allPlaces = ref([])
+const cityInfoList = ref([])
+const bankNameList = ref([])
+const filteredPlaces = ref([])
 const selectedBank = ref('')
 const selectedCity = ref('')
 const isLoading = ref(true)
 const error = ref(null)
-let clusterer = null // 마커 클러스터러 객체를 저장할 변수
-let searchDebounceTimer = null; // 검색 디바운싱을 위한 타이머 변수
+const directions = ref(null)
+const startPosition = ref(null)
+const currentInfoWindow = ref(null)
+const currentRoute = ref(null)
+const currentEndMarker = ref(null)
+const currentEndInfoWindow = ref(null)
+const currentRouteInfoWindow = ref(null)
+
+let clusterer = null
+let searchDebounceTimer = null
 
 // data.json에서 은행 위치 데이터 로드
 async function loadBankData() {
   try {
-    console.log('[loadBankData] Starting to load data.json...');
+    console.log('[loadBankData] Starting to load data.json...')
     // public 폴더에 있는 data.json을 직접 참조
     const response = await api.get('/data.json')
-    console.log('[loadBankData] Response received:', response);
-    console.log('[loadBankData] response.data type:', typeof response.data);
-    console.log('[loadBankData] response.data content:', JSON.stringify(response.data, null, 2));
-
-    if (response.data && Array.isArray(response.data.mapInfo)) {
-      cityInfoList.value = response.data.mapInfo;
-      console.log('[loadBankData] cityInfoList.value after assignment:', cityInfoList.value);
-    } else {
-      console.warn('[loadBankData] response.data.mapInfo is missing or not an array.');
-      cityInfoList.value = [];
+    console.log('[loadBankData] Response received:', response)
+    
+    if (!response.data) {
+      throw new Error('data.json 데이터를 불러오지 못했습니다.')
     }
 
-    if (response.data && Array.isArray(response.data.bankInfo)) {
-      bankNameList.value = response.data.bankInfo;
-      console.log('[loadBankData] bankNameList.value after assignment:', bankNameList.value);
+    if (Array.isArray(response.data.mapInfo)) {
+      cityInfoList.value = response.data.mapInfo
+      console.log('[loadBankData] cityInfoList loaded:', cityInfoList.value)
     } else {
-      console.warn('[loadBankData] response.data.bankInfo is missing or not an array.');
-      bankNameList.value = [];
+      console.warn('[loadBankData] response.data.mapInfo is missing or not an array.')
+      cityInfoList.value = []
+    }
+
+    if (Array.isArray(response.data.bankInfo)) {
+      bankNameList.value = response.data.bankInfo
+      console.log('[loadBankData] bankNameList loaded:', bankNameList.value)
+    } else {
+      console.warn('[loadBankData] response.data.bankInfo is missing or not an array.')
+      bankNameList.value = []
     }
     
-    // 현재 data.json은 드롭다운용 데이터만 제공합니다.
-    // allPlaces.value = []; // 명시적으로 비워둠 -> API 검색 결과를 담을 것이므로 초기화는 여기서 하지 않음.
-    console.log('[loadBankData] allPlaces.value (for map markers) will be populated by API search results.');
-
-    // filterMarkers() // 데이터 로드 후 필터링 적용 -> 초기 로드 시에는 검색 전이므로 호출 불필요
-    // 초기에는 아무것도 검색하지 않으므로 빈 지도를 보여주거나, 기본 검색 실행 가능
-    // 여기서는 초기에는 빈 지도를 보여주고, 사용자 선택에 따라 검색 실행
-    return response.data 
+    return response.data
   } catch (err) {
     console.error('은행 데이터를 불러오는 데 실패했습니다:', err)
-    console.error('Error stack:', err.stack); // Log the stack trace of the caught error
-    cityInfoList.value = [];
-    bankNameList.value = [];
-    allPlaces.value = [] // 오류 발생 시 allPlaces가 배열인지 확인
-    error.value = '드롭다운 및 지도 데이터를 불러오는 데 실패했습니다.'; // 에러 메시지 업데이트
-    return null // 오류 발생 시 null 반환
+    console.error('Error stack:', err.stack)
+    cityInfoList.value = []
+    bankNameList.value = []
+    allPlaces.value = []
+    error.value = '드롭다운 및 지도 데이터를 불러오는 데 실패했습니다.'
+    throw err // 에러를 상위로 전파
   }
 }
 
@@ -98,19 +103,30 @@ function loadKakaoMapSdk(apiKey) {
       resolve()
       return
     }
+
     const script = document.createElement('script')
-    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${apiKey}&libraries=services,clusterer&autoload=false`
+    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${apiKey}&libraries=services,clusterer,directions&autoload=false`
+    
+    // 타임아웃 설정
+    const timeout = setTimeout(() => {
+      reject(new Error('카카오맵 SDK 로드 시간이 초과되었습니다.'))
+    }, 10000) // 10초 타임아웃
+
     script.onload = () => {
+      clearTimeout(timeout)
       window.kakao.maps.load(() => {
         console.log('카카오맵 SDK 로드 완료')
         resolve()
       })
     }
+
     script.onerror = (err) => {
+      clearTimeout(timeout)
       console.error('카카오맵 SDK 로드 실패:', err)
       error.value = '카카오맵 SDK를 로드하는 데 실패했습니다. API 키 또는 네트워크 연결을 확인하세요.'
       reject(err)
     }
+
     document.head.appendChild(script)
   })
 }
@@ -134,85 +150,247 @@ async function initMap() {
     return
   }
 
-  const defaultCenter = new window.kakao.maps.LatLng(37.566826, 126.9786567)
+  // 삼성전기 부산사업장 위치로 초기화 (녹산산업단지)
+  const samsungPosition = new window.kakao.maps.LatLng(35.0993, 128.8581)
   const options = {
-    center: defaultCenter,
-    level: 7 
+    center: samsungPosition,
+    level: 3 // 더 가까운 줌 레벨로 설정
   }
 
   map.value = new window.kakao.maps.Map(mapContainer, options)
   console.log('지도 객체 생성 완료:', map.value)
-  // clusterer = null; // 클러스터러를 사용하지 않으므로 이 변수 자체가 필요 없음
+
+  // 삼성전기 부산사업장 마커 생성
+  const startMarker = new window.kakao.maps.Marker({
+    position: samsungPosition,
+    map: map.value
+  })
+
+  // 출발지 인포윈도우 생성
+  const startInfoWindow = new window.kakao.maps.InfoWindow({
+    content: `
+      <div style="padding:15px;font-size:13px;width:250px;word-break:break-all;">
+        <div style="font-size:15px;font-weight:bold;margin-bottom:8px;color:#333;line-height:1.4;">
+          삼성전기 부산사업장
+        </div>
+        <div style="color:#666;margin-bottom:5px;line-height:1.4;">
+          부산광역시 강서구 녹산산업중로 333
+        </div>
+        <div style="color:#666;line-height:1.4;">
+          전화: 051-500-4114
+        </div>
+      </div>
+    `,
+    removable: true,
+    zIndex: 3
+  })
+
+  // 출발지 인포윈도우 표시
+  startInfoWindow.open(map.value, startMarker)
+
   isLoading.value = false 
 }
 
-// 마커 및 인포윈도우 업데이트
-function updateMarkers(places) { 
-  if (!map.value || !window.kakao || !window.kakao.maps) {
-    console.warn('[updateMarkers] Map object or Kakao Maps SDK not available. Skipping.');
+// 필터링 함수 구현
+function filterMarkers() {
+  console.log('[filterMarkers] Starting filter. allPlaces.value count:', allPlaces.value ? allPlaces.value.length : 0);
+  console.log('[filterMarkers] Selected Bank:', selectedBank.value);
+  console.log('[filterMarkers] Selected City:', selectedCity.value);
+  
+  if (!allPlaces.value || allPlaces.value.length === 0) {
+    console.log('[filterMarkers] allPlaces.value is empty or null, clearing markers.');
+    filteredPlaces.value = [];
+    updateMarkers([]);
     return;
+  }
+
+  // 도시 이름에서 핵심 단어 추출
+  const getCityKeyword = (cityName) => {
+    if (!cityName) return '';
+    
+    // 특별시, 광역시, 도, 특별자치시 등의 접미사 제거
+    const cityNameWithoutSuffix = cityName
+      .replace('특별시', '')
+      .replace('광역시', '')
+      .replace('특별자치시', '')
+      .replace('도', '')
+      .trim();
+    
+    return cityNameWithoutSuffix;
+  };
+
+  const cityKeyword = getCityKeyword(selectedCity.value);
+  console.log('[filterMarkers] City keyword:', cityKeyword);
+
+  filteredPlaces.value = allPlaces.value.filter(place => {
+    const bankQuery = selectedBank.value || '';
+    const matchesBank = !bankQuery || (place.place_name && place.place_name.includes(bankQuery));
+
+    // 도시 매칭 로직 개선
+    let matchesCity = !cityKeyword; // 도시가 선택되지 않은 경우
+    if (cityKeyword) {
+      const addressName = place.address_name || '';
+      const roadAddressName = place.road_address_name || '';
+      matchesCity = addressName.includes(cityKeyword) || roadAddressName.includes(cityKeyword);
+      
+      // 디버깅을 위한 상세 로그
+      if (!matchesCity) {
+        console.log(`[filterMarkers] City mismatch for place: ${place.place_name}`);
+        console.log(`[filterMarkers] Address: ${addressName}`);
+        console.log(`[filterMarkers] Road Address: ${roadAddressName}`);
+      }
+    }
+
+    const matches = matchesBank && matchesCity;
+    if (matches) {
+      console.log(`[filterMarkers] Match found: ${place.place_name}`);
+    }
+    
+    return matches;
+  });
+  
+  console.log('[filterMarkers] Filtered places count:', filteredPlaces.value.length);
+  if (filteredPlaces.value.length > 0) {
+    console.log('[filterMarkers] First few matches:', filteredPlaces.value.slice(0, 3).map(p => p.place_name));
+  }
+  
+  updateMarkers(filteredPlaces.value);
+}
+
+// 검색 디바운싱 함수
+function debounceSearch() {
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer)
+  }
+  searchDebounceTimer = setTimeout(() => {
+    searchPlaces()
+  }, 500)
+}
+
+// selectedBank 또는 selectedCity 변경 시 자동 필터링
+watch([selectedBank, selectedCity], () => {
+  console.log('[watch] Selection changed, triggering filter...')
+  debounceSearch()
+})
+
+// 카카오맵 장소 검색 API 호출 함수 개선
+async function searchPlaces() {
+  if (!selectedBank.value && !selectedCity.value) {
+    console.log('[searchPlaces] No filters selected, clearing markers');
+    allPlaces.value = [];
+    // filteredPlaces.value = []; // filterMarkers가 처리하므로 여기서 직접 초기화 불필요
+    filterMarkers(); // 빈 조건으로 filterMarkers를 호출하여 마커를 지움
+    return;
+  }
+
+  isLoading.value = true;
+  error.value = null;
+
+  // 검색어 구성 개선
+  let searchQuery = selectedBank.value;
+  if (selectedCity.value) {
+    searchQuery = `${selectedCity.value} ${selectedBank.value}`;
+  }
+
+  console.log(`[searchPlaces] Searching for: ${searchQuery}`);
+
+  try {
+    const response = await axios.get(
+      'https://dapi.kakao.com/v2/local/search/keyword.json',
+      {
+        params: {
+          query: searchQuery,
+          size: 15, // 이전 값으로 복원 또는 필요시 조정
+          page: 1
+        },
+        headers: {
+          Authorization: `KakaoAK ${KAKAO_REST_API_KEY.value}`,
+        },
+      }
+    );
+
+    if (response.data && response.data.documents) {
+      console.log('[searchPlaces] API Response raw count:', response.data.documents.length);
+      allPlaces.value = response.data.documents; // 필터링 없이 직접 할당
+      filterMarkers(); // filterMarkers가 전체 필터링을 담당
+    } else {
+      console.warn('[searchPlaces] No documents found or unexpected API response.');
+      allPlaces.value = [];
+      // filteredPlaces.value = [];
+      filterMarkers(); // 빈 결과로 filterMarkers를 호출
+    }
+  } catch (err) {
+    console.error('[searchPlaces] Error searching places:', err);
+    console.error('[searchPlaces] Error details:', {
+      message: err.message,
+      response: err.response?.data,
+      status: err.response?.status
+    });
+    error.value = '장소 검색 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+    allPlaces.value = [];
+    // filteredPlaces.value = [];
+    filterMarkers(); // 에러 발생 시 filterMarkers를 호출하여 마커 정리
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+// 마커 업데이트 함수 개선
+function updateMarkers(places) {
+  if (!map.value || !window.kakao || !window.kakao.maps) {
+    console.warn('[updateMarkers] Map object or Kakao Maps SDK not available.')
+    return
   }
 
   // 기존 마커들을 지도에서 제거
-  markers.value.forEach(marker => marker.setMap(null));
-  markers.value = []; 
+  markers.value.forEach(marker => marker.setMap(null))
+  markers.value = []
 
   if (!places || places.length === 0) {
-    console.log('[updateMarkers] No places to display.');
-    return;
+    console.log('[updateMarkers] No places to display.')
+    return
   }
 
-  console.log(`[updateMarkers] Updating markers for ${places.length} places.`);
+  console.log(`[updateMarkers] Updating markers for ${places.length} places.`)
 
   const newMarkers = places.map(place => {
     if (!place.y || !place.x) {
-      console.warn('위치 정보(y, x)가 없는 데이터:', place.place_name);
-      return null; 
+      console.warn('[updateMarkers] Invalid coordinates for place:', place.place_name)
+      return null
     }
+
     const position = new window.kakao.maps.LatLng(parseFloat(place.y), parseFloat(place.x))
     const marker = new window.kakao.maps.Marker({
       position: position,
-      clickable: true 
+      clickable: true
     })
 
-    const infowindowContent = 
-      `<div style="padding:5px;font-size:12px;">
-        <strong>${place.place_name}</strong><br>
-        ${place.road_address_name || place.address_name || '주소 정보 없음'}<br>
-        ${place.phone ? `전화: ${place.phone}<br>` : ''}
-        ${place.category_name ? `카테고리: ${place.category_name}` : ''}
-       </div>`;
+    // 마커에 이벤트 리스너 추가
+    window.kakao.maps.event.addListener(marker, 'mouseover', () => showInfoWindow(place, marker))
+    window.kakao.maps.event.addListener(marker, 'mouseout', closeInfoWindow)
+    window.kakao.maps.event.addListener(marker, 'click', () => showRoute(place))
 
-    const infowindow = new window.kakao.maps.InfoWindow({
-      content: infowindowContent,
-      removable: true 
-    })
+    return marker
+  }).filter(marker => marker !== null)
 
-    window.kakao.maps.event.addListener(marker, 'click', function() {
-      if (infowindow.getMap()) {
-        infowindow.close();
-      } else {
-        infowindow.open(map.value, marker);
-      }
-    });
-    return marker;
-  }).filter(marker => marker !== null); 
+  markers.value = newMarkers
 
-  markers.value = newMarkers;
+  if (newMarkers.length > 0) {
+    // 모든 마커를 지도에 추가
+    newMarkers.forEach(marker => marker.setMap(map.value))
 
-  if (map.value && newMarkers.length > 0) {
-    console.log('[updateMarkers] Adding markers directly to map.');
-    newMarkers.forEach(marker => marker.setMap(map.value));
-    console.log(`${newMarkers.length}개의 마커가 지도에 직접 추가되었습니다.`);
-  } else if (newMarkers.length === 0) {
-    console.log('[updateMarkers] No new markers to add.');
-  }
-
-  if (places.length > 0 && places[0].y && places[0].x) {
-    const firstPlacePosition = new window.kakao.maps.LatLng(parseFloat(places[0].y), parseFloat(places[0].x))
-    map.value.panTo(firstPlacePosition)
-  } else if (places.length === 0 && (selectedBank.value || selectedCity.value)) {
-    console.log('선택한 조건에 맞는 장소가 없습니다.')
+    // 지도 영역 조정
+    const bounds = new window.kakao.maps.LatLngBounds()
+    
+    // 시작점(삼성전기 부산사업장) 추가
+    const startPosition = new window.kakao.maps.LatLng(35.0993, 128.8581)
+    bounds.extend(startPosition)
+    
+    // 모든 마커의 위치 추가
+    newMarkers.forEach(marker => bounds.extend(marker.getPosition()))
+    
+    // 지도 영역 조정 (여유 공간 추가)
+    map.value.setBounds(bounds, 100) // 패딩 값 증가
   }
 }
 
@@ -233,69 +411,191 @@ const uniqueCities = computed(() => {
   return [...new Set(cities)].sort()
 })
 
-// filterMarkers 함수는 더 이상 사용되지 않으므로 삭제 또는 주석 처리
-/*
-function filterMarkers() {
-  console.log('[filterMarkers] This function is no longer used.');
+// 인포윈도우 표시 함수
+function showInfoWindow(place, marker) {
+  if (!window.kakao || !window.kakao.maps) {
+    console.error('카카오맵 SDK가 준비되지 않았습니다.')
+    return
+  }
+
+  // 기존 인포윈도우 닫기
+  if (currentInfoWindow.value) {
+    currentInfoWindow.value.close()
+  }
+
+  const infowindowContent = `
+    <div style="padding:15px;font-size:13px;width:250px;word-break:break-all;">
+      <div style="font-size:15px;font-weight:bold;margin-bottom:8px;color:#333;line-height:1.4;">
+        ${place.place_name}
+      </div>
+      <div style="color:#666;margin-bottom:5px;line-height:1.4;">
+        ${place.road_address_name || place.address_name}
+      </div>
+      ${place.phone ? `<div style="color:#666;line-height:1.4;">전화: ${place.phone}</div>` : ''}
+    </div>
+  `
+
+  currentInfoWindow.value = new window.kakao.maps.InfoWindow({
+    content: infowindowContent,
+    removable: true,
+    zIndex: 3
+  })
+
+  currentInfoWindow.value.open(map.value, marker)
 }
-*/
 
-// selectedBank 또는 selectedCity 변경 시 장소 검색 (디바운싱 적용됨)
-watch([selectedBank, selectedCity], () => {
-  if (searchDebounceTimer) {
-    clearTimeout(searchDebounceTimer);
+// 인포윈도우 닫기 함수
+function closeInfoWindow() {
+  if (currentInfoWindow.value) {
+    currentInfoWindow.value.close()
+    currentInfoWindow.value = null
   }
-  searchDebounceTimer = setTimeout(() => {
-    searchPlaces(); // 은행 또는 도시 선택 변경 시 장소 검색
-  }, 500); // 500ms 디바운스
-});
+}
 
-// 카카오맵 장소 검색 API 호출 함수
-async function searchPlaces() {
-  if (!selectedBank.value && !selectedCity.value) {
-    allPlaces.value = [];
-    updateMarkers(allPlaces.value); // 선택된 값이 없으면 마커 클리어
-    return;
+// 경로 안내 표시 함수 수정
+async function showRoute(place) {
+  if (!window.kakao || !window.kakao.maps) {
+    console.error('카카오맵 SDK가 준비되지 않았습니다.')
+    return
   }
 
-  isLoading.value = true;
-  error.value = null;
-
-  let searchQuery = selectedBank.value; // 기본 검색어는 은행 이름
-  if (selectedCity.value) {
-    searchQuery += ' ' + selectedCity.value; // 도시 이름이 있으면 추가
+  const startPosition = new window.kakao.maps.LatLng(35.0993, 128.8581) // 삼성전기 부산사업장
+  const endPosition = new window.kakao.maps.LatLng(place.y, place.x)
+  
+  // 기존 경로, 마커, 인포윈도우 제거
+  if (currentRoute.value) {
+    currentRoute.value.setMap(null)
+    currentRoute.value = null
+  }
+  if (currentEndMarker.value) {
+    currentEndMarker.value.setMap(null)
+    currentEndMarker.value = null
+  }
+  if (currentEndInfoWindow.value) {
+    currentEndInfoWindow.value.close()
+    currentEndInfoWindow.value = null
+  }
+  if (currentRouteInfoWindow.value) {
+    currentRouteInfoWindow.value.close()
+    currentRouteInfoWindow.value = null
   }
 
-  console.log(`[searchPlaces] Searching for: ${searchQuery}`);
+  // 기존 인포윈도우 닫기
+  closeInfoWindow()
 
   try {
+    // 도착지 마커 생성
+    currentEndMarker.value = new window.kakao.maps.Marker({
+      position: endPosition,
+      map: map.value
+    })
+
+    // 도착지 인포윈도우 생성
+    currentEndInfoWindow.value = new window.kakao.maps.InfoWindow({
+      content: `<div style="padding:5px;font-size:12px;">${place.place_name}</div>`,
+      removable: true
+    })
+
+    // 도착지 인포윈도우 표시
+    currentEndInfoWindow.value.open(map.value, currentEndMarker.value)
+
+    // 카카오 모빌리티 API 호출
     const response = await axios.get(
-      'https://dapi.kakao.com/v2/local/search/keyword.json',
+      'https://apis-navi.kakaomobility.com/v1/directions',
       {
         params: {
-          query: searchQuery,
-          size: 15 // 한 번에 가져올 검색 결과 수 (최대 15)
+          origin: `${startPosition.getLng()},${startPosition.getLat()},name=삼성전기 부산사업장`,
+          destination: `${endPosition.getLng()},${endPosition.getLat()},name=${place.place_name}`,
+          priority: 'RECOMMEND',
+          car_fuel: 'GASOLINE',
+          car_hipass: false,
+          alternatives: false,
+          road_details: false
         },
         headers: {
-          Authorization: `KakaoAK ${KAKAO_REST_API_KEY.value}`,
-        },
+          'Authorization': `KakaoAK ${KAKAO_REST_API_KEY.value}`,
+          'Content-Type': 'application/json'
+        }
       }
-    );
+    )
 
-    if (response.data && response.data.documents) {
-      console.log('[searchPlaces] API Response:', response.data.documents);
-      allPlaces.value = response.data.documents; 
-    } else {
-      console.warn('[searchPlaces] No documents found or unexpected API response.');
-      allPlaces.value = [];
+    if (response.data && response.data.routes && response.data.routes.length > 0) {
+      const route = response.data.routes[0]
+      console.log('Route data:', route)
+
+      // 경로의 모든 좌표를 수집
+      const path = []
+      if (route.sections && route.sections[0] && route.sections[0].roads) {
+        route.sections[0].roads.forEach(road => {
+          if (road.vertexes && road.vertexes.length > 0) {
+            // vertexes 배열에서 좌표를 추출하여 path에 추가
+            for (let i = 0; i < road.vertexes.length; i += 2) {
+              const x = road.vertexes[i]
+              const y = road.vertexes[i + 1]
+              if (typeof x === 'number' && typeof y === 'number') {
+                path.push(new window.kakao.maps.LatLng(y, x))
+              }
+            }
+          }
+        })
+      }
+
+      // 경로가 유효한 경우에만 그리기
+      if (path.length > 0) {
+        // 경로 그리기
+        currentRoute.value = new window.kakao.maps.Polyline({
+          path: path,
+          strokeColor: '#007bff', // 파란색
+          strokeWeight: 5, // 선 두께
+          strokeOpacity: 0.8, // 선 투명도
+          strokeStyle: 'solid' // 선 스타일
+        })
+
+        currentRoute.value.setMap(map.value)
+
+        // 경로가 잘 보이도록 지도 영역 조정
+        const bounds = new window.kakao.maps.LatLngBounds()
+        bounds.extend(startPosition)
+        bounds.extend(endPosition)
+        
+        // 경로의 모든 좌표를 포함하도록 bounds 확장
+        path.forEach(point => bounds.extend(point))
+        
+        // 지도 영역 조정 (여유 공간 추가)
+        map.value.setBounds(bounds, 50)
+
+        // 경로 정보 표시
+        currentRouteInfoWindow.value = new window.kakao.maps.InfoWindow({
+          content: `
+            <div style="padding:15px;font-size:13px;width:250px;word-break:break-all;">
+              <div style="font-size:15px;font-weight:bold;margin-bottom:8px;color:#333;line-height:1.4;">
+                ${place.place_name}
+              </div>
+              <div style="color:#666;margin-bottom:5px;line-height:1.4;">
+                ${place.road_address_name || place.address_name}
+              </div>
+              <div style="margin-top:10px;padding-top:10px;border-top:1px solid #eee;">
+                <div style="color:#007bff;font-weight:bold;margin-bottom:5px;">경로 안내</div>
+                <div style="color:#666;line-height:1.4;">
+                  예상 거리: ${(route.summary.distance / 1000).toFixed(1)}km<br>
+                  예상 소요시간: ${Math.ceil(route.summary.duration / 60)}분
+                </div>
+              </div>
+            </div>
+          `,
+          removable: true,
+          zIndex: 3
+        })
+
+        currentRouteInfoWindow.value.open(map.value, currentEndMarker.value)
+      } else {
+        console.error('유효한 경로 좌표가 없습니다.')
+        error.value = '경로를 그릴 수 없습니다.'
+      }
     }
   } catch (err) {
-    console.error('[searchPlaces] Error searching places:', err);
-    error.value = '장소 검색 중 오류가 발생했습니다.';
-    allPlaces.value = [];
-  } finally {
-    isLoading.value = false;
-    updateMarkers(allPlaces.value); // 검색 완료 후 마커 업데이트 (성공/실패/결과없음 모두 포함)
+    console.error('경로 안내 실패:', err)
+    error.value = '경로 안내를 불러오는데 실패했습니다.'
   }
 }
 
@@ -303,35 +603,59 @@ async function searchPlaces() {
 onMounted(async () => {
   isLoading.value = true
   error.value = null
+  
   try {
-    // 백엔드에서 API 키 가져오기
-    const response = await api.get('http://127.0.0.1:8000/api/v1/kakaomap/get_kakao_map_api_key/')
-    KAKAO_MAP_API_KEY.value = response.data.kakaomap_api_key // JavaScript SDK용 키
-    KAKAO_REST_API_KEY.value = response.data.kakaomap_rest_api_key // REST API용 키
-
-    if (!KAKAO_MAP_API_KEY.value) {
-      throw new Error('카카오맵 API 키를 가져오지 못했습니다.')
-    }
-    // 개발자 도구 콘솔에서 두 키가 정상적으로 수신되었는지 확인할 수 있습니다.
-    console.log('Kakao JS API Key:', KAKAO_MAP_API_KEY.value)
-    console.log('Kakao REST API Key:', KAKAO_REST_API_KEY.value)
-
-    await loadKakaoMapSdk(KAKAO_MAP_API_KEY.value) // 지도 SDK 로드
-    await loadBankData() // 드롭다운용 데이터 로드 (data.json)
-    // bankData는 이제 드롭다운용 데이터만 포함하므로, initMap은 placesData 없이 호출
-    await initMap() // 지도만 초기화 (마커 표시는 searchPlaces가 담당)
+    console.log('페이지 초기화 시작')
     
-    // 초기 로드 시 기본 검색을 원한다면 여기서 searchPlaces() 호출 가능
-    // 예: searchPlaces(); // 기본값(아마도 빈 값)으로 검색 시도 또는 특정 기본값 설정
-    // 또는 사용자가 명시적으로 선택할 때까지는 검색 안 함
+    // 백엔드에서 API 키 가져오기
+    console.log('API 키 요청 시작')
+    const response = await api.get('http://127.0.0.1:8000/api/v1/kakaomap/get_kakao_map_api_key/')
+    
+    if (!response.data || !response.data.kakaomap_api_key || !response.data.kakaomap_rest_api_key) {
+      throw new Error('유효하지 않은 API 키 응답입니다.')
+    }
+    
+    console.log('API 키 응답:', response.data)
+    KAKAO_MAP_API_KEY.value = response.data.kakaomap_api_key
+    KAKAO_REST_API_KEY.value = response.data.kakaomap_rest_api_key
+
+    // 카카오맵 SDK 로드
+    console.log('카카오맵 SDK 로드 시작')
+    await loadKakaoMapSdk(KAKAO_MAP_API_KEY.value)
+    console.log('카카오맵 SDK 로드 완료')
+    
+    // SDK 로드 후 startPosition 초기화
+    startPosition.value = new window.kakao.maps.LatLng(35.0993, 128.8581)
+    
+    // 은행 데이터 로드
+    console.log('은행 데이터 로드 시작')
+    await loadBankData()
+    console.log('은행 데이터 로드 완료')
+    
+    // 지도 초기화
+    console.log('지도 초기화 시작')
+    await initMap()
+    console.log('지도 초기화 완료')
 
   } catch (err) {
     console.error('페이지 초기화 중 오류 발생:', err)
-    if (!error.value) { // 기존 에러 메시지가 없다면 설정
-        error.value = err.message || '페이지를 로드하는 중 문제가 발생했습니다. 다시 시도해주세요.'
+    
+    // 에러 메시지 설정
+    if (err.message.includes('API 키')) {
+      error.value = 'API 키를 가져오는데 실패했습니다. 서버 상태를 확인해주세요.'
+    } else if (err.message.includes('Network Error')) {
+      error.value = '서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.'
+    } else {
+      error.value = err.message || '페이지를 로드하는 중 문제가 발생했습니다. 다시 시도해주세요.'
     }
-  } finally {
+    
+    // 에러 발생 시 로딩 상태 해제
     isLoading.value = false
+    return
+  } finally {
+    // 최종적으로 로딩 상태 해제
+    isLoading.value = false
+    console.log('페이지 초기화 완료')
   }
 })
 
@@ -343,48 +667,78 @@ onMounted(async () => {
   flex-direction: column;
   align-items: center;
   width: 100%;
-  max-width: 1200px; /* 최대 너비 설정 */
-  margin: 20px auto; /* 페이지 중앙 정렬 */
+  max-width: 1200px;
+  margin: 20px auto;
   padding: 20px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* 부드러운 그림자 효과 */
-  border-radius: 8px; /* 모서리 둥글게 */
-  background-color: #f9f9f9; /* 약간의 배경색 */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  background-color: #1a1a1a;
+  color: #ffffff;
 }
 
 h1 {
-  color: #333;
+  color: #ffffff;
   margin-bottom: 20px;
+  font-size: 2rem;
+  font-weight: bold;
 }
 
 .controls {
   display: flex;
-  gap: 15px; /* 컨트롤 사이 간격 */
+  gap: 15px;
   margin-bottom: 20px;
-  padding: 10px;
-  background-color: #fff;
+  padding: 15px;
+  background-color: #2d2d2d;
   border-radius: 6px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  width: 100%;
+  max-width: 800px;
 }
 
 .controls select {
   padding: 10px 15px;
   border-radius: 4px;
-  border: 1px solid #ccc;
+  border: 1px solid #404040;
   font-size: 1rem;
   cursor: pointer;
-  background-color: #fff;
+  background-color: #333333;
+  color: #ffffff;
   transition: border-color 0.3s ease;
+  flex: 1;
 }
 
 .controls select:hover {
-  border-color: #007bff; /* 호버 시 테두리 색상 변경 */
+  border-color: #007bff;
+}
+
+.controls select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
 
 .map-view {
   width: 100%;
-  height: 600px; /* 지도 높이 조정 */
-  border-radius: 6px; /* 지도 모서리 */
-  border: 1px solid #ddd; /* 지도 테두리 */
+  height: 600px;
+  border-radius: 6px;
+  border: 1px solid #404040;
+  background-color: #2d2d2d;
+}
+
+.search-button {
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.3s;
+  min-width: 100px;
+}
+
+.search-button:hover {
+  background-color: #0056b3;
 }
 
 .loading-indicator,
@@ -394,6 +748,7 @@ h1 {
   border-radius: 4px;
   width: 100%;
   text-align: center;
+  background-color: #2d2d2d;
 }
 
 .loading-indicator p {
@@ -402,15 +757,39 @@ h1 {
 }
 
 .error-message {
-  background-color: #ffebee; /* 연한 빨간색 배경 */
-  border: 1px solid #ef5350; /* 빨간색 테두리 */
+  background-color: #2d2d2d;
+  border: 1px solid #ff4444;
 }
 
 .error-message p {
-  color: #c62828; /* 어두운 빨간색 텍스트 */
+  color: #ff4444;
   font-size: 1.1rem;
 }
 
-/* 인포윈도우 내부 스타일은 전역으로 적용될 수 있으므로, 필요시 더 구체적인 셀렉터 사용 */
-/* #map div[style*="padding:5px"] { ... } */
+/* 인포윈도우 스타일 커스터마이징 */
+:deep(.kakao-map-info-window) {
+  background-color: #2d2d2d !important;
+  color: #ffffff !important;
+  border: 1px solid #404040 !important;
+  border-radius: 4px !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+}
+
+:deep(.kakao-map-info-window-content) {
+  color: #ffffff !important;
+}
+
+:deep(.kakao-map-info-window-title) {
+  color: #ffffff !important;
+  font-weight: bold !important;
+}
+
+:deep(.kakao-map-info-window-address) {
+  color: #cccccc !important;
+}
+
+:deep(.kakao-map-info-window-route) {
+  color: #007bff !important;
+  font-weight: bold !important;
+}
 </style>
