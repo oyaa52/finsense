@@ -6,29 +6,30 @@
         <router-link to="/main">
           <img src="@/assets/FS_logo.png" alt="Fin Sense Logo" class="sidebar-logo"/>
         </router-link>
-        <!-- 로고 이미지가 어두운 배경에 잘 보이도록 흰색 버전이나 대비가 높은 로고로 교체하는 것이 좋습니다. -->
-        <!-- 없다면 일단 기존 로고를 사용합니다. -->
       </div>
       
       <div v-if="!isLoggedIn" class="auth-links">
         <router-link to="/login" class="auth-button login-button">로그인</router-link>
         <router-link to="/signup" class="auth-button signup-button">회원가입</router-link>
       </div>
-      <div v-else class="user-info">
-        <!-- currentUser가 null이 아닐 때만 프로필 이미지와 사용자 이름 표시 -->
+      <div v-else class="user-info-box">
         <template v-if="currentUser">
           <img :src="currentUser.profile_image || '@/assets/default_profile.png'" alt="User Profile" class="profile-image"/>
-          <p>{{ currentUser.username || '사용자' }}님, 환영합니다!</p>
+          <p class="welcome-message">{{ currentUser.username || '사용자' }}님, 환영합니다!</p>
         </template>
-        <button @click="logout" class="auth-button logout-button">로그아웃</button>
+        <div class="user-actions">
+          <router-link to="/main/profile-management" class="action-link profile-link">내 프로필</router-link>
+          <span class="separator">|</span>
+          <button @click="logout" class="action-link logout-link">로그아웃</button>
+        </div>
       </div>
       
-      <nav class="sidebar-nav">
+      <!-- <nav class="sidebar-nav">
         <ul>
           <li><router-link to="/main/profile-management">회원정보관리</router-link></li>
           <li><router-link to="/main/settings">설정</router-link></li>
         </ul>
-      </nav>
+      </nav> -->
     </aside>
 
     <!-- 메인 컨텐츠 영역 -->
@@ -52,9 +53,34 @@
         <router-view name="mainServiceView"></router-view>
         <!-- 기본 컨텐츠 영역 수정 -->
         <div v-if="isMainPageDefaultView" class="default-content">
-          <!-- 상단 이미지 섹션 -->
-          <section class="main-image-section">
-            <img src="@/assets/Main_Image.png" alt="Main Promotional Image" class="promo-image"/>
+          <!-- 상단 이미지 슬라이더 섹션 -->
+          <section class="main-image-slider-section">
+            <swiper
+              :modules="swiperModules"
+              :slides-per-view="1"
+              :space-between="0"
+              effect="fade"
+              :fade-effect="{ crossFade: true }"
+              :loop="true"
+              :autoplay="{ delay: 3000, disableOnInteraction: false }"
+              :speed="1500"
+              :navigation="{
+                nextEl: '.swiper-button-next',
+                prevEl: '.swiper-button-prev'
+              }"
+              :pagination="{ el: '.swiper-pagination', clickable: true }"
+              class="main-promo-slider"
+            >
+              <swiper-slide v-for="(slide, index) in promoSlides" :key="index">
+                <img :src="slide.src" :alt="slide.alt" class="promo-slide-image"/>
+                <!-- <div class="slide-caption">{{ slide.caption }}</div> -->
+              </swiper-slide>
+               <!-- 네비게이션 버튼 -->
+              <div class="swiper-button-prev"></div>
+              <div class="swiper-button-next"></div>
+              <!-- 페이지네이션 -->
+              <div class="swiper-pagination"></div>
+            </swiper>
           </section>
 
           <!-- 하단 금융 뉴스 섹션 -->
@@ -90,6 +116,28 @@ import AOS from 'aos'
 import 'aos/dist/aos.css'
 import { useAuthStore } from '@/stores/authStore' // authStore 임포트
 import axios from 'axios' // axios 임포트
+
+// Swiper Vue.js 로부터 컴포넌트 가져오기
+import { Swiper, SwiperSlide } from 'swiper/vue'
+// Swiper 모듈 가져오기
+import { Autoplay, Navigation, Pagination, EffectFade } from 'swiper/modules'
+
+// Swiper 스타일 가져오기
+import 'swiper/css'
+import 'swiper/css/effect-fade'
+import 'swiper/css/navigation'
+import 'swiper/css/pagination'
+
+// 사용할 Swiper 모듈 배열
+const swiperModules = [Autoplay, Navigation, Pagination, EffectFade]
+
+// 슬라이드 이미지 데이터 (src 경로는 실제 파일 위치에 맞게 조정 필요)
+const promoSlides = ref([
+  { src: new URL('@/assets/Main_Image.png', import.meta.url).href, alt: '프로모션 이미지 1', caption: '첫번째 슬라이드' },
+  { src: new URL('@/assets/Main_Image1.png', import.meta.url).href, alt: '프로모션 이미지 2', caption: '두번째 슬라이드' },
+  { src: new URL('@/assets/Main_Image2.png', import.meta.url).href, alt: '프로모션 이미지 3', caption: '세번째 슬라이드' },
+  { src: new URL('@/assets/Main_Image3.png', import.meta.url).href, alt: '프로모션 이미지 4', caption: '네번째 슬라이드' },
+])
 
 const authStore = useAuthStore() // authStore 인스턴스 생성
 const router = useRouter()
@@ -191,37 +239,43 @@ body, html {
 
 .main-page-container {
   display: flex;
-  height: 100vh; /* 전체 화면 높이 */
-  background-color: #121212; /* 매우 어두운 배경 (검정 계열) */
-  color: #ffffff; /* 기본 텍스트 색상 흰색 */
-  overflow: hidden; /* 스크롤은 각 영역에서 관리 */
+  height: 100vh;
+  background-color: #ffffff; /* 밝은 테마: 흰색 배경 */
+  color: #191919; /* 밝은 테마: 기본 텍스트 색상 */
+  overflow: hidden;
 }
 
 /* Sidebar Styles */
 .sidebar {
-  width: 280px;
-  background-color: #000000; /* 사이드바 배경 (검정) */
+  width: 500px; /* 너비 300px에서 320px으로 수정 */
+  background-color: #f5f5f5; /* 밝은 테마: 사이드바 배경 (밝은 회색) */
   padding: 30px 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.5);
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1); /* 그림자 연하게 조정 */
   overflow-y: auto;
 }
 
 .logo-container {
-  margin-bottom: 40px;
+  margin-bottom: 20px; /* user-info-box와의 간격을 살짝 줄임 */
 }
 
 .sidebar-logo {
   max-width: 150px;
   height: auto;
+  align-items: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05); /* 박스 그림자 */
 }
 
-.auth-links, .user-info {
+.auth-links, .user-info-box { /* user-info 에서 user-info-box로 클래스명 변경 */
   width: 100%;
   text-align: center;
   margin-bottom: 30px;
+  padding: 20px; /* 박스 형태를 위한 패딩 추가 */
+  background-color: #ffffff; /* 박스 배경색 */
+  border-radius: 8px; /* 박스 모서리 둥글게 */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05); /* 박스 그림자 */
 }
 
 .auth-button {
@@ -235,12 +289,12 @@ body, html {
   font-weight: 500;
   cursor: pointer;
   transition: background-color 0.3s ease, transform 0.2s ease;
-  text-decoration: none; /* router-link 스타일 초기화 */
-  color: #ffffff; /* 버튼 텍스트 색상 */
+  text-decoration: none;
 }
 
 .login-button {
-  background-color: #0064FF; /* 파란색 */
+  background-color: #0064FF;
+  color: #ffffff;
 }
 .login-button:hover {
   background-color: #0052cc;
@@ -253,56 +307,72 @@ body, html {
   color: #0064FF;
 }
 .signup-button:hover {
-  background-color: rgba(0, 100, 255, 0.1);
-  color: #007bff;
+  background-color: rgba(0, 100, 255, 0.05);
   transform: translateY(-1px);
 }
 
-.user-info .profile-image {
-  width: 100px;
-  height: 100px;
+.user-info-box .profile-image {
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
   object-fit: cover;
-  margin-bottom: 15px;
-  border: 3px solid #0064FF;
+  margin-bottom: 15px; /* 환영 메시지와의 간격 늘림 */
+  border: 2px solid #0064FF;
 }
 
-.user-info p {
-  font-size: 1.1rem;
-  margin-bottom: 20px;
+.user-info-box .welcome-message { /* user-info 에서 user-info-box로 클래스명 변경 및 새 클래스 */
+  font-size: 1rem;
+  margin-bottom: 18px; /* 액션 링크와의 간격 늘림 */
+  color: #191919;
+  font-weight: 500;
+  text-overflow: ellipsis; /* 내용이 넘칠 경우 말줄임표(...) 표시 */
+  max-width: 100%; /* 부모 요소 너비를 넘지 않도록 */
+  text-align: center; /* 가운데 정렬 */
 }
 
-.logout-button {
-  background-color: #333;
-}
-.logout-button:hover {
-  background-color: #444;
-}
-
-.sidebar-nav {
-  width: 100%;
+.user-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px; /* 버튼과 구분자 사이 간격 */
+  width: 100%; /* 너비를 100%로 설정하여 내부 요소들이 공간을 갖도록 함 */
 }
 
-.sidebar-nav ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.sidebar-nav li a {
-  display: block;
-  padding: 12px 15px;
-  color: #adb5bd; /* 약간 밝은 회색 */
+.action-link {
+  background: none;
+  border: none;
+  padding: 5px;
+  font: inherit;
+  cursor: pointer;
+  outline: inherit;
+  color: #0064FF; /* 링크 색상 */
   text-decoration: none;
-  border-radius: 6px;
-  font-size: 0.95rem;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  font-size: 0.9rem; /* 글자 크기 더 줄임 */
+  font-weight: 500;
+  transition: color 0.2s ease;
+  white-space: nowrap; /* 내부 텍스트 줄바꿈 방지 */
 }
 
-.sidebar-nav li a:hover,
-.sidebar-nav li a.router-link-exact-active {
-  background-color: #0064FF; /* 파란색 */
-  color: #ffffff;
+.action-link:hover {
+  color: #004cb3; /* 호버 시 색상 변경 */
+  text-decoration: underline;
+}
+
+.separator {
+  margin: 0 5px; /* 구분자 좌우 간격 5px로 수정 */
+  color: #cccccc; /* 구분자 색상 연하게 */
+  font-size: 0.9rem;
+}
+
+.logout-link {
+  /* .action-link 스타일 상속 */
+  color: #555555; /* 로그아웃 링크 기본 색상 */
+  white-space: nowrap; /* 내부 텍스트 줄바꿈 방지 */
+}
+
+.logout-link:hover {
+  color: #191919; /* 로그아웃 링크 호버 시 색상 */
+  text-decoration: underline;
 }
 
 /* Main Content Styles */
@@ -310,24 +380,25 @@ body, html {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
-  overflow-y: auto; /* 메인 컨텐츠 영역만 스크롤 */
+  overflow-y: auto;
+  background-color: #ffffff;
 }
 
 /* Top Navbar Styles */
 .top-navbar {
-  background-color: #1a1a1a; /* 상단바 배경 (검정보다 약간 밝게) */
+  background-color: #ffffff;
   padding: 0 30px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
   z-index: 10;
   height: 70px;
   display: flex;
   align-items: center;
 }
 
-.top-navbar nav { /* ul 대신 nav에 적용 */
+.top-navbar nav {
   display: flex;
-  flex-grow: 1; /* 네비게이션 바 내에서 가능한 많은 공간 차지 */
-  justify-content: center; /* 내부 아이템들(ul)을 가운데 정렬 */
+  flex-grow: 1;
+  justify-content: center;
 }
 
 .top-navbar nav ul {
@@ -335,11 +406,11 @@ body, html {
   padding: 0;
   margin: 0;
   display: flex;
-  gap: 25px; /* 메뉴 아이템 간 간격 */
+  gap: 25px;
 }
 
 .top-navbar nav ul li a {
-  color: #e0e0e0; /* 기본 링크 색상 */
+  color: #333333;
   text-decoration: none;
   font-size: 1rem;
   font-weight: 500;
@@ -364,13 +435,13 @@ body, html {
 
 .top-navbar nav ul li a:hover,
 .top-navbar nav ul li a.router-link-exact-active {
-  color: #ffffff;
-  background-color: rgba(0, 100, 255, 0.1); /* 호버/활성 시 약간의 배경 */
+  color: #0064FF;
+  background-color: transparent;
 }
 
 .top-navbar nav ul li a:hover::after,
 .top-navbar nav ul li a.router-link-exact-active::after {
-  width: calc(100% - 20px); /* 양쪽에 10px씩 여백을 둔 너비 */
+  width: calc(100% - 20px);
 }
 
 
@@ -378,7 +449,7 @@ body, html {
 .content-area {
   flex-grow: 1;
   padding: 40px;
-  background-color: #1f1f1f; /* 컨텐츠 영역 배경 (상단바보다 약간 밝게) */
+  background-color: #ffffff;
   overflow-y: auto;
 }
 
@@ -386,36 +457,88 @@ body, html {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  height: 100%;
+  justify-content: flex-start;
+  min-height: 100%;
+  height: auto;
   text-align: center;
-  color: #cccccc;
+  color: #191919;
 }
 
 .default-content h2 {
   font-size: 2.5rem;
-  color: #007bff; /* 파란색 강조 */
+  color: #0064FF;
   margin-bottom: 20px;
 }
 
 .default-content p {
   font-size: 1.2rem;
   max-width: 600px;
+  color: #333333;
 }
 
-/* 메인 이미지 섹션 스타일 */
-.main-image-section {
-  width: 100%;
-  margin-bottom: 40px; /* 뉴스 섹션과의 간격 */
-  text-align: center; /* 이미지 가운데 정렬 */
+/* 메인 이미지 슬라이더 섹션 스타일 */
+.main-image-slider-section {
+  width: 80%;
+  max-width: 80%; /* 슬라이더 섹션 최대 가로폭 설정 */
+  margin: 0 auto 40px auto; /* 위아래 마진 유지, 좌우 auto로 가운데 정렬, 아래쪽 마진 40px */
 }
 
-.promo-image {
-  max-width: 100%;
-  max-height: 400px; /* 이미지 최대 높이 제한 */
+.main-promo-slider {
+  width: 100%; /* 부모 요소인 .main-image-slider-section의 너비를 따름 */
+  height: 65vh; /* 이전 값으로 복원 */
   border-radius: 12px;
-  object-fit: cover; /* 이미지 비율 유지하며 채우기 */
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+  overflow: hidden; /* 중요: 슬라이드 내용이 넘치지 않도록 */
+  position: relative; /* 네비게이션/페이지네이션 위치 기준 */
+}
+
+.promo-slide-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* 이미지가 슬라이드 영역을 꽉 채우도록 */
+  display: block;
+}
+
+/* Swiper 네비게이션 버튼 스타일 (토스뱅크 스타일 참고) */
+.swiper-button-prev,
+.swiper-button-next {
+  color: rgba(255, 255, 255, 0.7); /* 반투명 흰색 */
+  background-color: rgba(0, 0, 0, 0.3);
+  width: 40px; /* 크기 조정 */
+  height: 40px; /* 크기 조정 */
+  border-radius: 50%;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.swiper-button-prev:hover,
+.swiper-button-next:hover {
+  background-color: rgba(0, 0, 0, 0.5);
+  color: #ffffff;
+}
+
+.swiper-button-prev::after,
+.swiper-button-next::after {
+  font-size: 18px; /* 아이콘 크기 조정 */
+  font-weight: bold;
+}
+
+/* Swiper 페이지네이션 스타일 (토스뱅크 스타일 참고) */
+.swiper-pagination {
+  bottom: 20px !important; /* 위치 조정 */
+}
+
+.swiper-pagination .swiper-pagination-bullet {
+  background-color: rgba(255, 255, 255, 0.5); /* 비활성 점 색상 */
+  opacity: 1;
+  width: 8px;
+  height: 8px;
+  margin: 0 5px !important;
+  transition: background-color 0.3s ease, width 0.3s ease;
+}
+
+.swiper-pagination .swiper-pagination-bullet-active {
+  background-color: #ffffff; /* 활성 점 색상 */
+  width: 24px; /* 토스뱅크처럼 활성 시 길어지는 효과 */
+  border-radius: 4px;
 }
 
 /* 뉴스 섹션 스타일 */
@@ -425,20 +548,9 @@ body, html {
 }
 
 .news-section h2 {
-  font-size: 1.8rem; /* 기존 h2보다 약간 작게 */
-  color: #0099ff; /* 다른 파란색 계열 */
+  font-size: 1.8rem;
+  color: #3F72AF;
   margin-bottom: 25px;
-}
-
-.youtube-placeholder {
-  padding: 20px;
-  background-color: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  min-height: 150px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #a0a0a0;
 }
 
 /* YouTube 영상 관련 스타일 */
@@ -446,59 +558,59 @@ body, html {
 .error-message,
 .no-videos-message {
   padding: 20px;
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: #f0f0f0;
   border-radius: 8px;
   min-height: 100px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #a0a0a0;
+  color: #555555;
   margin-top: 20px;
 }
 
 .error-message {
-  color: #ff6b6b; /* 에러 메시지 색상 */
-  border: 1px solid #ff6b6b;
+  color: #D32F2F;
+  border: 1px solid #FFCDD2;
+  background-color: #FFEBEE;
 }
 
 .youtube-videos-container {
   display: flex;
-  justify-content: space-around; /* 영상들을 가로로 균등 간격 배치 */
-  gap: 20px; /* 영상 간의 간격 */
+  justify-content: space-around;
+  gap: 20px;
   margin-top: 20px;
-  flex-wrap: wrap; /* 공간 부족 시 다음 줄로 */
+  flex-wrap: wrap;
 }
 
 .youtube-video-item {
-  flex-basis: calc(50% - 10px); /* 기본적으로 2개씩, 간격 고려 */
+  flex-basis: calc(50% - 10px);
   max-width: calc(50% - 10px);
-  background-color: rgba(255, 255, 255, 0.03);
+  background-color: #ffffff;
   border-radius: 8px;
   padding: 15px;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
   display: flex;
   flex-direction: column;
 }
 
 .youtube-video-item iframe {
   width: 100%;
-  aspect-ratio: 16 / 9; /* 16:9 비율 유지 */
+  aspect-ratio: 16 / 9;
   border-radius: 6px;
   margin-bottom: 10px;
 }
 
 .video-title {
   font-size: 0.9rem;
-  color: #e0e0e0;
-  margin-top: auto; /* 제목을 카드 하단에 위치시키도록 */
+  color: #191919;
+  margin-top: auto;
   text-align: left;
   line-height: 1.4;
-  max-height: 3.9em; /* 대략 3줄까지 보이도록 (1.3em * 3) */
+  max-height: 3.9em;
   overflow: hidden;
   text-overflow: ellipsis;
-  /* white-space: nowrap; */ /* 한 줄로 하고 싶을 때 */
   display: -webkit-box;
-  -webkit-line-clamp: 3; /* Safari, Chrome 등 WebKit 기반 브라우저 */
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
 }
 
