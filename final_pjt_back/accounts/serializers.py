@@ -1,6 +1,6 @@
 from dj_rest_auth.registration.serializers import RegisterSerializer
 from rest_framework import serializers
-from .models import Profile  # Profile 모델 임포트
+from .models import Profile, User  # Profile 모델과 User 모델 임포트
 
 
 class CustomRegisterSerializer(RegisterSerializer):
