@@ -1,5 +1,21 @@
 <template>
   <div class="deposit-comparison">
+    <!-- 상품 타입 토글 -->
+    <div class="product-type-toggle">
+      <button 
+        :class="{ active: productType === 'deposit' }"
+        @click="changeProductType('deposit')"
+      >
+        예금
+      </button>
+      <button 
+        :class="{ active: productType === 'saving' }"
+        @click="changeProductType('saving')"
+      >
+        적금
+      </button>
+    </div>
+
     <!-- 필터 섹션 -->
     <div class="filter-section">
       <div class="bank-filter">
@@ -37,7 +53,7 @@
     <!-- 상품 목록 -->
     <div class="products-section">
       <div class="products-header">
-        <h2>예적금 상품 목록</h2>
+        <h2>상품 목록</h2>
         <div class="sort-options">
           <button 
             :class="{ active: sortBy === 'rate' }"
@@ -181,7 +197,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
 
 // 상태 관리
-const selectedBank = ref(null)  // 초기값을 null로 설정
+const selectedBank = ref(null)
 const selectedPeriod = ref('all')
 const sortBy = ref('rate')
 const selectedProduct = ref(null)
@@ -191,6 +207,7 @@ const error = ref(null)
 const currentPage = ref(1)
 const totalPages = ref(1)
 const pageSize = ref(50)
+const productType = ref('deposit')  // 'deposit' 또는 'saving'
 
 // 은행 목록
 const banks = ref([
@@ -207,48 +224,82 @@ const fetchProducts = async (page = 1) => {
   error.value = null
   try {
     // 먼저 금융위원회 API에서 데이터를 가져와서 저장
-    await axios.get('http://127.0.0.1:8000/api/v1/products/save-deposit-products/')
+    const saveEndpoint = productType.value === 'deposit' 
+      ? 'http://127.0.0.1:8000/api/v1/products/save-deposit-products/'
+      : 'http://127.0.0.1:8000/api/v1/products/save-saving-products/'
     
-    // 그 다음 저장된 예금 상품 목록을 가져옴
-    const response = await axios.get('http://127.0.0.1:8000/api/v1/products/deposit-products/', {
+    try {
+      await axios.get(saveEndpoint)
+    } catch (saveError) {
+      console.warn('Failed to fetch latest data from API:', saveError)
+      // 저장 실패해도 계속 진행
+    }
+    
+    // 그 다음 저장된 상품 목록을 가져옴
+    const listEndpoint = productType.value === 'deposit'
+      ? 'http://127.0.0.1:8000/api/v1/products/deposit-products/'
+      : 'http://127.0.0.1:8000/api/v1/products/saving-products/'
+    
+    const response = await axios.get(listEndpoint, {
       params: {
         page: page,
         page_size: pageSize.value,
-        bank_id: selectedBank.value,  // null이면 모든 은행
+        bank_id: selectedBank.value,
         period: selectedPeriod.value === 'all' ? undefined : selectedPeriod.value,
         sort_by: sortBy.value
       }
     })
     
-    // 페이지네이션 정보 업데이트
-    currentPage.value = page
-    totalPages.value = Math.ceil(response.data.count / pageSize.value)
-    
-    // 상품 데이터 매핑
-    products.value = response.data.results.map(product => {
-      // 해당 기간의 옵션 찾기 (전체 선택 시 첫 번째 옵션 사용)
-      const periodOption = selectedPeriod.value === 'all' 
-        ? product.options[0] 
-        : product.options.find(opt => opt.save_trm === selectedPeriod.value)
-      
-      return {
-        id: product.fin_prdt_cd,
-        name: product.fin_prdt_nm,
-        bankName: product.kor_co_nm,
-        bankId: getBankId(product.kor_co_nm),
-        baseRate: periodOption?.intr_rate || 0,
-        maxRate: periodOption?.intr_rate2 || 0,
-        period: parseInt(periodOption?.save_trm) || 12,
-        minAmount: 1000000,
-        interestPayment: periodOption?.intr_rate_type_nm || '만기일시지급',
-        description: product.join_way || '상품 설명이 없습니다.',
-        features: [
-          product.spcl_cnd || '우대조건이 없습니다.',
-          product.join_member || '가입대상 정보가 없습니다.',
-          product.etc_note || '기타 유의사항이 없습니다.'
-        ].filter(Boolean)
+    if (response.data.results && response.data.results.length > 0) {
+      // 데이터 매핑
+      products.value = response.data.results.map(product => {
+        // 옵션 중에서 선택된 기간에 해당하는 옵션 찾기
+        let selectedOption = null
+        if (product.options && product.options.length > 0) {
+          if (selectedPeriod.value === 'all') {
+            // 전체 기간일 경우 가장 높은 금리의 옵션 선택
+            selectedOption = product.options.reduce((max, option) => {
+              const currentRate = parseFloat(option.intr_rate) || 0
+              const maxRate = parseFloat(max.intr_rate) || 0
+              return currentRate > maxRate ? option : max
+            }, product.options[0])
+          } else {
+            // 특정 기간이 선택된 경우 해당 기간의 옵션 선택
+            selectedOption = product.options.find(option => 
+              option.save_trm === selectedPeriod.value
+            ) || product.options[0]
+          }
+        }
+
+        return {
+          id: product.fin_prdt_cd,
+          bankName: product.kor_co_nm,
+          name: product.fin_prdt_nm,
+          baseRate: selectedOption ? parseFloat(selectedOption.intr_rate) || 0 : 0,
+          maxRate: selectedOption ? parseFloat(selectedOption.intr_rate2) || 0 : 0,
+          period: selectedOption ? selectedOption.save_trm : '',
+          minAmount: product.max_limit || 0,
+          interestPayment: product.mtrt_int || '',
+          description: product.spcl_cnd || '',
+          features: [
+            product.join_way,
+            product.join_member,
+            product.etc_note
+          ].filter(Boolean),
+          options: product.options || [] // 옵션 정보 저장
+        }
+      })
+
+      // 금리순 정렬이 선택된 경우 금리 기준으로 정렬
+      if (sortBy.value === 'rate') {
+        products.value.sort((a, b) => b.baseRate - a.baseRate)
       }
-    })
+      
+      totalPages.value = response.data.total_pages
+      currentPage.value = response.data.current_page
+    } else {
+      error.value = '상품 정보가 없습니다.'
+    }
   } catch (err) {
     error.value = '상품 정보를 가져오는데 실패했습니다.'
     console.error('Error fetching products:', err)
@@ -256,6 +307,19 @@ const fetchProducts = async (page = 1) => {
     loading.value = false
   }
 }
+
+// 필터링된 상품 목록
+const filteredProducts = computed(() => {
+  if (selectedPeriod.value === 'all') {
+    return products.value
+  }
+
+  // 선택된 기간에 해당하는 상품만 필터링
+  return products.value.filter(product => {
+    if (!product.options || product.options.length === 0) return false
+    return product.options.some(option => option.save_trm === selectedPeriod.value)
+  })
+})
 
 // 은행 ID 매핑 함수
 const getBankId = (bankName) => {
@@ -268,9 +332,6 @@ const getBankId = (bankName) => {
   }
   return bankMap[bankName] || 1
 }
-
-// 필터링된 상품 목록 (단순히 products를 반환)
-const filteredProducts = computed(() => products.value)
 
 // 필터 변경 시 데이터 다시 가져오기
 watch([selectedBank, selectedPeriod, sortBy], () => {
@@ -296,6 +357,13 @@ const closeModal = () => {
 const handlePageChange = (page) => {
   currentPage.value = page
   fetchProducts(page)
+}
+
+// 상품 타입 변경 시 데이터 다시 가져오기
+const changeProductType = (type) => {
+  productType.value = type
+  currentPage.value = 1
+  fetchProducts(1)
 }
 
 // 데이터 새로고침 함수
@@ -325,13 +393,44 @@ onMounted(() => {
   margin: 0 auto;
 }
 
+.product-type-toggle {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.product-type-toggle button {
+  padding: 0.75rem 2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border: 2px solid #4a90e2;
+  background: transparent;
+  color: #4a90e2;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.product-type-toggle button.active {
+  background: #4a90e2;
+  color: white;
+}
+
+.product-type-toggle button:hover {
+  background: #4a90e2;
+  color: white;
+  transform: translateY(-2px);
+}
+
 .filter-section {
   display: flex;
   gap: 30px;
   margin-bottom: 30px;
   padding: 20px;
-  background-color: #1a1a1a;
+  background-color: #ffffff;
   border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .bank-filter, .period-filter {
@@ -347,16 +446,16 @@ onMounted(() => {
 
 .bank-buttons button {
   padding: 8px 16px;
-  border: 1px solid #0064FF;
+  border: 1px solid #4a90e2;
   background: transparent;
-  color: #fff;
+  color: #4a90e2;
   border-radius: 20px;
   cursor: pointer;
   transition: all 0.3s ease;
 }
 
 .bank-buttons button.active {
-  background-color: #0064FF;
+  background-color: #4a90e2;
   color: #fff;
 }
 
@@ -364,16 +463,17 @@ onMounted(() => {
   width: 100%;
   padding: 8px;
   margin-top: 10px;
-  background-color: #2a2a2a;
-  color: #fff;
-  border: 1px solid #444;
+  background-color: #ffffff;
+  color: #333;
+  border: 1px solid #ddd;
   border-radius: 5px;
 }
 
 .products-section {
-  background-color: #1a1a1a;
+  background-color: #ffffff;
   border-radius: 10px;
   padding: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .products-header {
@@ -390,16 +490,17 @@ onMounted(() => {
 
 .sort-options button {
   padding: 8px 16px;
-  border: 1px solid #444;
+  border: 1px solid #ddd;
   background: transparent;
-  color: #fff;
+  color: #666;
   border-radius: 5px;
   cursor: pointer;
 }
 
 .sort-options button.active {
-  background-color: #0064FF;
-  border-color: #0064FF;
+  background-color: #4a90e2;
+  border-color: #4a90e2;
+  color: #fff;
 }
 
 .products-grid {
@@ -411,11 +512,11 @@ onMounted(() => {
 .bank-name-header {
   margin-bottom: 15px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #444;
+  border-bottom: 1px solid #eee;
 }
 
 .bank-name-header h3 {
-  color: #0064FF;
+  color: #4a90e2;
   font-size: 1.2rem;
   margin: 0;
 }
@@ -423,21 +524,23 @@ onMounted(() => {
 .product-title {
   font-size: 1.1rem;
   margin: 0 0 15px 0;
-  color: #fff;
+  color: #333;
   line-height: 1.4;
 }
 
 .product-card {
-  background-color: #2a2a2a;
+  background-color: #ffffff;
   border-radius: 10px;
   padding: 20px;
   cursor: pointer;
   transition: transform 0.3s ease;
+  border: 1px solid #eee;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .product-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 5px 15px rgba(0, 100, 255, 0.1);
+  box-shadow: 0 5px 15px rgba(74, 144, 226, 0.1);
 }
 
 .bank-logo {
@@ -454,7 +557,7 @@ onMounted(() => {
 
 .product-info h3 {
   margin: 0 0 10px 0;
-  color: #fff;
+  color: #333;
 }
 
 .bank-name {
@@ -469,11 +572,11 @@ onMounted(() => {
 }
 
 .rate-label, .period-label {
-  color: #888;
+  color: #666;
 }
 
 .rate-value {
-  color: #0064FF;
+  color: #4a90e2;
   font-weight: bold;
 }
 
@@ -491,7 +594,7 @@ onMounted(() => {
 }
 
 .modal-content {
-  background-color: #2a2a2a;
+  background-color: #ffffff;
   border-radius: 10px;
   padding: 30px;
   width: 90%;
@@ -499,6 +602,7 @@ onMounted(() => {
   max-height: 90vh;
   overflow-y: auto;
   position: relative;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
 }
 
 .close-button {
@@ -507,7 +611,7 @@ onMounted(() => {
   right: 20px;
   background: none;
   border: none;
-  color: #fff;
+  color: #666;
   font-size: 24px;
   cursor: pointer;
 }
@@ -516,17 +620,17 @@ onMounted(() => {
   text-align: center;
   margin-bottom: 30px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #444;
+  border-bottom: 1px solid #eee;
 }
 
 .detail-header h2 {
-  color: #fff;
+  color: #333;
   margin: 0 0 10px 0;
   font-size: 1.8rem;
 }
 
 .detail-header .bank-name {
-  color: #0064FF;
+  color: #4a90e2;
   font-size: 1.2rem;
   margin: 0;
 }
@@ -539,15 +643,15 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   padding: 10px 0;
-  border-bottom: 1px solid #444;
+  border-bottom: 1px solid #eee;
 }
 
 .info-row .label {
-  color: #888;
+  color: #666;
 }
 
 .info-row .value {
-  color: #fff;
+  color: #333;
   font-weight: 500;
 }
 
@@ -556,12 +660,12 @@ onMounted(() => {
 }
 
 .detail-description h3, .detail-features h3 {
-  color: #fff;
+  color: #333;
   margin-bottom: 15px;
 }
 
 .detail-description p {
-  color: #ccc;
+  color: #666;
   line-height: 1.6;
 }
 
@@ -571,7 +675,7 @@ onMounted(() => {
 }
 
 .detail-features li {
-  color: #ccc;
+  color: #666;
   margin-bottom: 10px;
   padding-left: 20px;
   position: relative;
@@ -579,7 +683,7 @@ onMounted(() => {
 
 .detail-features li::before {
   content: "•";
-  color: #0064FF;
+  color: #4a90e2;
   position: absolute;
   left: 0;
 }
@@ -588,7 +692,7 @@ onMounted(() => {
 .loading-state, .error-state {
   text-align: center;
   padding: 40px;
-  background-color: #1a1a1a;
+  background-color: #ffffff;
   border-radius: 10px;
   margin-bottom: 20px;
   min-height: 200px;
@@ -596,6 +700,7 @@ onMounted(() => {
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .loading-animation {
@@ -605,7 +710,7 @@ onMounted(() => {
 .loader {
   width: 48px;
   height: 48px;
-  border: 3px solid #0064FF;
+  border: 3px solid #4a90e2;
   border-bottom-color: transparent;
   border-radius: 50%;
   display: inline-block;
@@ -627,7 +732,7 @@ onMounted(() => {
 }
 
 .text-gradient {
-  background: linear-gradient(45deg, #0064FF, #00BFFF);
+  background: linear-gradient(45deg, #4a90e2, #00BFFF);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -635,18 +740,14 @@ onMounted(() => {
 }
 
 .error-state p {
-  color: #ff6b6b;
+  color: #e74c3c;
   font-size: 1.2rem;
   margin-bottom: 20px;
-  background: linear-gradient(45deg, #ff6b6b, #ff8787);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
 }
 
 .error-state button {
   padding: 10px 20px;
-  background: linear-gradient(45deg, #0064FF, #00BFFF);
+  background: #4a90e2;
   color: white;
   border: none;
   border-radius: 5px;
@@ -656,6 +757,7 @@ onMounted(() => {
 
 .error-state button:hover {
   transform: translateY(-2px);
+  background: #357abd;
 }
 
 .pagination {
@@ -668,21 +770,21 @@ onMounted(() => {
 
 .page-button {
   padding: 0.5rem 1rem;
-  border: 1px solid #0064FF;
+  border: 1px solid #4a90e2;
   background-color: transparent;
-  color: #0064FF;
+  color: #4a90e2;
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.3s ease;
 }
 
 .page-button:hover:not(:disabled) {
-  background-color: #0064FF;
+  background-color: #4a90e2;
   color: white;
 }
 
 .page-button.active {
-  background-color: #0064FF;
+  background-color: #4a90e2;
   color: white;
 }
 
@@ -696,7 +798,7 @@ onMounted(() => {
 .skeleton {
   position: relative;
   overflow: hidden;
-  background: #2a2a2a;
+  background: #f5f5f5;
 }
 
 .skeleton::after {
@@ -720,7 +822,7 @@ onMounted(() => {
 .skeleton-text {
   height: 1em;
   margin-bottom: 0.5em;
-  background: #3a3a3a;
+  background: #e0e0e0;
   border-radius: 4px;
 }
 
