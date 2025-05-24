@@ -156,19 +156,25 @@ const videosError = ref(null)
 const fetchYoutubeVideos = async () => {
   videosLoading.value = true
   videosError.value = null
+  console.log('[MainPageView] fetchYoutubeVideos: 시작, videosLoading:', videosLoading.value)
   try {
+    console.log('[MainPageView] fetchYoutubeVideos: API 요청 전')
     const response = await axios.get(`http://127.0.0.1:8000/api/v1/recommendations/youtube-search/`, {
       params: {
         query: '금융 뉴스',  // 기본 검색어 추가
         max_results: 2
       }
     })
+    console.log('[MainPageView] fetchYoutubeVideos: API 응답 받음:', response.data)
     youtubeVideos.value = response.data
+    console.log('[MainPageView] fetchYoutubeVideos: youtubeVideos 할당 후:', youtubeVideos.value)
   } catch (error) {
-    console.error('YouTube 영상 로딩 중 에러:', error)
+    console.error('[MainPageView] YouTube 영상 로딩 중 에러:', error)
     videosError.value = error.response?.data?.error || '영상을 불러오는 중 오류가 발생했습니다.'
+    console.log('[MainPageView] fetchYoutubeVideos: 에러 발생, videosError:', videosError.value)
   } finally {
     videosLoading.value = false
+    console.log('[MainPageView] fetchYoutubeVideos: 종료 (finally), videosLoading:', videosLoading.value)
   }
 }
 
@@ -180,9 +186,11 @@ const logout = async () => {
 
 onMounted(() => {
   AOS.init()
+  console.log('[MainPageView] onMounted: 시작, isMainPageDefaultView:', isMainPageDefaultView.value)
   if (isMainPageDefaultView.value) { // 기본 화면일 때만 영상 로드
     fetchYoutubeVideos()
   }
+  console.log('[MainPageView] onMounted: 종료')
 })
 
 // 현재 라우트가 MainPageView의 기본 경로인지 확인하는 computed 속성
@@ -193,17 +201,23 @@ const isMainPageDefaultView = computed(() => {
   // isMainPageDefaultView 값이 변경될 때, true가 되면 영상 다시 로드 시도 (라우트 변경으로 메인 돌아왔을때)
   if (isDefault && youtubeVideos.value.length === 0 && !videosLoading.value) {
      // fetchYoutubeVideos(); // 이 부분은 watch나 다른 방식으로 처리하는 것이 더 적합할 수 있음
+     console.log('[MainPageView] isMainPageDefaultView computed: 기본 뷰이고 영상 없음, 로드 필요 시 fetch 호출 (현재 주석 처리됨)')
   }
   return isDefault;
 })
 
 // 라우트 변경 시 isMainPageDefaultView가 true로 바뀌면 영상 로드 (watch 사용)
 watch(() => route.path, (newPath, oldPath) => {
+  console.log(`[MainPageView] watch route.path: 변경 감지 - newPath: ${newPath}, oldPath: ${oldPath}, isMainPageDefaultView: ${isMainPageDefaultView.value}`)
   // /main으로 돌아왔고, 자식 라우트가 없는 경우 (즉 isMainPageDefaultView가 true가 되는 시점)
   if (newPath === '/main' && isMainPageDefaultView.value) {
+    console.log('[MainPageView] watch route.path: 메인 페이지로 돌아옴 & 기본 뷰 상태')
     // 영상이 없거나, 이전에 에러가 나서 로드되지 않았을 경우 다시 시도
     if (youtubeVideos.value.length === 0 || videosError.value) {
+      console.log('[MainPageView] watch route.path: 영상이 없거나 에러 상태, fetchYoutubeVideos 호출')
       fetchYoutubeVideos()
+    } else {
+      console.log('[MainPageView] watch route.path: 이미 영상 데이터가 있거나 에러 없음, fetch 호출 안 함')
     }
   }
 }, { immediate: false }) // immediate: false로 초기 마운트 시 중복 호출 방지

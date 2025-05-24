@@ -42,12 +42,10 @@ export const useAuthStore = defineStore('auth', () => {
   const login = async (credentials) => {
     loginError.value = null
     try {
-      console.log('Pinia setup store login action. Credentials:', credentials)
       const response = await axios.post(
         'http://127.0.0.1:8000/dj-rest-auth/login/', 
         credentials
       )
-      console.log('Login API response:', response.data)
 
       const tokenData = response.data.key
       const userData = response.data.user
@@ -65,15 +63,12 @@ export const useAuthStore = defineStore('auth', () => {
           localStorage.removeItem('userInfo')
         }
         axios.defaults.headers.common['Authorization'] = `Token ${tokenData}`
-        console.log('로그인 성공 (Pinia Setup Store), 토큰 및 사용자 정보 저장.')
         return true
       } else {
         loginError.value = '로그인에 성공했으나, 인증 토큰을 받지 못했습니다.'
-        console.error('Login success, but no token received.', response.data)
         return false
       }
     } catch (error) {
-      console.error('로그인 API 요청 실패 (Pinia Setup Store):', error)
       _resetAuthSate()
 
       if (error.response && error.response.data) {
@@ -118,13 +113,10 @@ export const useAuthStore = defineStore('auth', () => {
   const signupAction = async (credentials) => {
     signupError.value = null // 이전 에러 메시지 초기화
     try {
-      console.log('Pinia setup store signup action. Credentials:', credentials)
-      // dj_rest_auth의 기본 회원가입 엔드포인트 사용
       const response = await axios.post(
         'http://127.0.0.1:8000/dj-rest-auth/registration/', 
         credentials
       )
-      console.log('Signup API response:', response.data)
 
       // 회원가입 성공 시 (보통 201 Created)
       // dj-rest-auth는 기본적으로 회원가입 후 바로 로그인시키지 않음.
@@ -132,8 +124,6 @@ export const useAuthStore = defineStore('auth', () => {
       // 여기서는 성공 여부만 반환하고, UI 단에서 후속 처리 (예: 로그인 페이지로 이동 안내)
       return true 
     } catch (error) {
-      console.error('회원가입 API 요청 실패 (Pinia Setup Store):', error)
-      // 백엔드에서 오는 자세한 에러 내용을 확인하기 위해 추가
       if (error.response) {
         console.error('Backend validation error details:', error.response.data);
       }
@@ -195,14 +185,10 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const logoutAction = async () => { // async로 변경 (향후 로그아웃 API 호출 대비)
-    console.log('Pinia setup store logout action.')
-    
     try {
       // 실제 로그아웃 API 호출 (백엔드에서 토큰 무효화 등 처리)
       await axios.post('http://127.0.0.1:8000/dj-rest-auth/logout/')
-      console.log('Successfully called logout API')
     } catch (error) {
-      console.error('Logout API call failed:', error)
       // 로그아웃 API 호출 실패 시에도 프론트엔드에서는 로그아웃 처리를 진행할 수 있음
       // (예: 로컬 토큰 삭제 등)
       // 다만, 서버 측 토큰이 계속 유효할 수 있다는 점은 인지해야 함.
@@ -221,9 +207,7 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await axios.get('http://127.0.0.1:8000/dj-rest-auth/user/')
       user.value = response.data
       localStorage.setItem('userInfo', JSON.stringify(response.data))
-      console.log('User info fetched (Pinia Setup Store):', response.data)
     } catch (error) {
-      console.error('Failed to fetch user info (Pinia Setup Store):', error)
       // this.logoutAction() // 토큰 유효하지 않으면 로그아웃 처리 가능
     }
   }
@@ -231,7 +215,6 @@ export const useAuthStore = defineStore('auth', () => {
   const fetchProfile = async () => {
     if (!accessToken.value) {
       profileError.value = '프로필 정보를 가져오려면 로그인이 필요합니다.'
-      console.error('fetchProfile: No access token found.'); // 로깅 추가
       return false
     }
     profileError.value = null // 이전 에러 초기화
@@ -239,8 +222,6 @@ export const useAuthStore = defineStore('auth', () => {
     const headers = {
       'Authorization': `Token ${accessToken.value}`
     };
-    console.log('fetchProfile: Attempting to fetch profile. Token:', accessToken.value); // 로깅 추가
-    console.log('fetchProfile: Headers being sent:', headers); // 로깅 추가
 
     try {
       const response = await axios.get('http://127.0.0.1:8000/api/v1/accounts/profile/', {
@@ -250,28 +231,20 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.setItem('userProfile', JSON.stringify(response.data)) // 선택적: 로컬 스토리지에 저장
       return true
     } catch (error) {
-      console.error('프로필 정보 로딩 실패 (Store):', error)
       if (error.response) {
-        console.error('fetchProfile: Error response data:', error.response.data);
-        console.error('fetchProfile: Error response status:', error.response.status);
-        console.error('fetchProfile: Error response headers:', error.response.headers);
         if (error.response.status === 404) {
           profileError.value = '프로필 정보가 아직 등록되지 않았습니다.' 
           // 404의 경우, userProfile.value를 null 또는 빈 객체로 유지하여 UI에서 새 프로필 작성을 유도
         } else if (error.response.status === 403) {
           profileError.value = '프로필 정보에 접근할 권한이 없습니다. 세션이 만료되었거나 유효하지 않은 접근일 수 있습니다. 다시 로그인 해주세요.' // 403 메시지 구체화
-          // 추가적으로 로그아웃 처리를 고려해볼 수 있음
-          // _resetAuthSate() 
         } else if (error.response.data && (error.response.data.detail || error.response.data.error || typeof error.response.data === 'string')) {
           profileError.value = error.response.data.detail || error.response.data.error || error.response.data;
         } else {
           profileError.value = '프로필 정보를 불러오는 중 알 수 없는 오류가 발생했습니다.'
         }
       } else if (error.request) {
-        console.error('fetchProfile: Network error or no response:', error.request);
         profileError.value = '서버에 연결할 수 없습니다. 네트워크 상태를 확인해주세요.';
       } else {
-        console.error('fetchProfile: Generic error:', error.message);
         profileError.value = '프로필 정보를 불러오는 중 알 수 없는 오류가 발생했습니다.';
       }
       return false
@@ -295,7 +268,6 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.setItem('userProfile', JSON.stringify(response.data)) // 선택적: 로컬 스토리지에 저장
       return true
     } catch (error) {
-      console.error('프로필 업데이트 실패 (Store):', error)
       if (error.response && error.response.data) {
         const errors = error.response.data;
         if (typeof errors === 'object' && errors !== null) {
