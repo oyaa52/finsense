@@ -233,19 +233,19 @@ onMounted(() => {
 /* MainPageView의 content-area와 유사한 스타일 또는 Login/Signup 폼 스타일 적용 */
 .profile-management-container {
   padding: 20px;
-  background-color: #1f1f1f; /* MainPageView content-area 배경색 */
-  color: #e0e0e0; /* 기본 텍스트 색상 */
+  background-color: #ffffff;
+  color: #333333;
   border-radius: 8px;
-  height: 100%; /* 부모 요소(content-area)에 맞춰 채우기 */
-  overflow-y: auto; /* 내용 많을 시 스크롤 */
+  height: 100%;
+  overflow-y: auto;
 }
 
 .view-title {
   font-size: 1.8rem;
   font-weight: 600;
-  color: #007bff; /* 파란색 강조 */
+  color: #4a90e2;
   margin-bottom: 25px;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid #e0e0e0;
   padding-bottom: 15px;
 }
 
@@ -259,17 +259,17 @@ onMounted(() => {
 }
 
 .loading-indicator p {
-  color: #cccccc;
+  color: #666666;
 }
 
 .error-message {
-  background-color: rgba(255, 0, 0, 0.1);
-  color: #ff4d4d;
-  border: 1px solid #ff4d4d;
-  padding: 10px; /* 패딩 일관성 */
+  background-color: rgba(231, 76, 60, 0.1);
+  color: #e74c3c;
+  border: 1px solid #e74c3c;
+  padding: 10px;
   border-radius: 6px;
   margin-bottom: 20px;
-  text-align: left; /* 텍스트 왼쪽 정렬 추가 */
+  text-align: left;
 }
 
 .error-message pre {
@@ -280,9 +280,9 @@ onMounted(() => {
 }
 
 .success-message {
-  background-color: rgba(0, 255, 0, 0.1);
-  color: #4caf50;
-  border: 1px solid #4caf50;
+  background-color: rgba(46, 204, 113, 0.1);
+  color: #2ecc71;
+  border: 1px solid #2ecc71;
   padding: 10px;
   border-radius: 6px;
   margin-bottom: 20px;
@@ -294,21 +294,22 @@ onMounted(() => {
 }
 
 .form-section {
-  background-color: #252525; /* 섹션 배경색 */
+  background-color: #ffffff;
   padding: 25px;
   border-radius: 8px;
   margin-bottom: 30px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  border: 1px solid #e0e0e0;
 }
 
 .section-title {
   font-size: 1.3rem;
   font-weight: 500;
-  color: #0095ff; /* 밝은 파란색 */
+  color: #4a90e2;
   margin-top: 0;
   margin-bottom: 20px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #444;
+  border-bottom: 1px solid #e0e0e0;
 }
 
 .form-grid {
@@ -328,7 +329,7 @@ onMounted(() => {
 
 .form-group label {
   display: block;
-  color: #cccccc;
+  color: #666666;
   margin-bottom: 8px;
   font-size: 0.9rem;
   font-weight: 500;
@@ -341,10 +342,10 @@ onMounted(() => {
 .form-group textarea {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #333;
+  border: 1px solid #e0e0e0;
   border-radius: 6px;
-  background-color: #1e1e1e; /* 입력 필드 배경 */
-  color: #e0e0e0;
+  background-color: #f8f9fa;
+  color: #333333;
   font-size: 0.95rem;
   box-sizing: border-box;
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
@@ -353,9 +354,10 @@ onMounted(() => {
 .form-group input:focus,
 .form-group select:focus,
 .form-group textarea:focus {
-  border-color: #007bff;
-  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+  border-color: #4a90e2;
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
   outline: none;
+  background-color: #ffffff;
 }
 
 .form-group textarea {
@@ -368,7 +370,7 @@ onMounted(() => {
   width: auto;
   min-width: 150px;
   padding: 12px 30px;
-  background-color: #0064FF;
+  background-color: #4a90e2;
   color: white;
   border: none;
   border-radius: 8px;
@@ -376,24 +378,168 @@ onMounted(() => {
   font-weight: bold;
   cursor: pointer;
   transition: background-color 0.3s ease, transform 0.2s ease;
-  margin: 30px auto 0; /* 상단 여백 및 가운데 정렬 */
+  margin: 30px auto 0;
 }
 
 .submit-button:disabled {
-  background-color: #555;
+  background-color: #cccccc;
   cursor: not-allowed;
 }
 
 .submit-button:not(:disabled):hover {
-  background-color: #0052cc;
+  background-color: #357abd;
   transform: translateY(-2px);
 }
 
 .field-error-message {
   display: block;
-  color: #ff4d4d; /* 에러 색상 */
+  color: #e74c3c;
   font-size: 0.8rem;
   margin-top: 4px;
-  /* position: absolute; 와 같은 스타일은 필요시 추가 */
+}
+
+.profile-management {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  background-color: #ffffff;
+  border-radius: 15px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.profile-header {
+  text-align: center;
+  margin-bottom: 40px;
+  padding-bottom: 30px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.profile-header h1 {
+  color: #333333;
+  font-size: 2.2rem;
+  margin-bottom: 15px;
+  font-weight: 600;
+}
+
+.profile-header p {
+  color: #666666;
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+.profile-form {
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 30px;
+  margin-bottom: 30px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+  border: 1px solid #f0f0f0;
+}
+
+.form-group {
+  margin-bottom: 25px;
+}
+
+.form-group label {
+  display: block;
+  color: #666666;
+  font-size: 1rem;
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px 15px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 1rem;
+  color: #333333;
+  transition: all 0.3s ease;
+  background-color: #f8f9fa;
+}
+
+.form-group input:focus {
+  border-color: #4a90e2;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.1);
+  background-color: #ffffff;
+}
+
+.form-group input::placeholder {
+  color: #999999;
+}
+
+.form-actions {
+  display: flex;
+  gap: 15px;
+  margin-top: 30px;
+  justify-content: center;
+}
+
+.form-actions button {
+  padding: 12px 25px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.save-button {
+  background-color: #4a90e2;
+  color: white;
+}
+
+.save-button:hover {
+  background-color: #357abd;
+  transform: translateY(-2px);
+}
+
+.cancel-button {
+  background-color: #f0f0f0;
+  color: #666666;
+}
+
+.cancel-button:hover {
+  background-color: #e0e0e0;
+  transform: translateY(-2px);
+}
+
+.error-message {
+  color: #e74c3c;
+  font-size: 0.9rem;
+  margin-top: 5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.success-message {
+  color: #2ecc71;
+  font-size: 0.9rem;
+  margin-top: 5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .profile-management {
+    padding: 20px;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .form-actions button {
+    width: 100%;
+  }
 }
 </style> 

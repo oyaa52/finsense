@@ -84,7 +84,9 @@ const handleLogin = async () => {
   })
 
   if (success) {
-    console.log('LoginView: 로그인 성공, 메인 페이지로 이동합니다.')
+    console.log('LoginView: 로그인 성공, 사용자 정보를 가져옵니다.')
+    await authStore.fetchUser()
+    console.log('LoginView: 사용자 정보 로드 완료, 메인 페이지로 이동합니다.')
     router.push('/main')
   } else {
     console.log('LoginView: 로그인 실패.')
