@@ -30,7 +30,7 @@ const router = createRouter({
           path: '',
           name: 'mainPageDefault',
           components: {
-            mainServiceView: PlaceholderComponent('예적금 금리 비교')
+            // mainServiceView: PlaceholderComponent('예적금 금리 비교') // 기존 코드 주석 처리 또는 삭제
           }
         },
         {
