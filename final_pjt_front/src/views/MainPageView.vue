@@ -153,39 +153,17 @@ const videosLoading = ref(false)
 const videosError = ref(null)
 
 // YouTube 영상 가져오는 함수
-const fetchYoutubeVideos = async () => {
-  if (!isMainPageDefaultView.value) return; // 기본 화면일 때만 실행
-
-  videosLoading.value = true
-  videosError.value = null
-  youtubeVideos.value = []
+const fetchYoutubeVideos = async (query) => {
   try {
-    // 백엔드 API 엔드포인트 (검색어와 결과 개수 지정)
-    const response = await axios.get('http://127.0.0.1:8000/api/v1/recommendations/youtube-search/', {
+    const response = await axios.get(`http://127.0.0.1:8000/api/v1/recommendations/youtube-search/`, {
       params: {
-        query: '금융 주식', // 기본 검색어
-        max_results: 2     // MainPageView에서는 2개만 요청
+        query: query,
+        max_results: 2
       }
     })
-    if (response.data && Array.isArray(response.data)) {
-      youtubeVideos.value = response.data
-    } else {
-      // 백엔드에서 에러 객체를 반환하는 경우 (예: {error: "메시지"} 또는 {message: "메시지"})
-      if (response.data && (response.data.error || response.data.message)) {
-        videosError.value = response.data.error || response.data.message;
-      } else {
-        videosError.value = '영상을 불러오는 데 실패했습니다.'
-      }
-    }
+    youtubeVideos.value = response.data
   } catch (error) {
     console.error('YouTube 영상 로딩 중 에러:', error)
-    if (error.response && error.response.data && (error.response.data.error || error.response.data.message)) {
-      videosError.value = error.response.data.error || error.response.data.message;
-    } else {
-      videosError.value = '서버와 통신 중 오류가 발생했습니다.'
-    }
-  } finally {
-    videosLoading.value = false
   }
 }
 
