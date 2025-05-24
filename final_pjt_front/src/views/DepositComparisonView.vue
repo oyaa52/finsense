@@ -798,7 +798,9 @@ onMounted(() => {
 .skeleton {
   position: relative;
   overflow: hidden;
-  background: #f5f5f5;
+  background: #f0f0f0;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .skeleton::after {
@@ -812,18 +814,20 @@ onMounted(() => {
   background-image: linear-gradient(
     90deg,
     rgba(255, 255, 255, 0) 0,
-    rgba(255, 255, 255, 0.05) 20%,
-    rgba(255, 255, 255, 0.1) 60%,
+    rgba(255, 255, 255, 0.2) 20%,
+    rgba(255, 255, 255, 0.5) 60%,
     rgba(255, 255, 255, 0)
   );
-  animation: shimmer 2s infinite;
+  animation: shimmer 1.5s infinite;
 }
 
 .skeleton-text {
   height: 1em;
-  margin-bottom: 0.5em;
+  margin-bottom: 0.8em;
   background: #e0e0e0;
   border-radius: 4px;
+  position: relative;
+  overflow: hidden;
 }
 
 .skeleton-text:last-child {
@@ -831,6 +835,12 @@ onMounted(() => {
 }
 
 @keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(100%);
+  }
   100% {
     transform: translateX(100%);
   }
@@ -839,17 +849,32 @@ onMounted(() => {
 /* 스켈레톤 카드 내부 요소들의 너비 조정 */
 .skeleton .bank-name-header .skeleton-text {
   width: 60%;
+  height: 1.5em;
+  margin-bottom: 1em;
 }
 
 .skeleton .product-info .skeleton-text:nth-child(1) {
   width: 80%;
+  height: 1.8em;
+  margin-bottom: 1em;
 }
 
 .skeleton .product-info .skeleton-text:nth-child(2) {
   width: 40%;
+  height: 1.2em;
+  margin-bottom: 0.8em;
 }
 
 .skeleton .product-info .skeleton-text:nth-child(3) {
   width: 50%;
+  height: 1.2em;
+  margin-bottom: 0.8em;
+}
+
+/* 스켈레톤 카드 호버 효과 */
+.skeleton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 </style> 

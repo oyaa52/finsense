@@ -281,14 +281,20 @@ body, html {
 
 /* Sidebar Styles */
 .sidebar {
-  width: 500px; /* 너비 300px에서 320px으로 수정 */
-  background-color: #f5f5f5; /* 밝은 테마: 사이드바 배경 (밝은 회색) */
+  width: 320px; /* 고정 너비로 변경 */
+  min-width: 320px; /* 최소 너비 설정 */
+  max-width: 320px; /* 최대 너비 설정 */
+  background-color: #f5f5f5;
   padding: 30px 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1); /* 그림자 연하게 조정 */
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
   overflow-y: auto;
+  position: fixed; /* 사이드바 고정 */
+  height: 100vh; /* 전체 높이 */
+  left: 0; /* 왼쪽에 고정 */
+  top: 0; /* 상단에 고정 */
 }
 
 .logo-container {
@@ -351,16 +357,19 @@ body, html {
   object-fit: cover;
   margin-bottom: 15px; /* 환영 메시지와의 간격 늘림 */
   border: 2px solid #0064FF;
+  flex-shrink: 0; /* 이미지 크기 고정 */
 }
 
 .user-info-box .welcome-message { /* user-info 에서 user-info-box로 클래스명 변경 및 새 클래스 */
   font-size: 1rem;
-  margin-bottom: 18px; /* 액션 링크와의 간격 늘림 */
+  margin: 15px 0;
   color: #191919;
   font-weight: 500;
   text-overflow: ellipsis; /* 내용이 넘칠 경우 말줄임표(...) 표시 */
-  max-width: 100%; /* 부모 요소 너비를 넘지 않도록 */
-  text-align: center; /* 가운데 정렬 */
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 100%;
+  padding: 0 10px;
 }
 
 .user-actions {
@@ -415,6 +424,8 @@ body, html {
   flex-direction: column;
   overflow-y: auto;
   background-color: #ffffff;
+  margin-left: 320px; /* 사이드바 너비만큼 여백 추가 */
+  min-height: 100vh; /* 최소 높이 설정 */
 }
 
 /* Top Navbar Styles */
@@ -423,15 +434,20 @@ body, html {
   padding: 0 30px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
   z-index: 10;
-  height: 70px;
+  height: 70px; /* 고정 높이 */
+  min-height: 70px; /* 최소 높이 설정 */
+  max-height: 70px; /* 최대 높이 설정 */
   display: flex;
   align-items: center;
+  position: sticky; /* 스크롤 시 상단에 고정 */
+  top: 0; /* 상단에 고정 */
 }
 
 .top-navbar nav {
   display: flex;
   flex-grow: 1;
   justify-content: center;
+  height: 100%; /* 네비게이션 높이 100% */
 }
 
 .top-navbar nav ul {
@@ -440,6 +456,14 @@ body, html {
   margin: 0;
   display: flex;
   gap: 25px;
+  height: 100%; /* ul 높이 100% */
+  align-items: center; /* 수직 중앙 정렬 */
+}
+
+.top-navbar nav ul li {
+  height: 100%; /* li 높이 100% */
+  display: flex;
+  align-items: center; /* 수직 중앙 정렬 */
 }
 
 .top-navbar nav ul li a {
@@ -451,6 +475,10 @@ body, html {
   border-radius: 6px;
   transition: color 0.3s ease, background-color 0.3s ease;
   position: relative;
+  white-space: nowrap; /* 텍스트 줄바꿈 방지 */
+  height: 100%; /* 링크 높이 100% */
+  display: flex;
+  align-items: center; /* 수직 중앙 정렬 */
 }
 
 .top-navbar nav ul li a::after {
@@ -477,13 +505,13 @@ body, html {
   width: calc(100% - 20px);
 }
 
-
 /* Content Area Styles */
 .content-area {
   flex-grow: 1;
   padding: 40px;
   background-color: #ffffff;
   overflow-y: auto;
+  min-height: calc(100vh - 70px); /* 전체 높이에서 네비게이션 바 높이를 뺀 값 */
 }
 
 .default-content {
