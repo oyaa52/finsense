@@ -25,6 +25,11 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import axios from 'axios'
 
+// axios 인스턴스 생성
+const api = axios.create({
+  baseURL: 'http://localhost:5173'  // Vite 개발 서버 주소
+})
+
 const KAKAO_MAP_API_KEY = ref(null)
 const KAKAO_REST_API_KEY = ref(null) // REST API 키 저장용 변수
 const map = ref(null)
@@ -43,14 +48,16 @@ let searchDebounceTimer = null; // 검색 디바운싱을 위한 타이머 변�
 // data.json에서 은행 위치 데이터 로드
 async function loadBankData() {
   try {
+    console.log('[loadBankData] Starting to load data.json...');
     // public 폴더에 있는 data.json을 직접 참조
-    const response = await axios.get('/data.json')
+    const response = await api.get('/data.json')
+    console.log('[loadBankData] Response received:', response);
     console.log('[loadBankData] response.data type:', typeof response.data);
-    console.log('[loadBankData] response.data content:', JSON.stringify(response.data, null, 2)); // 전체 데이터 구조 확인
+    console.log('[loadBankData] response.data content:', JSON.stringify(response.data, null, 2));
 
     if (response.data && Array.isArray(response.data.mapInfo)) {
       cityInfoList.value = response.data.mapInfo;
-      console.log('[loadBankData] Assigned response.data.mapInfo to cityInfoList.value.');
+      console.log('[loadBankData] cityInfoList.value after assignment:', cityInfoList.value);
     } else {
       console.warn('[loadBankData] response.data.mapInfo is missing or not an array.');
       cityInfoList.value = [];
@@ -58,7 +65,7 @@ async function loadBankData() {
 
     if (response.data && Array.isArray(response.data.bankInfo)) {
       bankNameList.value = response.data.bankInfo;
-      console.log('[loadBankData] Assigned response.data.bankInfo to bankNameList.value.');
+      console.log('[loadBankData] bankNameList.value after assignment:', bankNameList.value);
     } else {
       console.warn('[loadBankData] response.data.bankInfo is missing or not an array.');
       bankNameList.value = [];
@@ -221,7 +228,7 @@ const uniqueBanks = computed(() => {
 const uniqueCities = computed(() => {
   // cityInfoList에서 도시 이름 목록을 가져옵니다.
   if (!Array.isArray(cityInfoList.value)) return []
-  const cities = cityInfoList.value.map(place => place.name).filter(Boolean) // 각 항목의 'name' 속성 사용
+  const cities = cityInfoList.value.map(place => place.name).filter(Boolean) // 'name' 속성 사용
   console.log('[uniqueCities] Extracted cities:', cities);
   return [...new Set(cities)].sort()
 })
@@ -297,8 +304,8 @@ onMounted(async () => {
   isLoading.value = true
   error.value = null
   try {
-    // 백엔드에서 API 키 가져오기 (URL 수정됨)
-    const response = await axios.get('http://127.0.0.1:8000/api/v1/kakaomap/get_kakao_map_api_key/')
+    // 백엔드에서 API 키 가져오기
+    const response = await api.get('http://127.0.0.1:8000/api/v1/kakaomap/get_kakao_map_api_key/')
     KAKAO_MAP_API_KEY.value = response.data.kakaomap_api_key // JavaScript SDK용 키
     KAKAO_REST_API_KEY.value = response.data.kakaomap_rest_api_key // REST API용 키
 
