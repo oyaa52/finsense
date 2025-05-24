@@ -19,6 +19,11 @@ onMounted(() => {
     offset: 100     // 원래 트리거 지점에서의 오프셋 (픽셀 단위)
   })
   authStore.initializeAuth() // 앱 시작 시 인증 상태 초기화
+  
+  // 토큰이 있으면 사용자 정보 갱신
+  if (authStore.isAuthenticated) {
+    authStore.fetchUser()
+  }
 })
 </script>
 

@@ -86,8 +86,14 @@
           <!-- 하단 금융 뉴스 섹션 -->
           <section class="news-section">
             <h2>오늘 주목할 금융 뉴스</h2>
-            <div v-if="videosLoading" class="loading-message">영상을 불러오는 중입니다...</div>
-            <div v-else-if="videosError" class="error-message">{{ videosError }}</div>
+            <div v-if="videosLoading" class="loading-message">
+              <div class="loading-spinner"></div>
+              <p>영상을 불러오는 중입니다...</p>
+            </div>
+            <div v-else-if="videosError" class="error-message">
+              <p>{{ videosError }}</p>
+              <button @click="fetchYoutubeVideos" class="retry-button">다시 시도</button>
+            </div>
             <div v-else-if="youtubeVideos.length > 0" class="youtube-videos-container">
               <div v-for="video in youtubeVideos" :key="video.video_id" class="youtube-video-item">
                 <iframe 
@@ -100,7 +106,8 @@
               </div>
             </div>
             <div v-else class="no-videos-message">
-              현재 표시할 영상이 없습니다.
+              <p>현재 표시할 영상이 없습니다.</p>
+              <button @click="fetchYoutubeVideos" class="retry-button">새로고침</button>
             </div>
           </section>
         </div>
@@ -145,8 +152,11 @@ const route = useRoute() // 현재 라우트 정보를 가져오기 위해 추�
 
 // authStore의 상태를 computed 속성으로 사용
 const isLoggedIn = computed(() => authStore.isAuthenticated)
-const currentUser = computed(() => authStore.currentUser) // dj-rest-auth/user/의 응답을 기반으로 함
-
+const currentUser = computed(() => {
+  const user = authStore.currentUser
+  console.log('[MainPageView] currentUser:', user)
+  return user
+}) // dj-rest-auth/user/의 응답을 기반으로 함
 // YouTube 영상 관련 상태
 const youtubeVideos = ref([])
 const videosLoading = ref(false)
@@ -154,27 +164,45 @@ const videosError = ref(null)
 
 // YouTube 영상 가져오는 함수
 const fetchYoutubeVideos = async () => {
+  console.log('[MainPageView] fetchYoutubeVideos: 시작, videosLoading:', videosLoading.value)
   videosLoading.value = true
   videosError.value = null
-  console.log('[MainPageView] fetchYoutubeVideos: 시작, videosLoading:', videosLoading.value)
+  
   try {
     console.log('[MainPageView] fetchYoutubeVideos: API 요청 전')
-    const response = await axios.get(`http://127.0.0.1:8000/api/v1/recommendations/youtube-search/`, {
+    const response = await axios.get('http://127.0.0.1:8000/api/v1/recommendations/youtube-search/', {
       params: {
-        query: '금융 뉴스',  // 기본 검색어 추가
+        query: '금융 뉴스',
         max_results: 2
       }
     })
-    console.log('[MainPageView] fetchYoutubeVideos: API 응답 받음:', response.data)
+    console.log('[MainPageView] fetchYoutubeVideos: API 응답 받음')
     youtubeVideos.value = response.data
-    console.log('[MainPageView] fetchYoutubeVideos: youtubeVideos 할당 후:', youtubeVideos.value)
   } catch (error) {
     console.error('[MainPageView] YouTube 영상 로딩 중 에러:', error)
-    videosError.value = error.response?.data?.error || '영상을 불러오는 중 오류가 발생했습니다.'
-    console.log('[MainPageView] fetchYoutubeVideos: 에러 발생, videosError:', videosError.value)
+    if (error.response) {
+      // 서버에서 응답이 왔지만 에러인 경우
+      switch (error.response.status) {
+        case 503:
+          videosError.value = 'YouTube 서비스가 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해주세요.'
+          break
+        case 429:
+          videosError.value = 'YouTube API 호출 한도를 초과했습니다. 잠시 후 다시 시도해주세요.'
+          break
+        default:
+          videosError.value = '영상을 불러오는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
+      }
+    } else if (error.request) {
+      // 요청은 보냈지만 응답이 없는 경우
+      videosError.value = '서버에 연결할 수 없습니다. 인터넷 연결을 확인해주세요.'
+    } else {
+      // 요청 설정 중 에러가 발생한 경우
+      videosError.value = '영상을 불러오는 중 오류가 발생했습니다.'
+    }
+    youtubeVideos.value = []
   } finally {
-    videosLoading.value = false
     console.log('[MainPageView] fetchYoutubeVideos: 종료 (finally), videosLoading:', videosLoading.value)
+    videosLoading.value = false
   }
 }
 
@@ -187,6 +215,7 @@ const logout = async () => {
 onMounted(() => {
   AOS.init()
   console.log('[MainPageView] onMounted: 시작, isMainPageDefaultView:', isMainPageDefaultView.value)
+  console.log('[MainPageView] onMounted: currentUser:', currentUser.value)
   if (isMainPageDefaultView.value) { // 기본 화면일 때만 영상 로드
     fetchYoutubeVideos()
   }
@@ -221,6 +250,14 @@ watch(() => route.path, (newPath, oldPath) => {
     }
   }
 }, { immediate: false }) // immediate: false로 초기 마운트 시 중복 호출 방지
+
+// authStore의 상태 변화 감시
+watch(() => authStore.currentUser, (newUser, oldUser) => {
+  console.log('[MainPageView] authStore.currentUser changed:', {
+    old: oldUser,
+    new: newUser
+  })
+}, { immediate: true })
 
 </script>
 
@@ -550,24 +587,63 @@ body, html {
 }
 
 /* YouTube 영상 관련 스타일 */
-.loading-message,
-.error-message,
-.no-videos-message {
-  padding: 20px;
-  background-color: #f0f0f0;
-  border-radius: 8px;
-  min-height: 100px;
+.loading-message {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #555555;
-  margin-top: 20px;
+  padding: 40px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  min-height: 200px;
 }
 
-.error-message {
-  color: #D32F2F;
-  border: 1px solid #FFCDD2;
-  background-color: #FFEBEE;
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #0064FF;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 15px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-message, .no-videos-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  background-color: #fff;
+  border-radius: 8px;
+  min-height: 200px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.error-message p, .no-videos-message p {
+  color: #666;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.retry-button {
+  padding: 10px 20px;
+  background-color: #0064FF;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.3s ease;
+}
+
+.retry-button:hover {
+  background-color: #0052cc;
 }
 
 .youtube-videos-container {
