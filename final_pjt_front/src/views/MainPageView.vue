@@ -153,17 +153,22 @@ const videosLoading = ref(false)
 const videosError = ref(null)
 
 // YouTube 영상 가져오는 함수
-const fetchYoutubeVideos = async (query) => {
+const fetchYoutubeVideos = async () => {
+  videosLoading.value = true
+  videosError.value = null
   try {
     const response = await axios.get(`http://127.0.0.1:8000/api/v1/recommendations/youtube-search/`, {
       params: {
-        query: query,
+        query: '금융 뉴스',  // 기본 검색어 추가
         max_results: 2
       }
     })
     youtubeVideos.value = response.data
   } catch (error) {
     console.error('YouTube 영상 로딩 중 에러:', error)
+    videosError.value = error.response?.data?.error || '영상을 불러오는 중 오류가 발생했습니다.'
+  } finally {
+    videosLoading.value = false
   }
 }
 
