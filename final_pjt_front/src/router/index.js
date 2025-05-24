@@ -29,6 +29,9 @@ const router = createRouter({
         {
           path: '',
           name: 'mainPageDefault',
+          components: {
+            mainServiceView: PlaceholderComponent('예적금 금리 비교')
+          }
         },
         {
           path: 'deposit-comparison',
