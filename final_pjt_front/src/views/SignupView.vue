@@ -72,8 +72,6 @@ const generalErrorMessage = computed(() => {
 })
 
 const handleSignup = async () => {
-  // authStore.signupAction 시작 시 에러가 초기화되므로, 여기서 별도 초기화는 생략 가능
-  // authStore.signupError = null 
   passwordMismatchError.value = false
 
   if (password.value !== password2.value) {
