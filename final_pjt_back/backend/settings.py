@@ -148,8 +148,10 @@ USE_TZ = True
 STATIC_URL = 'static/'
 # STATICFILES_DIRS = [BASE_DIR / "static"]
 # STATIC_ROOT = BASE_DIR / "staticfiles"
-# MEDIA_URL = 'media/'
-# MEDIA_ROOT = BASE_DIR / "media"
+
+# 추가된 미디어 설정
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 # Django REST Framework 설정
 REST_FRAMEWORK = {
