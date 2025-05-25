@@ -16,7 +16,7 @@ def get_financial_recommendations_from_gpt(user_profile, available_products):
     try:
         client = openai.OpenAI(api_key=settings.GPT_API_KEY)
 
-        # 사용 가능한 상품 정보를 간단한 문자열로 변환 (더 정교하게 구성해야 함)
+        # 사용 가능한 상품 정보를 간단한 문자열로 변환
         products_description = "\n".join([
             f"- 상품명: {p.get('name', 'N/A')}, 특징: {p.get('description', 'N/A')}" 
             for p in available_products[:5] # 최대 5개 상품 정보만 포함
@@ -48,38 +48,31 @@ def get_financial_recommendations_from_gpt(user_profile, available_products):
             }
         ]
 
-        # OpenAI API 호출 (ChatCompletion 사용)
-        # 모델은 필요에 따라 변경가능
         completion = client.chat.completions.create(
-            model="gpt-4o", # 또는 "gpt-4o"
+            model="gpt-4o",
             messages=prompt_messages,
-            temperature=0.7, # 답변의 창의성 (0.0 ~ 2.0)
-            max_tokens=1000,  # 최대 응답 길이
+            temperature=0.7,
+            max_tokens=1000,
             top_p=1.0,
             frequency_penalty=0.0,
             presence_penalty=0.0
         )
 
-        # 추천 결과 반환
         if completion.choices and len(completion.choices) > 0:
             return completion.choices[0].message.content.strip()
         else:
             return "잠시 후 다시 시도해주세요."
 
     except openai.APIConnectionError as e:
-        # 네트워크 연결 문제
         print(f"OpenAI API 연결 오류: {e}")
         return "서버에 연결할 수 없습니다. 네트워크 상태를 확인해주세요."
     except openai.RateLimitError as e:
-        # API 요청 제한 초과
         print(f"OpenAI API 요청 제한 초과: {e}")
         return "요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요."
     except openai.APIStatusError as e:
-        # API 관련 기타 오류 (예: 인증 오류, 잘못된 요청 등)
         print(f"OpenAI API 오류: {e.status_code} - {e.response}")
         return f"오류가 발생했습니다 (오류 코드: {e.status_code}). 요청 내용을 확인해주세요."
     except Exception as e:
-        # 기타 예외 처리
         print(f"GPT 추천 생성 중 예기치 않은 오류 발생: {e}")
         return "추천 생성 중 오류가 발생했습니다. 관리자에게 문의해주세요."
 
@@ -90,29 +83,20 @@ YOUTUBE_API_VERSION = 'v3'
 
 def search_youtube_financial_videos(query, max_results=5):
     """
-    YouTube API를 사용하여 금융 관련 주제로 영상을 검색
-
-    :param query: str, 검색할 키워드 (예: "주식 투자 방법", "금리 인상 영향")
-    :param max_results: int, 가져올 최대 결과 수
-    :return: list of dict, 검색된 영상 정보 리스트 또는 오류 시 빈 리스트
+    YouTube API를 사용하여 금융 관련 주제로 영상을 검색합니다.
+    이 함수는 get_popular_financial_videos에서 fallback으로 사용됩니다.
     """
     try:
         youtube = build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, 
                         developerKey=settings.YOUTUBE_API_KEY)
 
-        # 검색 실행
-        # part='snippet'은 영상의 기본 정보(제목, 설명, 썸네일 등)를 가져옴.
-        # q에는 검색어, type='video'는 동영상만 검색하도록 함.
-        # relevanceLanguage와 regionCode는 검색 결과의 관련성을 높이는 데 도움이 될 수 있음.
-        # 금융 관련 필터링을 위해서는 검색어(query) 자체를 정교하게 구성하는 것이 중요.
-
         search_response = youtube.search().list(
-            q=f"{query} 금융 경제 투자 재테크", # 검색어에 금융 관련 키워드 추가하여 관련성 높임.
+            q=f"{query} 금융 경제 투자 재테크", 
             part='snippet',
             maxResults=max_results,
             type='video',
-            relevanceLanguage='ko', # 한국어 영상 우선
-            regionCode='KR'       # 한국 지역 결과 우선
+            relevanceLanguage='ko',
+            regionCode='KR'
         ).execute()
 
         videos = []
@@ -125,32 +109,26 @@ def search_youtube_financial_videos(query, max_results=5):
                     'thumbnail_url': search_result['snippet']['thumbnails']['default']['url'],
                     'channel_id': search_result['snippet']['channelId'],
                     'channel_title': search_result['snippet']['channelTitle'],
-                    'publish_time': search_result['snippet']['publishTime']
+                    'publish_time': search_result['snippet']['publishTime'] # YouTube API 'search' 엔드포인트는 'publishTime'을 반환
                 }
                 videos.append(video_data)
         
         return videos
 
     except HttpError as e:
-        # Google API HTTP 오류 처리
         error_details = e.resp.status, e._get_reason()
-        print(f"YouTube API HTTP 오류 발생: {error_details}")
-        if e.resp.status == 403: # 할당량 초과 또는 API 키 관련 문제일 가능성
+        print(f"YouTube API HTTP 오류 발생 (search_youtube_financial_videos): {error_details}")
+        if e.resp.status == 403:
             return "YouTube API 요청 할당량을 초과했거나 API 키에 문제가 있습니다."
         return "YouTube API에서 오류가 발생했습니다."
     except Exception as e:
-        # 기타 예외 처리
-        print(f"YouTube 영상 검색 중 예기치 않은 오류 발생: {e}")
+        print(f"YouTube 영상 검색 중 예기치 않은 오류 발생 (search_youtube_financial_videos): {e}")
         return "YouTube 영상 검색 중 오류가 발생했습니다. 관리자에게 문의해주세요."
 
 def get_youtube_videos(query, max_results=6, page_token=None):
     """
-    YouTube API를 사용하여 영상을 검색 (페이지네이션 지원)
-
-    :param query: str, 검색할 키워드
-    :param max_results: int, 가져올 최대 결과 수 (기본값: 6)
-    :param page_token: str, 특정 페이지를 요청하기 위한 토큰
-    :return: dict, 검색된 영상 정보 및 페이지네이션 정보 포함
+    YouTube API를 사용하여 영상을 검색합니다 (페이지네이션 지원).
+    경제 뉴스 검색 기능에서 사용됩니다.
     """
     try:
         youtube = build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, 
@@ -176,10 +154,10 @@ def get_youtube_videos(query, max_results=6, page_token=None):
                     'video_id': search_result['id']['videoId'],
                     'title': search_result['snippet']['title'],
                     'description': search_result['snippet']['description'],
-                    'thumbnail_url': search_result['snippet']['thumbnails']['medium']['url'],
+                    'thumbnail_url': search_result['snippet']['thumbnails']['medium']['url'], # 경제 뉴스에서는 medium 사용
                     'channel_id': search_result['snippet']['channelId'],
                     'channel_title': search_result['snippet']['channelTitle'],
-                    'publish_time': search_result['snippet']['publishTime']
+                    'publish_time': search_result['snippet']['publishTime'] # YouTube API 'search' 엔드포인트는 'publishTime'을 반환
                 }
                 videos.append(video_data)
         
@@ -189,9 +167,9 @@ def get_youtube_videos(query, max_results=6, page_token=None):
             'videos': videos,
             'nextPageToken': search_response.get('nextPageToken'),
             'prevPageToken': search_response.get('prevPageToken'), 
-            'totalResults': min(actual_total_results, 100), # 실제 totalResults와 100 중 작은 값을 사용
+            'totalResults': min(actual_total_results, 100), # YouTube API는 최대 100개까지의 totalResults만 정확히 알려주는 경우가 있음
             'resultsPerPage': search_response.get('pageInfo', {}).get('resultsPerPage'),
-            'error': None # 성공 시 에러 없음 명시
+            'error': None
         }
 
     except HttpError as e:
@@ -200,11 +178,119 @@ def get_youtube_videos(query, max_results=6, page_token=None):
         error_message = "YouTube API에서 오류가 발생했습니다."
         if e.resp.status == 403:
             error_message = "YouTube API 요청 할당량을 초과했거나 API 키에 문제가 있습니다."
-        # 일관된 반환 형식 유지
         return {'error': error_message, 'videos': [], 'nextPageToken': None, 'prevPageToken': None, 'totalResults': 0, 'resultsPerPage': 0}
     except Exception as e:
         print(f"YouTube 영상 검색 중 예기치 않은 오류 발생 (get_youtube_videos): {e}")
-        # 일관된 반환 형식 유지
         return {'error': "YouTube 영상 검색 중 오류가 발생했습니다. 관리자에게 문의해주세요.", 'videos': [], 'nextPageToken': None, 'prevPageToken': None, 'totalResults': 0, 'resultsPerPage': 0}
+
+def get_popular_financial_videos(max_results=2):
+    """
+    YouTube API를 사용하여 인기 동영상 중 '금융' 관련 영상을 가져옵니다.
+    결과가 부족할 경우 일반 '금융' 검색을 통해 추가로 영상을 확보합니다.
+    메인 페이지에 금융 관련 인기 영상 2개를 표시하는 데 사용됩니다.
+    """
+    try:
+        youtube = build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION,
+                        developerKey=settings.YOUTUBE_API_KEY)
+
+        # 카테고리 기반 인기 동영상 필터링 (현재는 "과학 및 기술" 카테고리 ID "28" 사용)
+        # current_category_id = "28" # 또는 None으로 설정하여 전체 카테고리 대상
+        # 특정 카테고리 ID를 사용하지 않고 전체 인기 동영상에서 필터링하도록 None으로 설정
+        current_category_id = None
+
+
+        request_params = {
+            'part': "snippet,contentDetails,statistics", # contentDetails(길이), statistics(조회수) 포함
+            'chart': "mostPopular",
+            'regionCode': "KR",
+            'maxResults': 50 # 내부 필터링을 위해 충분한 수의 인기 동영상을 가져옴 (최대 50개)
+        }
+        if current_category_id: # current_category_id가 None이 아닐 경우에만 파라미터 추가
+            request_params['videoCategoryId'] = current_category_id
+        
+        response = youtube.videos().list(**request_params).execute()
+
+        processed_videos = []
+        # 메인 페이지용 키워드 (이전 요청에 따라 ["금융", "적금", "투자", "주식"] 사용)
+        keywords = ["금융", "적금", "투자", "주식"] 
+
+        for item in response.get("items", []):
+            title = item.get("snippet", {}).get("title", "").lower()
+            description = item.get("snippet", {}).get("description", "").lower()
+            tags = [tag.lower() for tag in item.get("snippet", {}).get("tags", [])]
+
+            is_financial_video = False
+            for keyword in keywords:
+                if keyword in title or keyword in description or keyword in tags:
+                    is_financial_video = True
+                    break
+            
+            if is_financial_video:
+                video_data = {
+                    'video_id': item['id'], 
+                    'title': item['snippet']['title'],
+                    'description': item['snippet']['description'],
+                    'thumbnail_url': item['snippet']['thumbnails']['medium']['url'], # 메인에서는 medium 썸네일 사용
+                    'channel_id': item['snippet']['channelId'],
+                    'channel_title': item['snippet']['channelTitle'],
+                    'publish_time': item['snippet'].get('publishedAt'), # videos.list는 'publishedAt' 반환
+                    'duration': item.get('contentDetails', {}).get('duration'),
+                    'view_count': item.get('statistics', {}).get('viewCount'),
+                }
+                processed_videos.append(video_data)
+
+        # 조회수 높은 순으로 정렬 후, 요청된 max_results 만큼 선택
+        sorted_videos = sorted(
+            processed_videos,
+            key=lambda x: int(x.get('view_count', 0) or 0), # view_count가 없는 경우 0으로 처리
+            reverse=True
+        )
+        
+        result_videos = sorted_videos[:max_results]
+        
+        # 요청된 영상 개수(max_results)보다 결과가 적으면, 일반 검색으로 추가 확보
+        if len(result_videos) < max_results:
+            needed_more = max_results - len(result_videos)
+            existing_video_ids = {v['video_id'] for v in result_videos}
+            
+            fallback_query = "금융" # fallback 검색 시 사용할 기본 키워드
+            
+            # search_youtube_financial_videos는 오류 시 문자열을 반환할 수 있음
+            # 중복 가능성을 고려하여 필요한 개수보다 조금 더 요청
+            fallback_search_results = search_youtube_financial_videos(fallback_query, max_results=needed_more + 5) 
+
+            if isinstance(fallback_search_results, list):
+                for video in fallback_search_results:
+                    if len(result_videos) >= max_results:
+                        break
+                    if video['video_id'] not in existing_video_ids:
+                        # search_youtube_financial_videos의 결과에는 duration, view_count가 없을 수 있음.
+                        # API 할당량 절약을 위해 여기서는 추가 API 호출 없이, 없는 정보는 None으로 채움.
+                        result_videos.append({
+                            'video_id': video['video_id'],
+                            'title': video['title'],
+                            'description': video['description'],
+                            'thumbnail_url': video['thumbnail_url'], # search_youtube_financial_videos는 default 썸네일 반환
+                            'channel_id': video['channel_id'],
+                            'channel_title': video['channel_title'],
+                             # search_youtube_financial_videos는 'publishTime', 여기서는 'publishedAt'과 호환되도록 처리
+                            'publish_time': video.get('publish_time') or video.get('publishedAt'),
+                            'duration': None, 
+                            'view_count': None 
+                        })
+                        existing_video_ids.add(video['video_id'])
+
+        return {'videos': result_videos[:max_results], 'error': None}
+
+    except HttpError as e:
+        error_details = e.resp.status, e._get_reason()
+        print(f"YouTube API HTTP 오류 발생 (get_popular_financial_videos): {error_details}")
+        error_message = "YouTube API에서 오류가 발생했습니다."
+        if e.resp.status == 403:
+            error_message = "YouTube API 요청 할당량을 초과했거나 API 키에 문제가 있습니다."
+        return {'error': error_message, 'videos': []}
+    except Exception as e:
+        print(f"인기 금융 영상 검색 중 예기치 않은 오류 발생 (get_popular_financial_videos): {e}")
+        return {'error': "인기 금융 영상 검색 중 오류가 발생했습니다. 관리자에게 문의해주세요.", 'videos': []}
 
 

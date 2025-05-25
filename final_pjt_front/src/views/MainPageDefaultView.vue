@@ -87,16 +87,27 @@ const fetchYoutubeVideos = async () => {
   videosError.value = null
   
   try {
-    const response = await axios.get('http://127.0.0.1:8000/api/v1/recommendations/youtube-search/', {
-      params: {
-        query: '금융 뉴스',
-        max_results: 2
+    const response = await axios.get('http://127.0.0.1:8000/api/v1/recommendations/youtube/popular-financial-videos/')
+    
+    if (response.data && response.data.videos) {
+      youtubeVideos.value = response.data.videos
+      if (response.data.videos.length === 0) {
+        // 백엔드에서 에러 없이 빈 배열을 반환할 수 있으므로, 이 경우를 위한 메시지 처리
+        // videosError.value = '현재 추천할 만한 인기 금융 영상이 없습니다.'; // 또는 다른 적절한 메시지
+        // 이 부분은 UI/UX 정책에 따라 다르게 처리 가능 (예: .no-videos-message 표시)
       }
-    })
-    youtubeVideos.value = response.data
+    } else if (response.data && response.data.error) {
+      videosError.value = response.data.error;
+    } else {
+      youtubeVideos.value = []
+      videosError.value = '영상을 불러오는 중 응답 형식이 올바르지 않습니다.'
+    }
+
   } catch (error) {
-    console.error('YouTube 영상 로딩 중 에러:', error)
-    if (error.response) {
+    console.error('YouTube 인기 금융 영상 로딩 중 에러:', error)
+    if (error.response && error.response.data && error.response.data.error) {
+      videosError.value = error.response.data.error;
+    } else if (error.response) {
       switch (error.response.status) {
         case 503:
           videosError.value = 'YouTube 서비스가 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해주세요.'
