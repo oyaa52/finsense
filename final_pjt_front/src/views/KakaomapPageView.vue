@@ -24,7 +24,6 @@
 <script setup>
 import { ref, onMounted, computed, watch, nextTick, onUnmounted } from 'vue'
 import axios from 'axios'
-import { useKakaoMapStore } from '@/stores/kakaoMapStore'
 
 // axios 인스턴스 생성
 const api = axios.create({
@@ -57,9 +56,6 @@ let searchDebounceTimer = null
 
 // 전역 변수로 SDK 로드 상태 관리
 const isSDKLoaded = ref(false)
-
-// 스토어 사용
-const kakaoMapStore = useKakaoMapStore()
 
 // 카카오맵 SDK 동적 로드 (개선된 버전)
 function loadKakaoMapSdk(apiKey) {
