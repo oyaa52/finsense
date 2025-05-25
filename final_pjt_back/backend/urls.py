@@ -11,6 +11,7 @@ urlpatterns = [
     # path("api/v1/community/", include("community.urls")), # community 앱에 urls.py 부재로 임시 주석 처리
     path("api/v1/products/", include("products.urls")),
     path("api/v1/recommendations/", include("recommendations.urls")),
+    path("api/v1/community/", include("community.urls")),
     path("api/v1/assetinfo/", include("assetinfo.urls")),
     path("api/v1/kakaomap/", include("kakaomap.urls")),
 ]
