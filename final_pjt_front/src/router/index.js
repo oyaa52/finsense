@@ -13,6 +13,7 @@ import CommodityComparisonView from '@/views/CommodityComparisonView.vue'
 import VideoDetailView from '@/views/VideoDetailView.vue'
 import FavoriteChannelsView from '@/views/FavoriteChannelsView.vue'
 import FavoriteVideosView from '@/views/FavoriteVideosView.vue'
+import AIRecommendationView from '@/views/AIRecommendationView.vue'
 import { useAuthStore } from '@/stores/authStore'
 
 // 임시 플레이스홀더 컴포넌트 (실제 컴포넌트로 교체 필요)
@@ -59,7 +60,16 @@ const router = createRouter({
           path: 'product-recommendation',
           name: 'productRecommendation',
           components: {
-            mainServiceView: PlaceholderComponent('금융상품 추천')
+            mainServiceView: AIRecommendationView
+          },
+          beforeEnter: (to, from, next) => {
+            const token = localStorage.getItem('accessToken')
+            if (token) {
+              next()
+            } else {
+              alert('로그인이 필요한 서비스입니다.')
+              next({ name: 'login' })
+            }
           }
         },
         {
@@ -166,6 +176,12 @@ const router = createRouter({
       path: '/signup',
       name: 'signup',
       component: SignupView
+    },
+    {
+      path: '/ai-recommendation',
+      name: 'AIRecommendation',
+      component: AIRecommendationView,
+      meta: { requiresAuth: true }
     }
   ]
 })
