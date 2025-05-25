@@ -140,7 +140,7 @@
     </div>
 
     <!-- 상품 상세 모달 -->
-    <div v-if="selectedProduct" class="modal-overlay" @click="closeModal">
+    <div v-if="showModal" class="modal-overlay" @click="closeModal">
       <div class="modal-content" @click.stop>
         <button class="close-button" @click="closeModal">&times;</button>
         <div class="product-detail">
@@ -186,6 +186,15 @@
               </li>
             </ul>
           </div>
+          <div class="subscribe-section">
+            <button 
+              @click="handleSubscribe"
+              :class="{ 'subscribed': isSubscribed }"
+              class="subscribe-btn"
+            >
+              {{ isSubscribed ? '가입완료' : '가입하기' }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -195,6 +204,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
+import { useRouter } from 'vue-router'
 
 // 상태 관리
 const selectedBank = ref(null)
@@ -208,6 +218,9 @@ const currentPage = ref(1)
 const totalPages = ref(1)
 const pageSize = ref(50)
 const productType = ref('deposit')  // 'deposit' 또는 'saving'
+const showModal = ref(false)
+const isSubscribed = ref(false)
+const router = useRouter()
 
 // 은행 목록
 const banks = ref([
@@ -375,9 +388,11 @@ const selectBank = (bankId) => {
 
 const showProductDetail = (product) => {
   selectedProduct.value = product
+  showModal.value = true
 }
 
 const closeModal = () => {
+  showModal.value = false
   selectedProduct.value = null
 }
 
@@ -407,6 +422,72 @@ const refreshData = async () => {
     console.error('Error refreshing data:', err)
   } finally {
     loading.value = false
+  }
+}
+
+const handleSubscribe = async () => {
+  if (isSubscribed.value) return
+
+  // 토큰 확인 및 로깅
+  const token = localStorage.getItem('accessToken')
+  console.log('Current token:', token)  // 토큰 값 확인
+
+  if (!token) {
+    alert('로그인이 필요합니다.')
+    return
+  }
+
+  try {
+    // 상품의 첫 번째 옵션을 사용
+    const firstOption = selectedProduct.value.options[0]
+    if (!firstOption) {
+      alert('상품 옵션을 찾을 수 없습니다.')
+      return
+    }
+
+    // 상품 ID 확인
+    if (!selectedProduct.value.id) {
+      console.error('Product ID is missing:', selectedProduct.value)
+      alert('상품 정보가 올바르지 않습니다.')
+      return
+    }
+
+    // 상품 타입에 따라 다른 엔드포인트 사용
+    const endpointType = productType.value === 'deposit' ? 'deposit' : 'saving'
+    
+    console.log('Subscribing to product:', {
+      productId: selectedProduct.value.id,
+      optionId: firstOption.id,
+      productType: endpointType
+    })
+
+    const response = await axios.post(
+      `http://127.0.0.1:8000/api/v1/products/${endpointType}/${selectedProduct.value.id}/${firstOption.id}/subscribe/`,
+      { amount: 0 },
+      {
+        headers: {
+          Authorization: `Token ${token}`
+        }
+      }
+    )
+    console.log('Subscription response:', response.data)  // 응답 데이터 확인
+    isSubscribed.value = true
+    alert('상품 가입이 완료되었습니다.')
+  } catch (err) {
+    console.error('Subscription error details:', {
+      status: err.response?.status,
+      data: err.response?.data,
+      headers: err.response?.headers,
+      error: err
+    })
+    
+    if (err.response?.status === 400) {
+      alert('이미 가입한 상품입니다.')
+      isSubscribed.value = true
+    } else {
+      console.error('Subscription error:', err)
+      alert('가입 처리 중 오류가 발생했습니다.')
+    }
   }
 }
 
@@ -716,6 +797,32 @@ onMounted(() => {
   color: #4a90e2;
   position: absolute;
   left: 0;
+}
+
+.subscribe-section {
+  margin-top: 30px;
+  text-align: center;
+}
+
+.subscribe-btn {
+  padding: 12px 40px;
+  font-size: 1.1em;
+  border: none;
+  border-radius: 8px;
+  background-color: #4a90e2;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.subscribe-btn:hover {
+  background-color: #357abd;
+  transform: translateY(-2px);
+}
+
+.subscribe-btn.subscribed {
+  background-color: #28a745;
+  cursor: default;
 }
 
 /* 로딩 및 에러 상태 스타일 추가 */

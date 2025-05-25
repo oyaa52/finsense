@@ -60,4 +60,7 @@ urlpatterns = [
         views.subscribed_saving_products_list,
         name="subscribed_saving_products",
     ),
+    path('deposit/<str:product_id>/<int:option_id>/subscribe/', views.subscribe_deposit, name='subscribe_deposit'),
+    path('saving/<str:product_id>/<int:option_id>/subscribe/', views.subscribe_saving, name='subscribe_saving'),
+    path('subscriptions/', views.get_user_subscriptions, name='get_user_subscriptions'),
 ]

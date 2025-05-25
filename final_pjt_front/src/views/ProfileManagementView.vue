@@ -156,6 +156,79 @@
         </div>
       </div>
 
+      <div class="form-section">
+        <h3 class="section-title">구독 정보</h3>
+        <div class="subscriptions-section">
+          <!-- 예금 상품 구독 -->
+          <div class="subscription-list">
+            <div class="subscription-header">
+              <h4>예금 상품</h4>
+              <span class="subscription-count">{{ depositSubscriptions.length }}개</span>
+            </div>
+            <div v-if="depositSubscriptions.length === 0" class="no-subscriptions">
+              <i class="fas fa-piggy-bank"></i>
+              <p>가입한 예금 상품이 없습니다.</p>
+            </div>
+            <div v-else class="subscription-grid">
+              <div v-for="sub in depositSubscriptions" :key="sub.id" class="subscription-card">
+                <div class="card-header">
+                  <h6>{{ sub.product_name }}</h6>
+                  <span class="bank-badge">{{ sub.bank_name }}</span>
+                </div>
+                <div class="card-body">
+                  <div class="rate-info">
+                    <span class="rate-label">금리</span>
+                    <span class="rate-value">{{ sub.interest_rate }}%</span>
+                  </div>
+                  <div class="period-info">
+                    <span class="period-label">기간</span>
+                    <span class="period-value">{{ sub.period }}개월</span>
+                  </div>
+                  <div class="date-info">
+                    <span class="date-label">가입일</span>
+                    <span class="date-value">{{ formatDate(sub.subscribed_at) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 적금 상품 구독 -->
+          <div class="subscription-list">
+            <div class="subscription-header">
+              <h4>적금 상품</h4>
+              <span class="subscription-count">{{ savingSubscriptions.length }}개</span>
+            </div>
+            <div v-if="savingSubscriptions.length === 0" class="no-subscriptions">
+              <i class="fas fa-coins"></i>
+              <p>가입한 적금 상품이 없습니다.</p>
+            </div>
+            <div v-else class="subscription-grid">
+              <div v-for="sub in savingSubscriptions" :key="sub.id" class="subscription-card">
+                <div class="card-header">
+                  <h6>{{ sub.product_name }}</h6>
+                  <span class="bank-badge">{{ sub.bank_name }}</span>
+                </div>
+                <div class="card-body">
+                  <div class="rate-info">
+                    <span class="rate-label">금리</span>
+                    <span class="rate-value">{{ sub.interest_rate }}%</span>
+                  </div>
+                  <div class="period-info">
+                    <span class="period-label">기간</span>
+                    <span class="period-value">{{ sub.period }}개월</span>
+                  </div>
+                  <div class="date-info">
+                    <span class="date-label">가입일</span>
+                    <span class="date-value">{{ formatDate(sub.subscribed_at) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div v-if="updateSuccessMessage" class="success-message">
         <p>{{ updateSuccessMessage }}</p>
       </div>
@@ -175,6 +248,7 @@ import { ref, onMounted, reactive, watch, computed } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useCommunityStore } from '@/stores/community'
 import defaultProfileImage from '@/assets/default_profile.png' // 기본 이미지 import
+import axios from 'axios'
 
 const authStore = useAuthStore()
 const communityStore = useCommunityStore()
@@ -241,6 +315,9 @@ const generalErrorMessage = computed(() => {
 
 const followers = ref([])
 const following = ref([])
+
+const depositSubscriptions = ref([])
+const savingSubscriptions = ref([])
 
 const loadProfile = async () => {
   isLoading.value = true;
@@ -391,10 +468,48 @@ const unfollowUser = async (userId) => {
   }
 }
 
+const fetchUserInfo = () => {
+  try {
+    const userInfo = JSON.parse(localStorage.getItem('userInfo'))
+    if (userInfo) {
+      profileData.username = userInfo.username
+      profileData.email = userInfo.email
+    }
+  } catch (error) {
+    console.error('Error getting user info from localStorage:', error)
+  }
+}
+
+const fetchSubscriptions = async () => {
+  try {
+    const token = localStorage.getItem('accessToken')
+    const response = await axios.get('http://127.0.0.1:8000/api/v1/products/subscriptions/', {
+      headers: {
+        Authorization: `Token ${token}`
+      }
+    })
+    depositSubscriptions.value = response.data.deposit_subscriptions
+    savingSubscriptions.value = response.data.saving_subscriptions
+  } catch (error) {
+    console.error('Error fetching subscriptions:', error)
+  }
+}
+
+const formatDate = (dateString) => {
+  const date = new Date(dateString)
+  return date.toLocaleDateString('ko-KR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
+}
+
 onMounted(async () => {
   if (authStore.isAuthenticated) {
     await loadProfile()
     await loadFollowData()
+    await fetchUserInfo()
+    await fetchSubscriptions()
   } else {
     initialLoadingError.value = '로그인이 필요합니다. 로그인 후 다시 시도해주세요.';
     isLoading.value = false;
@@ -862,5 +977,149 @@ onMounted(async () => {
   text-align: center;
   color: #666;
   padding: 1rem;
+}
+
+.subscriptions-section {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.subscription-list {
+  margin-bottom: 32px;
+}
+
+.subscription-list:last-child {
+  margin-bottom: 0;
+}
+
+.subscription-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.subscription-header h4 {
+  color: #333;
+  font-size: 1.2rem;
+  margin: 0;
+}
+
+.subscription-count {
+  background: #4a90e2;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+}
+
+.subscription-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.subscription-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e0e0e0;
+  transition: all 0.3s ease;
+}
+
+.subscription-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.card-header h6 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #333;
+  flex: 1;
+  margin-right: 12px;
+}
+
+.bank-badge {
+  background: #f0f0f0;
+  color: #666;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.card-body {
+  display: grid;
+  gap: 12px;
+}
+
+.rate-info, .period-info, .date-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.rate-info:last-child, .period-info:last-child, .date-info:last-child {
+  border-bottom: none;
+}
+
+.rate-label, .period-label, .date-label {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.rate-value {
+  color: #4a90e2;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.period-value, .date-value {
+  color: #333;
+  font-weight: 500;
+}
+
+.no-subscriptions {
+  text-align: center;
+  padding: 40px 20px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  color: #666;
+}
+
+.no-subscriptions i {
+  font-size: 2rem;
+  color: #4a90e2;
+  margin-bottom: 12px;
+}
+
+.no-subscriptions p {
+  margin: 0;
+  font-size: 1rem;
+}
+
+@media (max-width: 768px) {
+  .subscription-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .subscription-card {
+    margin-bottom: 16px;
+  }
 }
 </style> 
