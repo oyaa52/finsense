@@ -2,7 +2,7 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .utils import search_youtube_financial_videos, get_youtube_videos # get_youtube_videos 임포트 확인
+from .utils import search_youtube_financial_videos, get_youtube_videos, get_popular_financial_videos # get_youtube_videos 임포트 확인
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated # 필요에 따라 사용
 # from django.conf import settings # settings는 utils에서 사용
@@ -11,8 +11,13 @@ from rest_framework.permissions import IsAuthenticated # 필요에 따라 사용
 # Create your views here.
 
 class YoutubeVideoSearchAPIView(APIView):
-    # 이 APIView는 MainPageDefaultView에서 max_results=2로 사용 중.
-    # 페이지네이션이 필요 없으므로 search_youtube_financial_videos 함수를 그대로 사용.
+    # 이 APIView는 더 이상 MainPageDefaultView에서 직접 사용되지 않습니다.
+    # (MainPageDefaultView는 이제 PopularFinancialVideosAPIView를 사용)
+    # 하지만 다른 곳에서 사용될 가능성을 위해 남겨두거나, 사용처가 없다면 삭제 가능합니다.
+    # 현재는 경제 뉴스 검색 페이지에서 일반 검색과 유사한 형태로 사용될 수 있으나,
+    # 해당 페이지는 search_youtube_videos_paginated 를 사용하고 있습니다.
+    # 따라서 이 APIView의 현재 직접적인 사용처는 없어 보입니다.
+    # 다만, 이전 버전과의 호환성 또는 잠재적 사용을 위해 유지할 수 있습니다.
     def get(self, request):
         query = request.query_params.get('query', None)
         if not query:
@@ -39,8 +44,8 @@ class YoutubeVideoSearchAPIView(APIView):
         return Response(videos, status=status.HTTP_200_OK)
 
 @api_view(['GET'])
-# @permission_classes([IsAuthenticated]) # EconomicNewsView는 누구나 볼 수 있으므로 인증 제거 또는 선택적 적용
-def search_youtube_videos_paginated(request): # 함수 이름 변경으로 기존 API와 구분
+# @permission_classes([IsAuthenticated]) # 경제 뉴스 검색은 인증이 필요하지 않음
+def search_youtube_videos_paginated(request): # EconomicNewsView에서 사용
     query = request.GET.get('query', '경제 뉴스') 
     page_token = request.GET.get('pageToken', None)
     
@@ -77,3 +82,21 @@ def search_youtube_videos_paginated(request): # 함수 이름 변경으로 기�
 # 기존 search_youtube_videos 함수는 혹시 다른 곳에서 사용될 수 있으므로, 
 # 새 함수 search_youtube_videos_paginated를 만들었습니다.
 # 만약 기존 함수를 대체하는 것이라면, urls.py에서 연결을 새 함수로 변경해야 합니다.
+
+class PopularFinancialVideosAPIView(APIView): # MainPageDefaultView에서 사용
+    def get(self, request):
+        try:
+            result_data = get_popular_financial_videos() # max_results는 utils 함수 기본값(2) 사용
+
+            if result_data.get('error'):
+                status_code = status.HTTP_503_SERVICE_UNAVAILABLE if "할당량" in result_data['error'] else status.HTTP_500_INTERNAL_SERVER_ERROR
+                return Response(result_data, status=status_code)
+            
+            return Response(result_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            # utils에서 처리되지 않은 예외
+            return Response({
+                'error': f'인기 금융 영상 조회 중 서버 내부 오류: {str(e)}',
+                'videos': []
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

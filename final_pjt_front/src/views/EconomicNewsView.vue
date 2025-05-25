@@ -34,7 +34,7 @@
       <div class="youtube-grid">
         <div v-for="video in youtubeVideos" :key="video.video_id" class="youtube-video-item" data-aos="zoom-in-up">
           <div class="video-thumbnail-wrapper">
-            <img :src="video.thumbnail" :alt="video.title" class="video-thumbnail" @click="openVideoModal(video.video_id)"/>
+            <img :src="video.thumbnail_url" :alt="video.title" class="video-thumbnail" @click="openVideoModal(video.video_id)"/>
             <button class="play-button" @click="openVideoModal(video.video_id)">&#9658;</button>
           </div>
           <h4 class="video-title" :title="video.title" @click="openVideoModal(video.video_id)">{{ video.title }}</h4>
