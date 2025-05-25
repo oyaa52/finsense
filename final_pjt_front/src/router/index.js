@@ -10,6 +10,9 @@ import EconomicNewsView from '@/views/EconomicNewsView.vue'
 import MainPageDefaultView from '@/views/MainPageDefaultView.vue'
 import CommunityView from '@/views/CommunityView.vue'
 import CommodityComparisonView from '@/views/CommodityComparisonView.vue'
+import VideoDetailView from '@/views/VideoDetailView.vue'
+import FavoriteChannelsView from '@/views/FavoriteChannelsView.vue'
+import FavoriteVideosView from '@/views/FavoriteVideosView.vue'
 import { useAuthStore } from '@/stores/authStore'
 
 // 임시 플레이스홀더 컴포넌트 (실제 컴포넌트로 교체 필요)
@@ -67,6 +70,14 @@ const router = createRouter({
           }
         },
         {
+          path: 'economic-news/:videoId',
+          name: 'videoDetail',
+          components: {
+            mainServiceView: VideoDetailView
+          },
+          props: { mainServiceView: true }
+        },
+        {
           path: 'nearby-banks',
           name: 'nearbyBanks',
           components: {
@@ -110,6 +121,38 @@ const router = createRouter({
           name: 'settings',
           components: {
             mainServiceView: PlaceholderComponent('설정')
+          }
+        },
+        {
+          path: 'favorite-channels',
+          name: 'favoriteChannels',
+          components: {
+            mainServiceView: FavoriteChannelsView
+          },
+          beforeEnter: (to, from, next) => {
+            const authStore = useAuthStore()
+            if (authStore.isAuthenticated) {
+              next()
+            } else {
+              alert('로그인이 필요한 서비스입니다.')
+              next({ name: 'login' })
+            }
+          }
+        },
+        {
+          path: 'favorite-videos',
+          name: 'favoriteVideos',
+          components: {
+            mainServiceView: FavoriteVideosView
+          },
+          beforeEnter: (to, from, next) => {
+            const authStore = useAuthStore()
+            if (authStore.isAuthenticated) {
+              next()
+            } else {
+              alert('로그인이 필요한 서비스입니다.')
+              next({ name: 'login' })
+            }
           }
         }
       ]

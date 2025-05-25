@@ -51,10 +51,6 @@ export const useAuthStore = defineStore('auth', () => {
     originalInitializeAuth(); // 기존 인증 로직 실행
     if (isLoggedIn.value) { // 로그인 상태일 때만 프로필 로드
       _loadProfileFromStorage();
-      // 앱 로드 시 userProfile이 null이고 user 정보는 있다면 fetchProfile 호출도 고려 가능
-      // if (!userProfile.value && user.value) {
-      //   fetchProfile(); 
-      // }
     }
   };
 

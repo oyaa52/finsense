@@ -22,6 +22,14 @@
           <span class="separator">|</span>
           <button @click="logout" class="action-link logout-link">로그아웃</button>
         </div>
+        <!-- 즐겨찾기 메뉴 추가 -->
+        <nav class="sidebar-nav favorite-nav" v-if="isLoggedIn">
+          <h3 class="nav-title">즐겨찾기</h3>
+          <ul>
+            <li><router-link to="/main/favorite-channels" class="action-link">즐겨찾는 채널</router-link></li>
+            <li><router-link to="/main/favorite-videos" class="action-link">즐겨찾는 영상</router-link></li>
+          </ul>
+        </nav>
       </div>
       
       <!-- <nav class="sidebar-nav">
@@ -50,7 +58,11 @@
 
       <!-- 컨텐츠 표시 영역 -->
       <div class="content-area" data-aos="fade-up" data-aos-delay="200">
-        <router-view name="mainServiceView"></router-view>
+        <router-view v-slot="{ Component, route }" name="mainServiceView">
+          <keep-alive include="EconomicNewsView">
+            <component :is="Component" :key="route.name" />
+          </keep-alive>
+        </router-view>
       </div>
     </main>
   </div>
@@ -103,55 +115,6 @@ const profileImageUrl = computed(() => {
   return defaultProfileImageSrc;
 })
 
-// YouTube 영상 관련 상태
-const youtubeVideos = ref([])
-const videosLoading = ref(false)
-const videosError = ref(null)
-
-// YouTube 영상 가져오는 함수
-const fetchYoutubeVideos = async () => {
-  console.log('[MainPageView] fetchYoutubeVideos: 시작, videosLoading:', videosLoading.value)
-  videosLoading.value = true
-  videosError.value = null
-  
-  try {
-    console.log('[MainPageView] fetchYoutubeVideos: API 요청 전')
-    const response = await axios.get('http://127.0.0.1:8000/api/v1/recommendations/youtube-search/', {
-      params: {
-        query: '금융 뉴스',
-        max_results: 2
-      }
-    })
-    console.log('[MainPageView] fetchYoutubeVideos: API 응답 받음')
-    youtubeVideos.value = response.data
-  } catch (error) {
-    console.error('[MainPageView] YouTube 영상 로딩 중 에러:', error)
-    if (error.response) {
-      // 서버에서 응답이 왔지만 에러인 경우
-      switch (error.response.status) {
-        case 503:
-          videosError.value = 'YouTube 서비스가 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해주세요.'
-          break
-        case 429:
-          videosError.value = 'YouTube API 호출 한도를 초과했습니다. 잠시 후 다시 시도해주세요.'
-          break
-        default:
-          videosError.value = '영상을 불러오는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
-      }
-    } else if (error.request) {
-      // 요청은 보냈지만 응답이 없는 경우
-      videosError.value = '서버에 연결할 수 없습니다. 인터넷 연결을 확인해주세요.'
-    } else {
-      // 요청 설정 중 에러가 발생한 경우
-      videosError.value = '영상을 불러오는 중 오류가 발생했습니다.'
-    }
-    youtubeVideos.value = []
-  } finally {
-    console.log('[MainPageView] fetchYoutubeVideos: 종료 (finally), videosLoading:', videosLoading.value)
-    videosLoading.value = false
-  }
-}
-
 // 로그아웃 함수
 const logout = async () => {
   await authStore.logoutAction() // 스토어의 로그아웃 액션 호출
@@ -160,39 +123,19 @@ const logout = async () => {
 
 onMounted(() => {
   AOS.init()
-  console.log('[MainPageView] onMounted: 시작, isMainPageDefaultView:', isMainPageDefaultView.value)
+  console.log('[MainPageView] onMounted: 시작')
   console.log('[MainPageView] onMounted: currentUser:', currentUser.value)
   // 로그인 상태이고, 스토어에 프로필 정보가 아직 없다면 가져오기
   if (isLoggedIn.value && !userProfile.value) {
     authStore.fetchProfile();
-  }
-  if (isMainPageDefaultView.value) { // 기본 화면일 때만 영상 로드
-    fetchYoutubeVideos()
   }
   console.log('[MainPageView] onMounted: 종료')
 })
 
 // 현재 라우트가 MainPageView의 기본 경로인지 확인하는 computed 속성
 const isMainPageDefaultView = computed(() => {
-  // 현재 경로가 /main이고 자식 라우트가 없는 경우
   return route.path === '/main' && route.name === 'mainPageDefault'
 })
-
-// 라우트 변경 시 isMainPageDefaultView가 true로 바뀌면 영상 로드 (watch 사용)
-watch(() => route.path, (newPath, oldPath) => {
-  console.log(`[MainPageView] watch route.path: 변경 감지 - newPath: ${newPath}, oldPath: ${oldPath}, isMainPageDefaultView: ${isMainPageDefaultView.value}`)
-  // /main으로 돌아왔고, 자식 라우트가 없는 경우 (즉 isMainPageDefaultView가 true가 되는 시점)
-  if (newPath === '/main' && isMainPageDefaultView.value) {
-    console.log('[MainPageView] watch route.path: 메인 페이지로 돌아옴 & 기본 뷰 상태')
-    // 영상이 없거나, 이전에 에러가 나서 로드되지 않았을 경우 다시 시도
-    if (youtubeVideos.value.length === 0 || videosError.value) {
-      console.log('[MainPageView] watch route.path: 영상이 없거나 에러 상태, fetchYoutubeVideos 호출')
-      fetchYoutubeVideos()
-    } else {
-      console.log('[MainPageView] watch route.path: 이미 영상 데이터가 있거나 에러 없음, fetch 호출 안 함')
-    }
-  }
-}, { immediate: false }) // immediate: false로 초기 마운트 시 중복 호출 방지
 
 // 로그인 상태 변경 감시: 로그인 되었는데 프로필 정보가 없다면 가져오기
 watch(isLoggedIn, (newIsLoggedIn) => {
@@ -659,5 +602,49 @@ body, html {
 /* AOS Animations */
 [data-aos] {
   transition-property: transform, opacity;
+}
+
+/* 즐겨찾기 네비게이션 스타일 추가 */
+.favorite-nav {
+  margin-top: 20px;
+  width: 100%;
+}
+
+.favorite-nav .nav-title {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #555;
+  margin-bottom: 10px;
+  text-align: left;
+  padding-left: 5px; /* 약간의 왼쪽 여백 */
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 5px;
+}
+
+.favorite-nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.favorite-nav li {
+  margin-bottom: 8px;
+}
+
+.favorite-nav .action-link {
+  display: block;
+  padding: 8px 10px;
+  color: #333;
+  text-decoration: none;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.favorite-nav .action-link:hover,
+.favorite-nav .action-link.router-link-active {
+  background-color: #e0e0e0; /* 호버 및 활성 링크 배경색 */
+  color: #0064FF;
+  font-weight: 500;
 }
 </style> 
