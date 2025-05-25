@@ -252,7 +252,7 @@ const fetchProducts = async (page = 1) => {
     
     if (response.data.results && response.data.results.length > 0) {
       // 데이터 매핑
-      products.value = response.data.results.map(product => {
+      const mappedProducts = response.data.results.map(product => {
         // 옵션 중에서 선택된 기간에 해당하는 옵션 찾기
         let selectedOption = null
         if (product.options && product.options.length > 0) {
@@ -290,6 +290,16 @@ const fetchProducts = async (page = 1) => {
         }
       })
 
+      // 중복 제거 (fin_prdt_cd 기준)
+      const uniqueProducts = new Map()
+      mappedProducts.forEach(product => {
+        if (!uniqueProducts.has(product.id)) {
+          uniqueProducts.set(product.id, product)
+        }
+      })
+
+      products.value = Array.from(uniqueProducts.values())
+
       // 금리순 정렬이 선택된 경우 금리 기준으로 정렬
       if (sortBy.value === 'rate') {
         products.value.sort((a, b) => b.baseRate - a.baseRate)
@@ -310,15 +320,33 @@ const fetchProducts = async (page = 1) => {
 
 // 필터링된 상품 목록
 const filteredProducts = computed(() => {
-  if (selectedPeriod.value === 'all') {
-    return products.value
+  let filtered = products.value
+
+  // 은행 필터링
+  if (selectedBank.value) {
+    const bankName = banks.value.find(bank => bank.id === selectedBank.value)?.name
+    if (bankName) {
+      filtered = filtered.filter(product => product.bankName === bankName)
+    }
   }
 
-  // 선택된 기간에 해당하는 상품만 필터링
-  return products.value.filter(product => {
-    if (!product.options || product.options.length === 0) return false
-    return product.options.some(option => option.save_trm === selectedPeriod.value)
+  // 기간 필터링
+  if (selectedPeriod.value !== 'all') {
+    filtered = filtered.filter(product => {
+      if (!product.options || product.options.length === 0) return false
+      return product.options.some(option => option.save_trm === selectedPeriod.value)
+    })
+  }
+
+  // 중복 제거 (fin_prdt_cd 기준)
+  const uniqueProducts = new Map()
+  filtered.forEach(product => {
+    if (!uniqueProducts.has(product.id)) {
+      uniqueProducts.set(product.id, product)
+    }
   })
+
+  return Array.from(uniqueProducts.values())
 })
 
 // 은행 ID 매핑 함수
@@ -334,7 +362,7 @@ const getBankId = (bankName) => {
 }
 
 // 필터 변경 시 데이터 다시 가져오기
-watch([selectedBank, selectedPeriod, sortBy], () => {
+watch([selectedBank, selectedPeriod, sortBy, productType], () => {
   currentPage.value = 1 // 필터 변경 시 첫 페이지로 이동
   fetchProducts(1)
 })
@@ -362,6 +390,8 @@ const handlePageChange = (page) => {
 // 상품 타입 변경 시 데이터 다시 가져오기
 const changeProductType = (type) => {
   productType.value = type
+  selectedBank.value = null // 은행 선택 초기화
+  selectedPeriod.value = 'all' // 기간 선택 초기화
   currentPage.value = 1
   fetchProducts(1)
 }
