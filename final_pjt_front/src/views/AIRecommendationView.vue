@@ -57,30 +57,25 @@
 
     <!-- 프로필이 있는 경우 -->
     <div v-else class="simulation-interface">
-      <!-- 로딩 애니메이션 -->
-      <div v-if="isLoading" class="loading-container">
+      <!-- 로딩 애니메이션: 초기 단계(GPT 호출 전까지)에만 전체 차단형으로 표시 -->
+      <div v-if="isLoading && currentStep < 3" class="loading-container">
         <div class="loading-steps">
           <div class="step" :class="{ active: currentStep >= 1 }">
             <i class="fas fa-chart-line"></i>
-            <span>투자 성향 분석</span>
+            <span>프로필 분석</span>
           </div>
           <div class="step" :class="{ active: currentStep >= 2 }">
-            <i class="fas fa-chart-bar"></i>
-            <span>시장 동향 분석</span>
+            <i class="fas fa-brain"></i>
+            <span>GPT 추천 생성 중</span>
           </div>
-          <div class="step" :class="{ active: currentStep >= 3 }">
-            <i class="fas fa-calculator"></i>
-            <span>수익률 계산</span>
-          </div>
-          <div class="step" :class="{ active: currentStep >= 4 }">
-            <i class="fas fa-chart-area"></i>
-            <span>미래 시뮬레이션</span>
-          </div>
+          <!-- 수익률 계산 및 이미지 생성 단계는 아래 결과 섹션과 함께 표시될 수 있음 -->
         </div>
       </div>
 
-      <!-- 시뮬레이션 결과 -->
-      <div v-else class="simulation-results">
+      <!-- 시뮬레이션 결과: 프로필이 있으면 항상 이 섹션의 골격은 그림 -->
+      <div class="simulation-results" v-if="hasProfile">
+        
+        <!-- 미래 시나리오 섹션: GPT가 생성한 future_scenario 데이터가 있으면 표시 -->
         <div class="future-scenario" v-if="simulationData.future_scenario">
           <h3>미래 시나리오</h3>
           <div class="scenario-content">
@@ -99,101 +94,100 @@
                      :alt="simulationData.future_scenario.visualization.object"
                      class="cute-3d-image"
                      @error="handleImageError">
-                <div v-else class="loading-image">
-                  이미지 생성 중...
+                <!-- 이미지 URL이 없고, 이미지 생성 단계(currentStep 4)이며, 로딩 중일 때 -->
+                <div v-else-if="isLoading && currentStep === 4 && !simulationData.future_scenario.visualization.image_url" class="loading-image">
+                  <i class="fas fa-palette fa-spin"></i> 미래를 그려보는 중...
+                </div>
+                 <!-- 이미지 URL이 없고, (이미지 생성 전이거나 실패했을 경우) -->
+                <div v-else-if="!simulationData.future_scenario.visualization.image_url" class="loading-image">
+                  시각화 준비 중입니다.
                 </div>
               </div>
             </div>
           </div>
         </div>
-        <div class="visualization-container">
-          <div class="visualization-section" v-if="simulationData.visualization">
-            <h3 class="visualization-title">투자 성공 시나리오</h3>
-            <div class="visualization-content">
-              <div class="visualization-description">
-                <p>{{ simulationData.visualization.description }}</p>
-                <div class="color-scheme">
-                  <span>색상 구성: {{ simulationData.visualization.color_scheme }}</span>
-                </div>
-              </div>
-              <div class="model-container">
-                <!-- 3D 모델이 들어갈 자리 -->
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="simulation-details">
-          <div class="detail-item">
-            <i class="fas fa-coins"></i>
-            <div class="detail-content">
-              <h4>예상 수익금</h4>
-              <p>{{ formatCurrency(simulationData.expectedReturn) }}원</p>
-            </div>
-          </div>
-          <div class="detail-item">
-            <i class="fas fa-percentage"></i>
-            <div class="detail-content">
-              <h4>예상 수익률</h4>
-              <p>{{ simulationData.returnRate }}%</p>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <!-- 추천 상품 목록 -->
-      <div class="recommendations">
-        <h3>맞춤 투자 추천</h3>
-        <div class="portfolio-summary" v-if="simulationData.risk_analysis">
-          <div class="summary-item">
-            <h4>포트폴리오 분석</h4>
-            <p>{{ simulationData.risk_analysis }}</p>
-          </div>
-          <div class="summary-item">
-            <h4>자산 분산 전략</h4>
-            <p>{{ simulationData.diversification }}</p>
-          </div>
-        </div>
-        <div class="recommendation-grid">
-          <div v-for="(product, index) in recommendations" 
-               :key="index" 
-               class="recommendation-card"
-               :class="[product.product_type, `risk-${product.risk_level}`]">
-            <div class="card-header">
-              <h4>{{ product.product_name }}</h4>
-              <div class="card-badges">
-                <span class="score">{{ product.score }}점</span>
-                <span class="risk-badge" :class="product.risk_level">
-                  {{ product.risk_level === 'low' ? '안전' : 
-                     product.risk_level === 'medium' ? '중간' : '고위험' }}
-                </span>
+        <!-- 나머지 시뮬레이션 상세 정보 및 추천 상품 목록 -->
+        <!-- 이 부분들은 관련 데이터(simulationData.expectedReturn 등)가 있을 때만 표시 -->
+        <div v-if="simulationData.expectedReturn || (recommendations && recommendations.length > 0)">
+          <div class="simulation-details" v-if="simulationData.expectedReturn">
+            <div class="detail-item">
+              <i class="fas fa-coins"></i>
+              <div class="detail-content">
+                <h4>예상 수익금</h4>
+                <p>{{ formatCurrency(simulationData.expectedReturn) }}원</p>
               </div>
             </div>
-            <div class="card-body">
-              <div class="product-info">
-                <div class="info-item">
-                  <i class="fas fa-percentage"></i>
-                  <span>예상 수익률: {{ product.max_rate }}%</span>
-                </div>
-                <div class="info-item">
-                  <i class="fas fa-calendar-alt"></i>
-                  <span>투자 기간: {{ product.term }}</span>
-                </div>
-                <div class="info-item">
-                  <i class="fas fa-coins"></i>
-                  <span>최소 투자금: {{ formatCurrency(product.min_amount) }}원</span>
-                </div>
-                <div class="info-item">
-                  <i class="fas fa-chart-line"></i>
-                  <span>예상 수익금: {{ formatCurrency(product.expected_return) }}원</span>
-                </div>
-              </div>
-              <div class="recommendation-reason">
-                <h5>추천 이유</h5>
-                <p>{{ product.reason }}</p>
+            <div class="detail-item">
+              <i class="fas fa-percentage"></i>
+              <div class="detail-content">
+                <h4>예상 수익률</h4>
+                <p>{{ simulationData.returnRate }}%</p>
               </div>
             </div>
           </div>
+
+          <div class="recommendations" v-if="recommendations && recommendations.length > 0">
+            <h3>맞춤 투자 추천</h3>
+            <div class="portfolio-summary" v-if="simulationData.risk_analysis || simulationData.diversification">
+              <div class="summary-item" v-if="simulationData.risk_analysis">
+                <h4>포트폴리오 분석</h4>
+                <p>{{ simulationData.risk_analysis }}</p>
+              </div>
+              <div class="summary-item" v-if="simulationData.diversification">
+                <h4>자산 분산 전략</h4>
+                <p>{{ simulationData.diversification }}</p>
+              </div>
+            </div>
+            <div class="recommendation-grid">
+              <div v-for="(product, index) in recommendations" 
+                   :key="index" 
+                   class="recommendation-card"
+                   :class="[product.product_type, `risk-${product.risk_level}`]">
+                <div class="card-header">
+                  <h4>{{ product.product_name }}</h4>
+                  <div class="card-badges">
+                    <span class="score">{{ product.score }}점</span>
+                    <span class="risk-badge" :class="product.risk_level">
+                      {{ product.risk_level === 'low' ? '안전' : 
+                         product.risk_level === 'medium' ? '중간' : '고위험' }}
+                    </span>
+                  </div>
+                </div>
+                <div class="card-body">
+                  <div class="product-info">
+                    <div class="info-item">
+                      <i class="fas fa-percentage"></i>
+                      <span>예상 수익률: {{ product.max_rate }}%</span>
+                    </div>
+                    <div class="info-item">
+                      <i class="fas fa-calendar-alt"></i>
+                      <span>투자 기간: {{ product.term }}</span>
+                    </div>
+                    <div class="info-item">
+                      <i class="fas fa-coins"></i>
+                      <span>최소 투자금: {{ formatCurrency(product.min_amount) }}원</span>
+                    </div>
+                    <div class="info-item">
+                      <i class="fas fa-chart-line"></i>
+                      <span>예상 수익금: {{ formatCurrency(product.expected_return) }}원</span>
+                    </div>
+                  </div>
+                  <div class="recommendation-reason">
+                    <h5>추천 이유</h5>
+                    <p>{{ product.reason }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
+        
+        <!-- 모든 데이터가 아직 준비되지 않았지만, GPT 호출(currentStep 2 이상)은 시작되었고 전체 로딩중일 때 간단한 메시지 -->
+        <div v-else-if="isLoading && currentStep >= 2 && currentStep < 4" class="initial-loading-message">
+          <p><i class="fas fa-spinner fa-spin"></i> AI가 맞춤 추천을 생성하고 있습니다. 잠시만 기다려주세요...</p>
+        </div>
+
       </div>
     </div>
   </div>
@@ -220,7 +214,11 @@ const profileData = ref({
 })
 const simulationData = ref({
   expectedReturn: 0,
-  returnRate: '0'
+  returnRate: '0',
+  risk_analysis: '',
+  diversification: '',
+  future_scenario: null,
+  visualization: null
 })
 
 let chart = null
@@ -230,16 +228,13 @@ const checkProfile = async () => {
   try {
     const token = localStorage.getItem('accessToken')
     const response = await axios.get('http://127.0.0.1:8000/api/v1/accounts/profile/', {
-      headers: {
-        Authorization: `Token ${token}`
-      }
+      headers: { Authorization: `Token ${token}` }
     })
-    
-    const profileData = response.data
-    hasProfile.value = !!(profileData.investment_purpose && 
-                         profileData.investment_tendency && 
-                         profileData.investment_term && 
-                         profileData.amount_available)
+    const userProfile = response.data
+    hasProfile.value = !!(userProfile.investment_purpose && 
+                         userProfile.investment_tendency && 
+                         userProfile.investment_term && 
+                         userProfile.amount_available !== null && userProfile.amount_available !== '')
     
     if (hasProfile.value) {
       fetchRecommendations()
@@ -248,6 +243,8 @@ const checkProfile = async () => {
     }
   } catch (error) {
     console.error('프로필 정보 조회 실패:', error)
+    hasProfile.value = false
+    addMessage('ai', '프로필 정보를 불러오는 데 실패했습니다. 먼저 로그인하거나 프로필을 완성해주세요.')
   }
 }
 
@@ -255,16 +252,18 @@ const checkProfile = async () => {
 const submitProfile = async () => {
   try {
     const token = localStorage.getItem('accessToken')
-    await axios.patch('http://127.0.0.1:8000/api/v1/accounts/profile/', profileData.value, {
-      headers: {
-        Authorization: `Token ${token}`
-      }
+    await axios.put('http://127.0.0.1:8000/api/v1/accounts/profile/', profileData.value, {
+      headers: { Authorization: `Token ${token}` }
     })
-    
     hasProfile.value = true
+    messages.value = []
     fetchRecommendations()
   } catch (error) {
-    console.error('프로필 저장 실패:', error)
+    console.error('프로필 업데이트 실패:', error)
+    addMessage('ai', '프로필 업데이트에 실패했습니다. 다시 시도해주세요.')
+    if (error.response) {
+      console.error("Error response data:", error.response.data)
+    }
   }
 }
 
@@ -343,41 +342,54 @@ const createSimulationChart = (data) => {
 
 // 이미지 에러 핸들러 추가
 const handleImageError = (e) => {
-  console.error('이미지 로드 실패:', e)
-  console.log('시도한 이미지 URL:', e.target.src)
+  console.warn('이미지 로드 실패, 대체 이미지 사용 또는 메시지 표시', e.target.src);
+  if (simulationData.value.future_scenario?.visualization) {
+    simulationData.value.future_scenario.visualization.image_url = null;
+  }
 }
 
 // 금액 문자열을 숫자로 변환하는 헬퍼 함수
 const parseCurrencyString = (currencyString) => {
-  if (typeof currencyString !== 'string') {
-    // 이미 숫자이거나 다른 타입이면 그대로 반환 (또는 오류 처리)
-    return parseFloat(currencyString) || 0;
+  if (typeof currencyString === 'number') {
+    return currencyString;
   }
-  // '원' 문자 제거, 쉼표 제거 후 숫자로 변환
-  const numericString = currencyString.replace(/원/g, '').replace(/,/g, '');
-  return parseFloat(numericString) || 0; // 변환 실패 시 0 반환
+  if (typeof currencyString !== 'string') {
+    return NaN;
+  }
+  // "원" 글자 및 쉼표 제거, 공백 제거
+  const cleanedString = currencyString.replace(/원|,/g, '').trim();
+  const number = parseFloat(cleanedString);
+  return isNaN(number) ? 0 : number; // NaN이면 0으로 처리 (또는 다른 기본값)
 };
 
 // 추천 상품 조회
 const fetchRecommendations = async () => {
+  isLoading.value = true
+  currentStep.value = 1
+
   try {
-    startLoading()
     const token = localStorage.getItem('accessToken')
+
+    // API를 통해 최신 프로필 정보 가져오기
     const profileResponse = await axios.get('http://127.0.0.1:8000/api/v1/accounts/profile/', {
-      headers: {
-        Authorization: `Token ${token}`
-      }
+      headers: { Authorization: `Token ${token}` }
     })
-    
     const profile = profileResponse.data
+
+    if (!profile.investment_tendency) {
+      addMessage('ai', '프로필 정보가 충분하지 않아 추천을 드릴 수 없습니다. 프로필을 완성해주세요.')
+      isLoading.value = false
+      return
+    }
+
     const prompt = `
     다음 사용자 프로필을 바탕으로 다양한 투자 방법을 추천해주세요.
     
     사용자 프로필:
-    - 투자 목적: ${profile.investment_purpose}
+    - 투자 목적: ${profile.investment_purpose || '미정'}
     - 투자 성향: ${profile.investment_tendency}
     - 투자 기간: ${profile.investment_term}개월
-    - 투자 가능 금액: ${profile.amount_available}원
+    - 투자 가능 금액: ${profile.amount_available}원 
     
     다음 형식으로 3개의 투자 방법을 추천해주세요:
     {
@@ -400,127 +412,119 @@ const fetchRecommendations = async () => {
         "risk_analysis": "전체 포트폴리오의 위험도 분석",
         "diversification": "자산 분산 전략 설명",
         "future_scenario": {
-          "description": "투자 목적(${profile.investment_purpose})에 맞춘 3년 후 달성 가능한 구체적인 목표 (예: '현재 투자금으로 3년 후 원하는 아파트의 계약금을 마련할 수 있습니다')",
+          "description": "투자 목적(${profile.investment_purpose || '미정'})에 맞춘 3년 후 달성 가능한 구체적인 목표 (예: '현재 투자금으로 3년 후 원하는 아파트의 계약금을 마련할 수 있습니다')",
           "visualization": {
-            "type": "${profile.investment_purpose}",
+            "type": "${profile.investment_purpose || '목표 달성'}",
             "object": "투자 목적의 핵심 키워드 (예: 집 마련이면 '집', 차량 구매면 '자동차' 등)",
-            "style": "3D 렌더링, 미니멀리즘",
-            "emotion": "성취감",
-            "image_prompt": "A minimalist 3D rendered ${profile.investment_purpose} symbol floating in a clean white space. The design should be simple, modern, and professional, similar to Kakao Bank's style. The object should be the main focus with subtle shadows and lighting. The background should be pure white. The overall style should be clean and suitable for a financial app. The object should be rendered in a soft, pastel color palette."
+            "style": "현실적인 3D 렌더링, 고급스러움",
+            "emotion": "성취감, 성공",
+            "image_prompt": "realistic, luxurious 3D rendering depicting the achievement of '${profile.investment_purpose || 'financial goal'}'. Focus on high-quality textures, sophisticated lighting, and a sense of tangible realism. For example, if the goal is '집 마련', show a stunning modern house with elegant design. If '차량 구매', a sleek high-end car. The overall mood should be aspirational and convey success and prestige."
           }
         }
       }
     }
-    `
+    `;
+    console.log("Sending prompt to GPT:", prompt)
+    currentStep.value = 2
+
+    const gptApiResponse = await axios.post('http://127.0.0.1:8000/api/v1/product_recommender/gpt/', 
+      { prompt }, 
+      { headers: { Authorization: `Token ${token}` } }
+    )
     
-    console.log('Sending prompt to GPT:', prompt)
-    
-    const gptResponse = await axios.post('http://127.0.0.1:8000/api/v1/recommendations/gpt/', {
-      prompt: prompt
-    }, {
-      headers: {
-        Authorization: `Token ${token}`
+    console.log("GPT Response raw object:", gptApiResponse.data)
+    let gptResponseText = gptApiResponse.data.response;
+
+    if (typeof gptResponseText === 'string') {
+      if (gptResponseText.startsWith("```json")) {
+        gptResponseText = gptResponseText.substring(7, gptResponseText.length - 3).trim();
+      } else if (gptResponseText.startsWith("```")) {
+        gptResponseText = gptResponseText.substring(3, gptResponseText.length - 3).trim();
       }
-    })
+    }
+    
+    let parsedData;
+    try {
+      parsedData = JSON.parse(gptResponseText);
+    } catch (e) {
+      console.error("GPT 응답 파싱 실패:", e);
+      console.error("파싱 시도한 텍스트:", gptResponseText); 
+      addMessage('ai', '추천 데이터를 이해하는 데 실패했습니다. 응답 형식을 확인해주세요.');
+      isLoading.value = false;
+      return;
+    }
+    console.log("Parsed GPT Data:", parsedData)
+    currentStep.value = 3
 
-    console.log('GPT Response:', gptResponse.data)
+    recommendations.value = parsedData.products.map(p => ({
+      ...p,
+      score: parseInt(p.score) || 0,
+      max_rate: parseFloat(String(p.max_rate).replace('%','')) || 0,
+      min_amount: parseCurrencyString(p.min_amount),
+      expected_return: parseCurrencyString(p.expected_return)
+    }));
 
-    if (gptResponse.data.status === 'success') {
+    simulationData.value = {
+      expectedReturn: parseCurrencyString(parsedData.simulation.expectedReturn),
+      returnRate: parseFloat(String(parsedData.simulation.returnRate).replace('%','')) || 0,
+      risk_analysis: parsedData.simulation.risk_analysis,
+      diversification: parsedData.simulation.diversification,
+      future_scenario: parsedData.simulation.future_scenario,
+      visualization: parsedData.simulation.visualization
+    };
+
+    addMessage('ai', '다음은 맞춤형 투자 추천입니다.')
+
+    if (simulationData.value.future_scenario?.visualization?.image_prompt) {
+      currentStep.value = 4;
       try {
-        const result = JSON.parse(gptResponse.data.response)
-        console.log('Parsed GPT result:', result)
+        const imagePrompt = simulationData.value.future_scenario.visualization.image_prompt;
+        const imageType = simulationData.value.future_scenario.visualization.object || simulationData.value.future_scenario.visualization.type || 'goal';
         
-        // products 내부의 금액 관련 필드를 숫자로 변환
-        recommendations.value = result.products.map(p => ({
-          ...p,
-          score: parseInt(p.score) || 0,
-          max_rate: parseFloat(p.max_rate.replace('%','')) || 0, // % 제거하고 숫자로
-          term: p.term, // term은 문자열 유지 (예: "12개월")
-          min_amount: parseCurrencyString(p.min_amount),
-          expected_return: parseCurrencyString(p.expected_return)
-        }));
-        
-        // 시뮬레이션 데이터 설정 및 숫자 변환
-        simulationData.value = {
-          expectedReturn: parseCurrencyString(result.simulation.expectedReturn),
-          returnRate: parseFloat(result.simulation.returnRate.replace('%','')) || 0, // % 제거하고 숫자로
-          risk_analysis: result.simulation.risk_analysis,
-          diversification: result.simulation.diversification,
-          future_scenario: result.simulation.future_scenario,
-          visualization: result.simulation.visualization // 이 부분은 GPT 응답에 따라 없을 수 있음
-        }
+        const imageResponse = await axios.post('http://127.0.0.1:8000/api/v1/product_recommender/generate-image/', 
+          { prompt: imagePrompt, type: imageType }, 
+          { headers: { Authorization: `Token ${token}` } }
+        );
 
-        // DALL-E로 이미지 생성
-        if (result.simulation.future_scenario?.visualization?.image_prompt) {
-          try {
-            const imageResponse = await axios.post('http://127.0.0.1:8000/api/v1/recommendations/generate-image/', {
-              prompt: result.simulation.future_scenario.visualization.image_prompt,
-              type: result.simulation.future_scenario.visualization.type
-            }, {
-              headers: {
-                Authorization: `Token ${token}`
-              }
-            })
-
-            if (imageResponse.data.status === 'success') {
-              console.log('이미지 생성 성공:', imageResponse.data)
-              // 이미지 URL을 Django 서버 절대 경로로 설정
-              simulationData.value.future_scenario.visualization.image_url = `http://127.0.0.1:8000${imageResponse.data.image_url}`
-              console.log('설정된 이미지 URL:', simulationData.value.future_scenario.visualization.image_url)
-            }
-          } catch (imageError) {
-            console.error('이미지 생성 실패:', imageError)
+        if (imageResponse.data && imageResponse.data.status === 'success' && imageResponse.data.image_url) {
+          simulationData.value.future_scenario.visualization.image_url = `http://127.0.0.1:8000${imageResponse.data.image_url}`; 
+        } else {
+          console.error('이미지 생성 실패:', imageResponse.data.message || '응답 없음');
+          if (simulationData.value.future_scenario?.visualization) {
+            simulationData.value.future_scenario.visualization.image_url = null;
           }
         }
-
-        // 차트 생성은 이미지 생성 후에 실행
-        setTimeout(() => {
-          const currentAmount = parseCurrencyString(profile.amount_available) // profile의 amount_available도 숫자여야 함
-          const rate = simulationData.value.returnRate / 100; // 이미 숫자이므로 바로 사용
-          const yearlyAmounts = [
-            currentAmount,
-            currentAmount * (1 + rate),
-            currentAmount * Math.pow(1 + rate, 2),
-            currentAmount * Math.pow(1 + rate, 3)
-          ]
-          createSimulationChart(yearlyAmounts)
-        }, 1000) // 1초 후에 차트 생성
-      } catch (parseError) {
-        console.error('GPT 응답 파싱 실패:', parseError)
-        console.log('원본 GPT 응답:', gptResponse.data.response)
-        recommendations.value = [{
-          product_name: 'GPT 응답',
-          product_type: 'info',
-          score: 0,
-          max_rate: '0',
-          term: '0',
-          reason: gptResponse.data.response
-        }]
+      } catch (imageError) {
+        console.error('이미지 생성 API 호출 오류:', imageError);
+        if (simulationData.value.future_scenario?.visualization) {
+            simulationData.value.future_scenario.visualization.image_url = null;
+          }
       }
     }
+
   } catch (error) {
-    console.error('추천 상품 조회 실패:', error)
-    console.error('에러 상세:', error.response?.data || error.message)
-    recommendations.value = [{
-      product_name: '오류 발생',
-      product_type: 'error',
-      score: 0,
-      max_rate: '0',
-      term: '0',
-      reason: `추천 상품을 가져오는 중 오류가 발생했습니다: ${error.message}`
-    }]
+    console.error('추천 정보 조회 또는 처리 중 오류:', error)
+    let errorMessage = '추천 정보를 가져오는 데 실패했습니다.';
+    if (error.response) {
+      console.error("오류 응답 데이터:", error.response.data);
+      errorMessage = error.response.data.message || error.response.data.error || errorMessage;
+    } else {
+      console.error("오류 메시지:", error.message)
+    }
+    addMessage('ai', errorMessage)
   } finally {
     isLoading.value = false
+    currentStep.value = 0;
   }
 }
 
 // 숫자 포맷팅 함수 추가
 const formatCurrency = (value) => {
-  // 입력값이 숫자가 아니거나 NaN이면 0으로 처리하거나 다른 기본값 설정 가능
-  if (typeof value !== 'number' || isNaN(value)) {
-    return '0'; // 혹은 '정보 없음', '-', 등
+  const numValue = parseCurrencyString(String(value));
+  if (isNaN(numValue)) {
+    return '0';
   }
-  return new Intl.NumberFormat('ko-KR').format(value)
+  return numValue.toLocaleString('ko-KR');
 }
 
 // 상품 상세보기
@@ -530,13 +534,16 @@ const viewProductDetail = (recommendation) => {
   router.push(`/products/${productType}/${productId}`)
 }
 
-onMounted(() => {
-  checkProfile()
-})
+onMounted(async () => {
+  console.log("[AIRecommendationView] onMounted: 시작");
+  await checkProfile();
+  console.log("[AIRecommendationView] onMounted: 종료");
+});
 
 onUnmounted(() => {
   if (chart) {
     chart.destroy()
+    chart = null;
   }
 })
 </script>

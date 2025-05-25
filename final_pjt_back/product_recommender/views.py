@@ -39,7 +39,7 @@ def get_gpt_recommendations(request):
 
         client = OpenAI(api_key=settings.GPT_API_KEY)
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o",
             messages=[
                 {"role": "system", "content": "You are a financial advisor who provides investment recommendations."},
                 {"role": "user", "content": prompt}

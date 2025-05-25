@@ -11,6 +11,7 @@ urlpatterns = [
     path("api/v1/community/", include("community.urls")),
     path("api/v1/products/", include("products.urls")),
     path("api/v1/recommendations/", include("recommendations.urls")),
+    path("api/v1/product_recommender/", include("product_recommender.urls")),
     path("api/v1/assetinfo/", include("assetinfo.urls")),
     path("api/v1/kakaomap/", include("kakaomap.urls")),
 ]

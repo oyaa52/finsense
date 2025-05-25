@@ -5,8 +5,6 @@ from rest_framework import status
 from .utils import search_youtube_financial_videos, get_youtube_videos, get_popular_financial_videos # get_youtube_videos 임포트 확인
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated # 필요에 따라 사용
-# from django.conf import settings # settings는 utils에서 사용
-# import requests # requests는 현재 이 파일에서 사용 안 함
 
 # Create your views here.
 
