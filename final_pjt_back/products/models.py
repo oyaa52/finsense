@@ -146,13 +146,21 @@ class DepositSubscription(models.Model):
     product = models.ForeignKey(
         DepositProduct,
         on_delete=models.CASCADE,
-        related_name="subscribers",
+        related_name="subscriptions",
         to_field="fin_prdt_cd",
     )
+    option = models.ForeignKey(
+        DepositOption,
+        on_delete=models.CASCADE,
+        related_name="subscriptions",
+        null=True,  # 기존 데이터를 위해 null 허용
+    )
     subscribed_at = models.DateTimeField(auto_now_add=True)
+    amount = models.DecimalField(max_digits=15, decimal_places=0, default=0)  # 가입 금액
 
     class Meta:
-        unique_together = (("user", "product"),)
+        unique_together = (("user", "product", "option"),)
+        ordering = ["-subscribed_at"]
         verbose_name = "예금 상품 구독"
         verbose_name_plural = "예금 상품 구독 목록"
 
@@ -170,13 +178,21 @@ class SavingSubscription(models.Model):
     product = models.ForeignKey(
         SavingProduct,
         on_delete=models.CASCADE,
-        related_name="subscribers",
+        related_name="subscriptions",
         to_field="fin_prdt_cd",
     )
+    option = models.ForeignKey(
+        SavingOption,
+        on_delete=models.CASCADE,
+        related_name="subscriptions",
+        null=True,  # 기존 데이터를 위해 null 허용
+    )
     subscribed_at = models.DateTimeField(auto_now_add=True)
+    amount = models.DecimalField(max_digits=15, decimal_places=0, default=0)  # 가입 금액
 
     class Meta:
-        unique_together = (("user", "product"),)
+        unique_together = (("user", "product", "option"),)
+        ordering = ["-subscribed_at"]
         verbose_name = "적금 상품 구독"
         verbose_name_plural = "적금 상품 구독 목록"
 

@@ -1,5 +1,12 @@
 from rest_framework import serializers
-from .models import DepositProduct, DepositOption, SavingProduct, SavingOption
+from .models import (
+    DepositProduct,
+    DepositOption,
+    SavingProduct,
+    SavingOption,
+    DepositSubscription,
+    SavingSubscription,
+)
 
 
 class DepositOptionSerializer(serializers.ModelSerializer):
@@ -32,3 +39,27 @@ class SavingProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = SavingProduct
         fields = "__all__"
+
+
+class DepositSubscriptionSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='product.fin_prdt_nm', read_only=True)
+    bank_name = serializers.CharField(source='product.kor_co_nm', read_only=True)
+    interest_rate = serializers.DecimalField(source='option.intr_rate', max_digits=5, decimal_places=2, read_only=True)
+    period = serializers.CharField(source='option.save_trm', read_only=True)
+
+    class Meta:
+        model = DepositSubscription
+        fields = ['id', 'product_name', 'bank_name', 'interest_rate', 'period', 'amount', 'subscribed_at']
+        read_only_fields = ['subscribed_at']
+
+
+class SavingSubscriptionSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='product.fin_prdt_nm', read_only=True)
+    bank_name = serializers.CharField(source='product.kor_co_nm', read_only=True)
+    interest_rate = serializers.DecimalField(source='option.intr_rate', max_digits=5, decimal_places=2, read_only=True)
+    period = serializers.CharField(source='option.save_trm', read_only=True)
+
+    class Meta:
+        model = SavingSubscription
+        fields = ['id', 'product_name', 'bank_name', 'interest_rate', 'period', 'amount', 'subscribed_at']
+        read_only_fields = ['subscribed_at']

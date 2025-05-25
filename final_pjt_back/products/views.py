@@ -16,6 +16,8 @@ from .serializers import (
     DepositOptionSerializer,
     SavingProductSerializer,
     SavingOptionSerializer,
+    DepositSubscriptionSerializer,
+    SavingSubscriptionSerializer,
 )
 import requests
 from rest_framework import generics
@@ -277,45 +279,72 @@ def save_saving_data(base_list, option_list):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def deposit_product_subscribe(request, fin_prdt_cd):
-    product = get_object_or_404(DepositProduct, fin_prdt_cd=fin_prdt_cd)
-    user = request.user
+    try:
+        product = get_object_or_404(DepositProduct, fin_prdt_cd=fin_prdt_cd)
+        user = request.user
+        amount = request.data.get('amount', 0)
 
-    subscription, created = DepositSubscription.objects.get_or_create(
-        user=user, deposit_product=product
-    )
+        # 상품의 첫 번째 옵션을 가져옴
+        first_option = product.options.first()
+        if not first_option:
+            return Response(
+                {"error": "상품 옵션을 찾을 수 없습니다."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-    if created:
-        return Response(
-            {"message": f"'{product.fin_prdt_nm}' 상품에 가입되었습니다."},
-            status=status.HTTP_201_CREATED,
+        subscription, created = DepositSubscription.objects.get_or_create(
+            user=user,
+            product=product,
+            option=first_option,
+            defaults={'amount': amount}
         )
-    else:
+
+        if created:
+            return Response(
+                {"message": f"'{product.fin_prdt_nm}' 상품에 가입되었습니다."},
+                status=status.HTTP_201_CREATED,
+            )
+        else:
+            return Response(
+                {"message": f"이미 '{product.fin_prdt_nm}' 상품에 가입되어 있습니다."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+    except Exception as e:
+        print(f"Subscription error: {str(e)}")  # 서버 로그에 에러 출력
         return Response(
-            {"message": f"이미 '{product.fin_prdt_nm}' 상품에 가입되어 있습니다."},
-            status=status.HTTP_200_OK,
+            {"error": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
 # 사용자가 특정 적금 상품에 가입
-
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def saving_product_subscribe(request, fin_prdt_cd):
-    product = get_object_or_404(SavingProduct, fin_prdt_cd=fin_prdt_cd)
-    user = request.user
+    try:
+        product = get_object_or_404(SavingProduct, fin_prdt_cd=fin_prdt_cd)
+        user = request.user
+        amount = request.data.get('amount', 0)
 
-    subscription, created = SavingSubscription.objects.get_or_create(
-        user=user, saving_product=product
-    )
-
-    if created:
-        return Response(
-            {"message": f"'{product.fin_prdt_nm}' 상품에 가입되었습니다."},
-            status=status.HTTP_201_CREATED,
+        subscription, created = SavingSubscription.objects.get_or_create(
+            user=user,
+            product=product,
+            defaults={'amount': amount}
         )
-    else:
+
+        if created:
+            return Response(
+                {"message": f"'{product.fin_prdt_nm}' 상품에 가입되었습니다."},
+                status=status.HTTP_201_CREATED,
+            )
+        else:
+            return Response(
+                {"message": f"이미 '{product.fin_prdt_nm}' 상품에 가입되어 있습니다."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+    except Exception as e:
         return Response(
-            {"message": f"이미 '{product.fin_prdt_nm}' 상품에 가입되어 있습니다."},
-            status=status.HTTP_200_OK,
+            {"error": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
 
@@ -435,5 +464,131 @@ class SavingProductDetailAPIView(generics.RetrieveAPIView):
     serializer_class = SavingProductSerializer
     lookup_field = "fin_prdt_cd"  # URL에서 상품 코드로 조회
     permission_classes = [AllowAny]  # 모든 유저에게 조회 기능 제공
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def subscribe_deposit(request, product_id, option_id):
+    try:
+        product = DepositProduct.objects.get(fin_prdt_cd=product_id)
+        option = DepositOption.objects.get(id=option_id, product=product)
+        amount = request.data.get('amount', 0)
+
+        subscription, created = DepositSubscription.objects.get_or_create(
+            user=request.user,
+            product=product,
+            option=option,
+            defaults={'amount': amount}
+        )
+
+        if not created:
+            return Response(
+                {'message': '이미 가입한 상품입니다.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = DepositSubscriptionSerializer(subscription)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    except DepositProduct.DoesNotExist:
+        return Response(
+            {'error': '상품을 찾을 수 없습니다.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except DepositOption.DoesNotExist:
+        return Response(
+            {'error': '상품 옵션을 찾을 수 없습니다.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def subscribe_saving(request, product_id, option_id):
+    try:
+        product = SavingProduct.objects.get(fin_prdt_cd=product_id)
+        option = SavingOption.objects.get(id=option_id, product=product)
+        amount = request.data.get('amount', 0)
+
+        subscription, created = SavingSubscription.objects.get_or_create(
+            user=request.user,
+            product=product,
+            option=option,
+            defaults={'amount': amount}
+        )
+
+        if not created:
+            return Response(
+                {'message': '이미 가입한 상품입니다.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = SavingSubscriptionSerializer(subscription)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    except SavingProduct.DoesNotExist:
+        return Response(
+            {'error': '상품을 찾을 수 없습니다.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except SavingOption.DoesNotExist:
+        return Response(
+            {'error': '상품 옵션을 찾을 수 없습니다.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def user_subscriptions(request):
+    deposit_subscriptions = DepositSubscription.objects.filter(user=request.user)
+    saving_subscriptions = SavingSubscription.objects.filter(user=request.user)
+
+    deposit_serializer = DepositSubscriptionSerializer(deposit_subscriptions, many=True)
+    saving_serializer = SavingSubscriptionSerializer(saving_subscriptions, many=True)
+
+    return Response({
+        'deposit_subscriptions': deposit_serializer.data,
+        'saving_subscriptions': saving_serializer.data
+    })
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_subscriptions(request):
+    try:
+        user = request.user
+        
+        # 예금 상품 구독 조회
+        deposit_subscriptions = DepositSubscription.objects.filter(user=user).select_related(
+            'product', 'option'
+        ).values(
+            'id',
+            'subscribed_at',
+            product_name=F('product__fin_prdt_nm'),
+            bank_name=F('product__kor_co_nm'),
+            interest_rate=F('option__intr_rate'),
+            period=F('option__save_trm')
+        )
+        
+        # 적금 상품 구독 조회
+        saving_subscriptions = SavingSubscription.objects.filter(user=user).select_related(
+            'product', 'option'
+        ).values(
+            'id',
+            'subscribed_at',
+            product_name=F('product__fin_prdt_nm'),
+            bank_name=F('product__kor_co_nm'),
+            interest_rate=F('option__intr_rate'),
+            period=F('option__save_trm')
+        )
+        
+        return Response({
+            'deposit_subscriptions': list(deposit_subscriptions),
+            'saving_subscriptions': list(saving_subscriptions)
+        })
+    except Exception as e:
+        print(f"Error in get_user_subscriptions: {str(e)}")
+        return Response(
+            {'error': '구독 정보를 가져오는 중 오류가 발생했습니다.'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
