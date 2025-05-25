@@ -122,7 +122,8 @@ def search_youtube_financial_videos(query, max_results=5):
                     'video_id': search_result['id']['videoId'],
                     'title': search_result['snippet']['title'],
                     'description': search_result['snippet']['description'],
-                    'thumbnail': search_result['snippet']['thumbnails']['default']['url'],
+                    'thumbnail_url': search_result['snippet']['thumbnails']['default']['url'],
+                    'channel_id': search_result['snippet']['channelId'],
                     'channel_title': search_result['snippet']['channelTitle'],
                     'publish_time': search_result['snippet']['publishTime']
                 }
@@ -142,26 +143,31 @@ def search_youtube_financial_videos(query, max_results=5):
         print(f"YouTube 영상 검색 중 예기치 않은 오류 발생: {e}")
         return "YouTube 영상 검색 중 오류가 발생했습니다. 관리자에게 문의해주세요."
 
-def get_youtube_videos(query, max_results=12):
+def get_youtube_videos(query, max_results=6, page_token=None):
     """
-    YouTube API를 사용하여 영상을 검색
+    YouTube API를 사용하여 영상을 검색 (페이지네이션 지원)
 
     :param query: str, 검색할 키워드
-    :param max_results: int, 가져올 최대 결과 수 (기본값: 12)
-    :return: list of dict, 검색된 영상 정보 리스트
+    :param max_results: int, 가져올 최대 결과 수 (기본값: 6)
+    :param page_token: str, 특정 페이지를 요청하기 위한 토큰
+    :return: dict, 검색된 영상 정보 및 페이지네이션 정보 포함
     """
     try:
         youtube = build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, 
                         developerKey=settings.YOUTUBE_API_KEY)
 
-        search_response = youtube.search().list(
-            q=query,
-            part='snippet',
-            maxResults=max_results,
-            type='video',
-            relevanceLanguage='ko',
-            regionCode='KR'
-        ).execute()
+        search_params = {
+            'q': query,
+            'part': 'snippet',
+            'maxResults': max_results,
+            'type': 'video',
+            'relevanceLanguage': 'ko',
+            'regionCode': 'KR'
+        }
+        if page_token:
+            search_params['pageToken'] = page_token
+
+        search_response = youtube.search().list(**search_params).execute()
 
         videos = []
         for search_result in search_response.get('items', []):
@@ -170,21 +176,35 @@ def get_youtube_videos(query, max_results=12):
                     'video_id': search_result['id']['videoId'],
                     'title': search_result['snippet']['title'],
                     'description': search_result['snippet']['description'],
-                    'thumbnail': search_result['snippet']['thumbnails']['default']['url'],
+                    'thumbnail_url': search_result['snippet']['thumbnails']['medium']['url'],
+                    'channel_id': search_result['snippet']['channelId'],
                     'channel_title': search_result['snippet']['channelTitle'],
                     'publish_time': search_result['snippet']['publishTime']
                 }
                 videos.append(video_data)
         
-        return videos
+        actual_total_results = search_response.get('pageInfo', {}).get('totalResults', 0)
+
+        return {
+            'videos': videos,
+            'nextPageToken': search_response.get('nextPageToken'),
+            'prevPageToken': search_response.get('prevPageToken'), 
+            'totalResults': min(actual_total_results, 100), # 실제 totalResults와 100 중 작은 값을 사용
+            'resultsPerPage': search_response.get('pageInfo', {}).get('resultsPerPage'),
+            'error': None # 성공 시 에러 없음 명시
+        }
 
     except HttpError as e:
-        print(f"YouTube API HTTP 오류 발생: {e.resp.status}, {e._get_reason()}")
+        error_details = e.resp.status, e._get_reason()
+        print(f"YouTube API HTTP 오류 발생 (get_youtube_videos): {error_details}")
+        error_message = "YouTube API에서 오류가 발생했습니다."
         if e.resp.status == 403:
-            raise Exception("YouTube API 요청 할당량을 초과했거나 API 키에 문제가 있습니다.")
-        raise Exception("YouTube API에서 오류가 발생했습니다.")
+            error_message = "YouTube API 요청 할당량을 초과했거나 API 키에 문제가 있습니다."
+        # 일관된 반환 형식 유지
+        return {'error': error_message, 'videos': [], 'nextPageToken': None, 'prevPageToken': None, 'totalResults': 0, 'resultsPerPage': 0}
     except Exception as e:
-        print(f"YouTube 영상 검색 중 예기치 않은 오류 발생: {e}")
-        raise Exception("YouTube 영상 검색 중 오류가 발생했습니다.")
+        print(f"YouTube 영상 검색 중 예기치 않은 오류 발생 (get_youtube_videos): {e}")
+        # 일관된 반환 형식 유지
+        return {'error': "YouTube 영상 검색 중 오류가 발생했습니다. 관리자에게 문의해주세요.", 'videos': [], 'nextPageToken': None, 'prevPageToken': None, 'totalResults': 0, 'resultsPerPage': 0}
 
 

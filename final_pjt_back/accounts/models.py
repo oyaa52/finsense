@@ -28,3 +28,34 @@ class Profile(models.Model):
 
     def __str__(self):
         return f"{self.user.username}'s profile"
+
+
+class FavoriteChannel(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='favorite_channels')
+    channel_id = models.CharField(max_length=255)
+    channel_title = models.CharField(max_length=255)
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'channel_id') # 사용자와 채널 ID 조합은 유일해야 함
+        ordering = ['-added_at'] # 최근 추가된 순으로 정렬
+
+    def __str__(self):
+        return f"{self.user.username} - {self.channel_title}"
+
+
+class FavoriteVideo(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='favorite_videos')
+    video_id = models.CharField(max_length=255)
+    video_title = models.CharField(max_length=255)
+    thumbnail_url = models.URLField(max_length=500, blank=True, null=True)
+    channel_title = models.CharField(max_length=255, blank=True)
+    publish_time = models.DateTimeField(null=True, blank=True)
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'video_id') # 사용자와 비디오 ID 조합은 유일해야 함
+        ordering = ['-added_at'] # 최근 추가된 순으로 정렬
+
+    def __str__(self):
+        return f"{self.user.username} - {self.video_title}"
