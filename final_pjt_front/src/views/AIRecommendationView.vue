@@ -219,7 +219,7 @@ const profileData = ref({
   amount_available: null
 })
 const simulationData = ref({
-  expectedReturn: '0',
+  expectedReturn: 0,
   returnRate: '0'
 })
 
@@ -347,18 +347,29 @@ const handleImageError = (e) => {
   console.log('시도한 이미지 URL:', e.target.src)
 }
 
+// 금액 문자열을 숫자로 변환하는 헬퍼 함수
+const parseCurrencyString = (currencyString) => {
+  if (typeof currencyString !== 'string') {
+    // 이미 숫자이거나 다른 타입이면 그대로 반환 (또는 오류 처리)
+    return parseFloat(currencyString) || 0;
+  }
+  // '원' 문자 제거, 쉼표 제거 후 숫자로 변환
+  const numericString = currencyString.replace(/원/g, '').replace(/,/g, '');
+  return parseFloat(numericString) || 0; // 변환 실패 시 0 반환
+};
+
 // 추천 상품 조회
 const fetchRecommendations = async () => {
   try {
     startLoading()
     const token = localStorage.getItem('accessToken')
-    const response = await axios.get('http://127.0.0.1:8000/api/v1/accounts/profile/', {
+    const profileResponse = await axios.get('http://127.0.0.1:8000/api/v1/accounts/profile/', {
       headers: {
         Authorization: `Token ${token}`
       }
     })
     
-    const profile = response.data
+    const profile = profileResponse.data
     const prompt = `
     다음 사용자 프로필을 바탕으로 다양한 투자 방법을 추천해주세요.
     
@@ -374,18 +385,18 @@ const fetchRecommendations = async () => {
         {
           "product_name": "상품명",
           "product_type": "deposit(예금), saving(적금), stock(주식), fund(펀드), bond(채권), real_estate(부동산) 중 하나",
-          "score": 0-100 사이의 점수,
-          "max_rate": "예상 수익률",
-          "term": "투자 기간",
+          "score": "0-100 사이의 점수",
+          "max_rate": "예상 수익률(%)",
+          "term": "투자 기간(개월)",
           "reason": "추천 이유",
           "risk_level": "low, medium, high 중 하나",
-          "min_amount": "최소 투자 금액",
-          "expected_return": "예상 수익금"
+          "min_amount": "최소 투자 금액(원)",
+          "expected_return": "예상 수익금(원)"
         }
       ],
       "simulation": {
-        "expectedReturn": "전체 예상 수익금",
-        "returnRate": "전체 예상 수익률",
+        "expectedReturn": "전체 예상 수익금(원)",
+        "returnRate": "전체 예상 수익률(%)",
         "risk_analysis": "전체 포트폴리오의 위험도 분석",
         "diversification": "자산 분산 전략 설명",
         "future_scenario": {
@@ -419,14 +430,24 @@ const fetchRecommendations = async () => {
         const result = JSON.parse(gptResponse.data.response)
         console.log('Parsed GPT result:', result)
         
-        recommendations.value = result.products
+        // products 내부의 금액 관련 필드를 숫자로 변환
+        recommendations.value = result.products.map(p => ({
+          ...p,
+          score: parseInt(p.score) || 0,
+          max_rate: parseFloat(p.max_rate.replace('%','')) || 0, // % 제거하고 숫자로
+          term: p.term, // term은 문자열 유지 (예: "12개월")
+          min_amount: parseCurrencyString(p.min_amount),
+          expected_return: parseCurrencyString(p.expected_return)
+        }));
         
-        // 시뮬레이션 데이터 설정
+        // 시뮬레이션 데이터 설정 및 숫자 변환
         simulationData.value = {
-          expectedReturn: result.simulation.expectedReturn,
-          returnRate: result.simulation.returnRate,
+          expectedReturn: parseCurrencyString(result.simulation.expectedReturn),
+          returnRate: parseFloat(result.simulation.returnRate.replace('%','')) || 0, // % 제거하고 숫자로
+          risk_analysis: result.simulation.risk_analysis,
+          diversification: result.simulation.diversification,
           future_scenario: result.simulation.future_scenario,
-          visualization: result.simulation.visualization
+          visualization: result.simulation.visualization // 이 부분은 GPT 응답에 따라 없을 수 있음
         }
 
         // DALL-E로 이미지 생성
@@ -443,8 +464,8 @@ const fetchRecommendations = async () => {
 
             if (imageResponse.data.status === 'success') {
               console.log('이미지 생성 성공:', imageResponse.data)
-              // 이미지 URL을 visualization 객체에 추가
-              simulationData.value.future_scenario.visualization.image_url = imageResponse.data.image_url
+              // 이미지 URL을 Django 서버 절대 경로로 설정
+              simulationData.value.future_scenario.visualization.image_url = `http://127.0.0.1:8000${imageResponse.data.image_url}`
               console.log('설정된 이미지 URL:', simulationData.value.future_scenario.visualization.image_url)
             }
           } catch (imageError) {
@@ -454,13 +475,13 @@ const fetchRecommendations = async () => {
 
         // 차트 생성은 이미지 생성 후에 실행
         setTimeout(() => {
-          const currentAmount = parseInt(profile.amount_available)
-          const returnRate = parseFloat(result.simulation.returnRate) / 100
+          const currentAmount = parseCurrencyString(profile.amount_available) // profile의 amount_available도 숫자여야 함
+          const rate = simulationData.value.returnRate / 100; // 이미 숫자이므로 바로 사용
           const yearlyAmounts = [
             currentAmount,
-            currentAmount * (1 + returnRate),
-            currentAmount * Math.pow(1 + returnRate, 2),
-            currentAmount * Math.pow(1 + returnRate, 3)
+            currentAmount * (1 + rate),
+            currentAmount * Math.pow(1 + rate, 2),
+            currentAmount * Math.pow(1 + rate, 3)
           ]
           createSimulationChart(yearlyAmounts)
         }, 1000) // 1초 후에 차트 생성
@@ -495,6 +516,10 @@ const fetchRecommendations = async () => {
 
 // 숫자 포맷팅 함수 추가
 const formatCurrency = (value) => {
+  // 입력값이 숫자가 아니거나 NaN이면 0으로 처리하거나 다른 기본값 설정 가능
+  if (typeof value !== 'number' || isNaN(value)) {
+    return '0'; // 혹은 '정보 없음', '-', 등
+  }
   return new Intl.NumberFormat('ko-KR').format(value)
 }
 
