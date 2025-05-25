@@ -14,7 +14,7 @@
       </div>
       <div v-else class="user-info-box">
         <template v-if="currentUser">
-          <img :src="currentUser.profile_image || '@/assets/default_profile.png'" alt="User Profile" class="profile-image"/>
+          <img :src="profileImageUrl" alt="User Profile" class="profile-image"/>
           <p class="welcome-message">{{ currentUser.username || '사용자' }}님, 환영합니다!</p>
         </template>
         <div class="user-actions">
@@ -63,6 +63,7 @@ import AOS from 'aos'
 import 'aos/dist/aos.css'
 import { useAuthStore } from '@/stores/authStore' // authStore 임포트
 import axios from 'axios' // axios 임포트
+import defaultProfileImageSrc from '@/assets/default_profile.png'; // 기본 이미지 경로 import
 
 // Swiper Vue.js 로부터 컴포넌트 가져오기
 import { Swiper, SwiperSlide } from 'swiper/vue'
@@ -92,11 +93,16 @@ const route = useRoute() // 현재 라우트 정보를 가져오기 위해 추�
 
 // authStore의 상태를 computed 속성으로 사용
 const isLoggedIn = computed(() => authStore.isAuthenticated)
-const currentUser = computed(() => {
-  const user = authStore.currentUser
-  console.log('[MainPageView] currentUser:', user)
-  return user
-}) // dj-rest-auth/user/의 응답을 기반으로 함
+const currentUser = computed(() => authStore.currentUser)
+const userProfile = computed(() => authStore.getUserProfile)
+
+const profileImageUrl = computed(() => {
+  if (userProfile.value && userProfile.value.profile_image) {
+    return userProfile.value.profile_image;
+  }
+  return defaultProfileImageSrc;
+})
+
 // YouTube 영상 관련 상태
 const youtubeVideos = ref([])
 const videosLoading = ref(false)
@@ -156,6 +162,10 @@ onMounted(() => {
   AOS.init()
   console.log('[MainPageView] onMounted: 시작, isMainPageDefaultView:', isMainPageDefaultView.value)
   console.log('[MainPageView] onMounted: currentUser:', currentUser.value)
+  // 로그인 상태이고, 스토어에 프로필 정보가 아직 없다면 가져오기
+  if (isLoggedIn.value && !userProfile.value) {
+    authStore.fetchProfile();
+  }
   if (isMainPageDefaultView.value) { // 기본 화면일 때만 영상 로드
     fetchYoutubeVideos()
   }
@@ -184,13 +194,12 @@ watch(() => route.path, (newPath, oldPath) => {
   }
 }, { immediate: false }) // immediate: false로 초기 마운트 시 중복 호출 방지
 
-// authStore의 상태 변화 감시
-watch(() => authStore.currentUser, (newUser, oldUser) => {
-  console.log('[MainPageView] authStore.currentUser changed:', {
-    old: oldUser,
-    new: newUser
-  })
-}, { immediate: true })
+// 로그인 상태 변경 감시: 로그인 되었는데 프로필 정보가 없다면 가져오기
+watch(isLoggedIn, (newIsLoggedIn) => {
+  if (newIsLoggedIn && !userProfile.value) {
+    authStore.fetchProfile();
+  }
+});
 
 </script>
 

@@ -1,11 +1,9 @@
 from django.urls import path
-from . import views  # assetinfo 앱 내의 views.py를 임포트합니다.
-from .views import AssetPriceListAPIView  # AssetPriceListAPIView 임포트
+from .views import asset_prices_for_chart, AssetPriceListAPIView
 
-app_name = "assetinfo"
+app_name = 'assetinfo'
 
 urlpatterns = [
-    # 현물 데이터 제공 API
-    path("chart-data/", views.asset_prices_for_chart, name="asset_prices_for_chart"),
-    path("prices/", AssetPriceListAPIView.as_view(), name="asset-price-list"),
-]
+    path('chart-prices/', asset_prices_for_chart, name='asset_chart_prices'),
+    path('list-prices/', AssetPriceListAPIView.as_view(), name='asset_list_prices'),
+] 

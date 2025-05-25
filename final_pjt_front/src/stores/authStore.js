@@ -22,22 +22,41 @@ export const useAuthStore = defineStore('auth', () => {
   const getProfileError = computed(() => profileError.value) // 프로필 에러 게터 추가
 
   // --- Actions --- (함수로 정의)
-  const initializeAuth = () => {
-    const tokenFromStorage = localStorage.getItem('accessToken')
-    const userInfoFromStorage = localStorage.getItem('userInfo')
+  // 스토어 초기화 시 로컬 스토리지에서 사용자 프로필 정보도 로드하는 헬퍼 함수
+  const _loadProfileFromStorage = () => {
+    const storedProfile = localStorage.getItem('userProfile');
+    if (storedProfile) {
+      userProfile.value = JSON.parse(storedProfile);
+    }
+  };
+
+  // 기존 initializeAuth 함수 수정
+  const originalInitializeAuth = () => {
+    const tokenFromStorage = localStorage.getItem('accessToken');
+    const userInfoFromStorage = localStorage.getItem('userInfo');
 
     if (tokenFromStorage) {
-      accessToken.value = tokenFromStorage
-      isLoggedIn.value = true
+      accessToken.value = tokenFromStorage;
+      isLoggedIn.value = true;
       if (userInfoFromStorage) {
-        user.value = JSON.parse(userInfoFromStorage)
+        user.value = JSON.parse(userInfoFromStorage);
       }
-      axios.defaults.headers.common['Authorization'] = `Token ${accessToken.value}`
+      axios.defaults.headers.common['Authorization'] = `Token ${accessToken.value}`;
     } else {
-      // 토큰이 없으면 로그아웃 상태로 확실히 처리
-      _resetAuthSate()
+      _resetAuthSate();
     }
-  }
+  };
+
+  const initializeAuth = () => { // 새 initializeAuth 함수
+    originalInitializeAuth(); // 기존 인증 로직 실행
+    if (isLoggedIn.value) { // 로그인 상태일 때만 프로필 로드
+      _loadProfileFromStorage();
+      // 앱 로드 시 userProfile이 null이고 user 정보는 있다면 fetchProfile 호출도 고려 가능
+      // if (!userProfile.value && user.value) {
+      //   fetchProfile(); 
+      // }
+    }
+  };
 
   const login = async (credentials) => {
     loginError.value = null
@@ -253,20 +272,37 @@ export const useAuthStore = defineStore('auth', () => {
 
   const updateProfile = async (profileDataToUpdate) => {
     if (!accessToken.value) {
-      profileError.value = '프로필을 업데이트하려면 로그인이 필요합니다.'
-      return false
+      profileError.value = '프로필을 수정하려면 로그인이 필요합니다.';
+      return false;
     }
-    profileError.value = null // 이전 에러 초기화
-    try {
-      // 절대 경로로 수정하여 일관성 확보
-      const response = await axios.put('http://127.0.0.1:8000/api/v1/accounts/profile/', profileDataToUpdate, {
-        headers: {
-          'Authorization': `Token ${accessToken.value}`
+    profileError.value = null;
+
+    const headers = {
+      'Authorization': `Token ${accessToken.value}`,
+      // FormData 사용 시 'Content-Type': 'multipart/form-data'는 axios가 자동으로 설정
+    };
+
+    let formData;
+    if (profileDataToUpdate instanceof FormData) {
+      formData = profileDataToUpdate;
+    } else {
+      formData = new FormData();
+      for (const key in profileDataToUpdate) {
+        if (profileDataToUpdate[key] !== null && profileDataToUpdate[key] !== undefined) {
+          formData.append(key, profileDataToUpdate[key]);
         }
-      })
-      userProfile.value = response.data
-      localStorage.setItem('userProfile', JSON.stringify(response.data)) // 선택적: 로컬 스토리지에 저장
-      return true
+      }
+    }
+
+    try {
+      const response = await axios.put(
+        'http://127.0.0.1:8000/api/v1/accounts/profile/',
+        formData, // FormData 사용
+        { headers: headers }
+      );
+      userProfile.value = response.data; // 업데이트된 프로필 정보로 상태 업데이트
+      localStorage.setItem('userProfile', JSON.stringify(response.data)); // 로컬 스토리지도 업데이트
+      return true;
     } catch (error) {
       if (error.response && error.response.data) {
         const errors = error.response.data;
@@ -275,7 +311,7 @@ export const useAuthStore = defineStore('auth', () => {
             profileError.value = errors.non_field_errors.join(' ');
           } else if (errors.detail && typeof errors.detail === 'string') {
             profileError.value = errors.detail;
-          } else { // 필드 에러 객체로 처리
+          } else {
             const fieldMessages = {};
             let hasFieldErrors = false;
             for (const key in errors) {
@@ -288,7 +324,7 @@ export const useAuthStore = defineStore('auth', () => {
               }
             }
             if (hasFieldErrors) {
-              profileError.value = fieldMessages; // 객체 형태로 저장
+              profileError.value = fieldMessages;
             } else {
               profileError.value = '프로필 업데이트 중 오류가 발생했습니다. 입력 정보를 확인해주세요.';
             }
@@ -298,12 +334,14 @@ export const useAuthStore = defineStore('auth', () => {
         } else {
           profileError.value = '프로필 업데이트 중 오류가 발생했습니다. 입력 정보를 확인해주세요.';
         }
+      } else if (error.request) {
+        profileError.value = '서버에 연결할 수 없습니다. 네트워크 상태를 확인해주세요.';
       } else {
-        profileError.value = '프로필 업데이트 중 오류가 발생했습니다.'
+        profileError.value = '프로필 업데이트 요청 중 알 수 없는 오류가 발생했습니다.';
       }
-      return false
+      return false;
     }
-  }
+  };
   
   // localStorage 변경 감지하여 다른 탭/창 간 상태 동기화 (선택적 고급 기능)
   // watch(accessToken, (newToken) => {
@@ -333,6 +371,7 @@ export const useAuthStore = defineStore('auth', () => {
     logoutAction,
     fetchUser,
     fetchProfile,
-    updateProfile
+    updateProfile,
+    _resetAuthSate,
   }
 }) 

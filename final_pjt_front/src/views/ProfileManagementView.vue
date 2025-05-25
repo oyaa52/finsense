@@ -3,12 +3,23 @@
     <h2 class="view-title">회원 정보 관리</h2>
     <div v-if="isLoading" class="loading-indicator">
       <p>프로필 정보를 불러오는 중입니다...</p>
-      <!-- 로딩 스피너 등을 추가할 수 있습니다 -->
     </div>
     <div v-else-if="initialLoadingError && !profileDataFromStore" class="error-message">
       <p>{{ initialLoadingError }}</p>
     </div>
     <form v-else @submit.prevent="handleProfileUpdate" class="profile-form">
+      <!-- 프로필 이미지 섹션 -->
+      <div class="form-section profile-image-section">
+        <h3 class="section-title">프로필 이미지</h3>
+        <div class="profile-image-controls">
+          <img :src="profileImageUrl" alt="Profile Image" class="profile-image-preview" @click="triggerFileInput">
+          <input type="file" ref="fileInput" @change="handleFileChange" accept="image/*" style="display: none;">
+          <button type="button" @click="triggerFileInput" class="change-image-button">이미지 변경</button>
+          <p v-if="selectedFileName" class="selected-file-name">선택된 파일: {{ selectedFileName }}</p>
+        </div>
+        <span v-if="fieldErrors && fieldErrors.profile_image" class="field-error-message">{{ fieldErrors.profile_image }}</span>
+      </div>
+
       <div class="form-section">
         <h3 class="section-title">기본 정보</h3>
         <div class="form-grid">
@@ -177,7 +188,8 @@ const profileData = reactive({
   amount_available: null,
   investment_purpose: '',
   investment_term: null,
-  investment_tendency: ''
+  investment_tendency: '',
+  profile_image_url: '', // 이미지 URL을 저장할 필드 (스토어에서 가져옴)
 })
 
 const isLoading = ref(true)
@@ -185,7 +197,22 @@ const isUpdating = ref(false)
 const updateSuccessMessage = ref('')
 const initialLoadingError = ref(null)
 
+const fileInput = ref(null) // 파일 input 엘리먼트에 대한 ref
+const profileImageFile = ref(null) // 선택된 파일 객체
+const selectedFileName = ref('') // 선택된 파일명 표시용
+const profileImagePreviewUrl = ref(defaultProfileImage) // 이미지 미리보기 URL
+
 const profileDataFromStore = computed(() => authStore.getUserProfile)
+
+const profileImageUrl = computed(() => {
+  if (profileImagePreviewUrl.value !== defaultProfileImage && profileImagePreviewUrl.value) { // 새 이미지 선택 시 미리보기
+    return profileImagePreviewUrl.value
+  }
+  if (profileDataFromStore.value && profileDataFromStore.value.profile_image) {
+    return profileDataFromStore.value.profile_image
+  }
+  return defaultProfileImage
+})
 
 // 스토어의 profileError 상태를 가져옴
 const profileError = computed(() => authStore.getProfileError)
@@ -219,12 +246,27 @@ const loadProfile = async () => {
   isLoading.value = true;
   initialLoadingError.value = null;
   updateSuccessMessage.value = ''; // 이전 성공 메시지 초기화
-
-  // 스토어의 에러 상태를 프로필 로드 전에 초기화하는 것을 고려할 수 있습니다.
-  // 예: authStore.clearProfileError(); 또는 authStore.profileError = null;
+  profileImagePreviewUrl.value = defaultProfileImage; // 미리보기 초기화
+  selectedFileName.value = ''; // 파일명 초기화
+  profileImageFile.value = null; // 파일 객체 초기화
 
   const success = await authStore.fetchProfile();
-  if (!success) {
+  if (success && profileDataFromStore.value) {
+    const { profile_image, ...dataToAssign } = profileDataFromStore.value;
+    Object.assign(profileData, dataToAssign);
+
+    for (const key of Object.keys(profileData)) {
+      if (profileDataFromStore.value[key] === null) {
+        const numericKeys = ['age', 'monthly_income', 'amount_available', 'investment_term'];
+        if (numericKeys.includes(key)) {
+          profileData[key] = null; 
+        } else if (key !== 'profile_image_url') { 
+          profileData[key] = ''; 
+        }
+      }
+    }
+
+  } else if (!success) {
     const errorValue = profileError.value;
     if (typeof errorValue === 'string') {
       initialLoadingError.value = errorValue;
@@ -243,30 +285,51 @@ const loadProfile = async () => {
 
 watch(profileDataFromStore, (newProfile) => {
   if (newProfile) {
-    Object.assign(profileData, newProfile);
-    // profileData의 각 키에 대해 null 값 처리
+    const { profile_image, ...dataToAssign } = newProfile;
+    Object.assign(profileData, dataToAssign);
+
     for (const key of Object.keys(profileData)) {
       if (profileData[key] === null) {
         const numericKeys = ['age', 'monthly_income', 'amount_available', 'investment_term'];
-        // 숫자 타입이 아닌 필드가 null일 경우 빈 문자열로 설정 (폼 바인딩 개선 목적)
-        if (!numericKeys.includes(key)) {
+        if (numericKeys.includes(key)) {
+          profileData[key] = null;
+        } else if (key !== 'profile_image_url') {
           profileData[key] = '';
         }
-        // 숫자 타입 필드가 null인 경우 그대로 null 유지
       }
     }
   } else {
-    // 스토어 프로필이 null이 되면 (예: 로그아웃 시) 로컬 폼 데이터 초기화
     Object.keys(profileData).forEach(key => {
       const numericKeys = ['age', 'monthly_income', 'amount_available', 'investment_term'];
       if (numericKeys.includes(key)) {
         profileData[key] = null;
-      } else {
+      } else if (key !== 'profile_image_url') {
         profileData[key] = '';
       }
     });
+    profileData.profile_image_url = '';
+    profileImagePreviewUrl.value = defaultProfileImage; 
   }
 }, { immediate: true, deep: true });
+
+const triggerFileInput = () => {
+  if (fileInput.value) {
+    fileInput.value.click();
+  }
+};
+
+const handleFileChange = (event) => {
+  const file = event.target.files[0];
+  if (file) {
+    profileImageFile.value = file;
+    selectedFileName.value = file.name;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      profileImagePreviewUrl.value = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  } 
+};
 
 const handleProfileUpdate = async () => {
   isUpdating.value = true;
@@ -333,10 +396,10 @@ onMounted(async () => {
     await loadProfile()
     await loadFollowData()
   } else {
-    initialLoadingError.value = '로그인이 필요합니다. 로그인 후 다시 시도해주세요.'
-    isLoading.value = false
+    initialLoadingError.value = '로그인이 필요합니다. 로그인 후 다시 시도해주세요.';
+    isLoading.value = false;
   }
-})
+});
 
 </script>
 
