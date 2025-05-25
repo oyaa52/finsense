@@ -10,4 +10,5 @@ urlpatterns = [
     path("api/v1/kakaomap/", include("kakaomap.urls")),
     path("api/v1/assetinfo/", include("assetinfo.urls")),
     path("api/v1/recommendations/", include("recommendations.urls")),
+    path("api/v1/community/", include("community.urls")),
 ]

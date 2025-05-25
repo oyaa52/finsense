@@ -87,6 +87,64 @@
         </div>
       </div>
 
+      <div class="form-section">
+        <h3 class="section-title">팔로우 정보</h3>
+        <div class="follow-stats">
+          <div class="follow-stat">
+            <span class="count">{{ followers.length }}</span>
+            <span class="label">팔로워</span>
+          </div>
+          <div class="follow-stat">
+            <span class="count">{{ following.length }}</span>
+            <span class="label">팔로잉</span>
+          </div>
+        </div>
+        <div class="follow-lists">
+          <div class="follow-list">
+            <h4>팔로워 목록</h4>
+            <div v-if="followers.length === 0" class="empty-list">
+              <p>팔로워가 없습니다.</p>
+            </div>
+            <div v-else class="user-list">
+              <div v-for="follow in followers" :key="follow.id" class="user-item">
+                <span class="username">{{ follow.follower.username }}</span>
+                <button 
+                  v-if="!follow.following.is_following" 
+                  @click="followUser(follow.follower.id)"
+                  class="follow-button"
+                >
+                  팔로우
+                </button>
+                <button 
+                  v-else 
+                  @click="unfollowUser(follow.follower.id)"
+                  class="unfollow-button"
+                >
+                  언팔로우
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="follow-list">
+            <h4>팔로잉 목록</h4>
+            <div v-if="following.length === 0" class="empty-list">
+              <p>팔로잉이 없습니다.</p>
+            </div>
+            <div v-else class="user-list">
+              <div v-for="follow in following" :key="follow.id" class="user-item">
+                <span class="username">{{ follow.following.username }}</span>
+                <button 
+                  @click="unfollowUser(follow.following.id)"
+                  class="unfollow-button"
+                >
+                  언팔로우
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div v-if="updateSuccessMessage" class="success-message">
         <p>{{ updateSuccessMessage }}</p>
       </div>
@@ -104,8 +162,11 @@
 <script setup>
 import { ref, onMounted, reactive, watch, computed } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
+import { useCommunityStore } from '@/stores/community'
+import defaultProfileImage from '@/assets/default_profile.png' // 기본 이미지 import
 
 const authStore = useAuthStore()
+const communityStore = useCommunityStore()
 
 const profileData = reactive({
   age: null,
@@ -150,6 +211,9 @@ const generalErrorMessage = computed(() => {
   }
   return null;
 })
+
+const followers = ref([])
+const following = ref([])
 
 const loadProfile = async () => {
   isLoading.value = true;
@@ -205,22 +269,69 @@ watch(profileDataFromStore, (newProfile) => {
 }, { immediate: true, deep: true });
 
 const handleProfileUpdate = async () => {
-  isUpdating.value = true
-  updateSuccessMessage.value = ''
-  // 업데이트 시도 전에 스토어의 에러 상태 초기화 (선택적, 스토어 액션에서 처리 권장)
-  // authStore.profileError = null 
+  isUpdating.value = true;
+  updateSuccessMessage.value = '';
+  authStore.profileError = null; 
 
-  const success = await authStore.updateProfile({ ...profileData })
+  const formData = new FormData();
+  const { profile_image_url, ...otherProfileData } = profileData;
+  for (const key in otherProfileData) {
+    if (otherProfileData[key] !== null && otherProfileData[key] !== '') { 
+      formData.append(key, otherProfileData[key]);
+    } 
+  }
+
+  if (profileImageFile.value) {
+    formData.append('profile_image', profileImageFile.value);
+  }
+
+  const success = await authStore.updateProfile(formData);
 
   if (success) {
-    updateSuccessMessage.value = '프로필 정보가 성공적으로 업데이트되었습니다.'
+    updateSuccessMessage.value = '프로필 정보가 성공적으로 업데이트되었습니다.';
+    profileImageFile.value = null; 
+    selectedFileName.value = '';
+    await authStore.fetchProfile(); 
   }
-  isUpdating.value = false
+  isUpdating.value = false;
+};
+
+const loadFollowData = async () => {
+  try {
+    if (profileDataFromStore.value) {
+      const userId = profileDataFromStore.value.id
+      await communityStore.fetchUserFollowers(userId)
+      await communityStore.fetchUserFollowing(userId)
+      followers.value = communityStore.followers
+      following.value = communityStore.following
+    }
+  } catch (error) {
+    console.error('팔로우 데이터 로딩 실패:', error)
+  }
 }
 
-onMounted(() => {
+const followUser = async (userId) => {
+  try {
+    await communityStore.followUser(userId)
+    await loadFollowData() // 데이터 새로고침
+  } catch (error) {
+    console.error('팔로우 실패:', error)
+  }
+}
+
+const unfollowUser = async (userId) => {
+  try {
+    await communityStore.unfollowUser(userId)
+    await loadFollowData() // 데이터 새로고침
+  } catch (error) {
+    console.error('언팔로우 실패:', error)
+  }
+}
+
+onMounted(async () => {
   if (authStore.isAuthenticated) {
-    loadProfile()
+    await loadProfile()
+    await loadFollowData()
   } else {
     initialLoadingError.value = '로그인이 필요합니다. 로그인 후 다시 시도해주세요.'
     isLoading.value = false
@@ -541,5 +652,152 @@ onMounted(() => {
   .form-actions button {
     width: 100%;
   }
+}
+
+/* 프로필 이미지 섹션 관련 스타일 */
+.profile-image-section {
+  /* 기존 form-section 스타일 유지 */
+}
+
+.profile-image-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px; /* 요소 간 간격 */
+  margin-bottom: 15px; /* 아래쪽 필드 에러 메시지와의 간격 */
+}
+
+.profile-image-preview {
+  width: 120px; /* 크기 조정 */
+  height: 120px; /* 크기 조정 */
+  border-radius: 50%; /* 원형으로 */
+  object-fit: cover; /* 이미지 비율 유지하며 채우기 */
+  cursor: pointer;
+  border: 2px solid #e0e0e0; /* 기본 테두리 */
+  transition: border-color 0.3s ease;
+}
+
+.profile-image-preview:hover {
+  border-color: #4a90e2; /* 호버 시 테두리 색상 변경 */
+}
+
+.change-image-button {
+  display: inline-block;
+  padding: 10px 20px;
+  background-color: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  /* margin-top: 0; 제거 또는 필요시 조정 */
+}
+
+.change-image-button:hover {
+  background-color: #4a90e2;
+  transform: translateY(-1px);
+}
+
+.selected-file-name {
+  font-size: 0.85rem;
+  color: #666666;
+  margin-top: 5px;
+}
+
+.follow-stats {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 1rem;
+}
+
+.follow-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.follow-stat .count {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #333;
+}
+
+.follow-stat .label {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.follow-lists {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-top: 1rem;
+}
+
+.follow-list {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.follow-list h4 {
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.user-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.user-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background: white;
+  border-radius: 4px;
+}
+
+.username {
+  font-weight: 500;
+}
+
+.follow-button,
+.unfollow-button {
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.follow-button {
+  background: #007bff;
+  color: white;
+  border: none;
+}
+
+.follow-button:hover {
+  background: #0056b3;
+}
+
+.unfollow-button {
+  background: #dc3545;
+  color: white;
+  border: none;
+}
+
+.unfollow-button:hover {
+  background: #c82333;
+}
+
+.empty-list {
+  text-align: center;
+  color: #666;
+  padding: 1rem;
 }
 </style> 
