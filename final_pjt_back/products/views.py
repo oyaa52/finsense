@@ -33,6 +33,7 @@ FIN_API_KEY = settings.FIN_API_KEY
 
 
 @api_view(["GET"])
+@permission_classes([AllowAny])  # 인증 제외
 def save_deposit_products(request):
     """
     금융위원회 API에서 예금 상품 정보를 가져와서 데이터베이스에 저장하는 함수
@@ -170,6 +171,7 @@ def save_deposit_data(base_lst, option_lst):
 
 
 @api_view(["GET"])
+@permission_classes([AllowAny])  # 인증 제외
 def save_saving_products(request):
     """
     금융위원회 API에서 적금 상품 정보를 가져와서 데이터베이스에 저장하는 함수
@@ -360,7 +362,7 @@ class StandardResultsSetPagination(PageNumberPagination):
 # 예금 상품 목록 및 상세 조회
 class DepositProductListAPIView(generics.ListAPIView):
     serializer_class = DepositProductSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [AllowAny]  # 인증 제외
     pagination_class = StandardResultsSetPagination
     filter_backends = [OrderingFilter]
     ordering_fields = ['fin_prdt_nm', 'options__intr_rate']
@@ -424,7 +426,7 @@ class DepositProductDetailAPIView(generics.RetrieveAPIView):
 class SavingProductListAPIView(generics.ListAPIView):
     queryset = SavingProduct.objects.all()
     serializer_class = SavingProductSerializer
-    permission_classes = [AllowAny]  # 모든 유저에게 조회 기능 제공
+    permission_classes = [AllowAny]  # 인증 제외
     pagination_class = StandardResultsSetPagination
 
 

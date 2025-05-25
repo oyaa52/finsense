@@ -8,6 +8,7 @@ import ProfileManagementView from '@/views/ProfileManagementView.vue'
 import DepositComparisonView from '@/views/DepositComparisonView.vue'
 import EconomicNewsView from '@/views/EconomicNewsView.vue'
 import MainPageDefaultView from '@/views/MainPageDefaultView.vue'
+import CommunityView from '@/views/CommunityView.vue'
 import CommodityComparisonView from '@/views/CommodityComparisonView.vue'
 import { useAuthStore } from '@/stores/authStore'
 
@@ -76,7 +77,16 @@ const router = createRouter({
           path: 'community',
           name: 'community',
           components: {
-            mainServiceView: PlaceholderComponent('커뮤니티')
+            mainServiceView: CommunityView
+          },
+          beforeEnter: (to, from, next) => {
+            const authStore = useAuthStore()
+            if (authStore.isAuthenticated) {
+              next()
+            } else {
+              alert('로그인이 필요한 서비스입니다.')
+              next({ name: 'login' })
+            }
           }
         },
         {
