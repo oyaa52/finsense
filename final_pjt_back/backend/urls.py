@@ -8,10 +8,9 @@ urlpatterns = [
     path("dj-rest-auth/", include("dj_rest_auth.urls")),
     path("dj-rest-auth/registration/", include("dj_rest_auth.registration.urls")),
     path("api/v1/accounts/", include("accounts.urls")),
-    # path("api/v1/community/", include("community.urls")), # community 앱에 urls.py 부재로 임시 주석 처리
-    path("api/v1/products/", include("products.urls")),
-    path("api/v1/recommendations/", include("recommendations.urls")),
     path("api/v1/community/", include("community.urls")),
+    path("api/v1/products/", include("products.urls")),
+    path("api/v1/recommendations/", include("product_recommender.urls")),
     path("api/v1/assetinfo/", include("assetinfo.urls")),
     path("api/v1/kakaomap/", include("kakaomap.urls")),
 ]

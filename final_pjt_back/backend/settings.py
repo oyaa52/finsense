@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 import environ
+import openai
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -12,6 +13,10 @@ FIN_API_KEY = env('FIN_API_KEY')
 KAKAO_API_KEY = env('KAKAO_API_KEY')
 KAKAO_REST_API_KEY = env('KAKAO_REST_API_KEY')
 YOUTUBE_API_KEY = env('YOUTUBE_API_KEY')
+GPT_API_KEY = env('GPT_API_KEY')
+
+# OpenAI API 설정
+openai.api_key = GPT_API_KEY
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 
@@ -38,6 +43,7 @@ INSTALLED_APPS = [
     'recommendations',
     'assetinfo',
     'kakaomap',
+    'product_recommender',
     
     # 서드파티 앱
     'rest_framework',
@@ -151,7 +157,7 @@ STATIC_URL = 'static/'
 
 # 추가된 미디어 설정
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Django REST Framework 설정
 REST_FRAMEWORK = {
