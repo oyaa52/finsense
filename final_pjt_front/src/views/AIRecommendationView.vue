@@ -96,11 +96,12 @@
                      @error="handleImageError">
                 <!-- 이미지 URL이 없고, 이미지 생성 단계(currentStep 4)이며, 로딩 중일 때 -->
                 <div v-else-if="isLoading && currentStep === 4 && !simulationData.future_scenario.visualization.image_url" class="loading-image">
-                  <i class="fas fa-palette fa-spin"></i> 미래를 그려보는 중...
+                  <i class="fas fa-palette fa-spin"></i> 
+                  {{ simulationData.future_scenario.visualization.object ? simulationData.future_scenario.visualization.object + ' 관련' : '' }} 미래를 그려보는 중...
                 </div>
                  <!-- 이미지 URL이 없고, (이미지 생성 전이거나 실패했을 경우) -->
                 <div v-else-if="!simulationData.future_scenario.visualization.image_url" class="loading-image">
-                  시각화 준비 중입니다.
+                  {{ simulationData.future_scenario.visualization.object ? simulationData.future_scenario.visualization.object + ' 관련' : '' }} 시각화 준비 중입니다.
                 </div>
               </div>
             </div>
@@ -383,42 +384,81 @@ const fetchRecommendations = async () => {
     }
 
     const prompt = `
-    다음 사용자 프로필을 바탕으로 다양한 투자 방법을 추천해주세요.
-    
+    당신은 사용자의 금융 목표 달성을 돕는 따뜻한 금융 스토리텔러이자 전문 어드바이저입니다. 
+    사용자의 프로필을 깊이 이해하고, 단순한 상품 추천을 넘어 그들의 꿈이 현실이 되었을 때의 감동적인 미래를 생생하게 그려주세요. 
+    구체적이고 실행 가능한 금융 상품 추천과 함께, 희망찬 미래 시나리오를 제공해야 합니다.
+    "지금 당장 목표를 이루기엔 부족해 보여도 괜찮아요. 이 작은 시작이 꿈을 향한 든든한 첫걸음이 될 거예요! 더 큰 미래를 위한 디딤돌로 만들어가요."
+
+
     사용자 프로필:
-    - 투자 목적: ${profile.investment_purpose || '미정'}
-    - 투자 성향: ${profile.investment_tendency}
+    - 투자 목적: ${profile.investment_purpose || '미정'} (예: '집 마련', '세계 여행', '조기 은퇴')
+    - 투자 성향: ${profile.investment_tendency} (예: '안정 추구형', '공격 투자형')
     - 투자 기간: ${profile.investment_term}개월
-    - 투자 가능 금액: ${profile.amount_available}원 
-    
-    다음 형식으로 3개의 투자 방법을 추천해주세요:
+    - 투자 가능 금액: ${profile.amount_available}원
+
+    요청 사항:
+    위 사용자 프로필을 바탕으로, 3가지의 다양한 투자 상품을 추천해주세요.
+    각 상품에 대해 다음 정보를 포함해야 합니다: "product_name", "product_type" (deposit, saving, stock, fund, bond, real_estate 중 하나), "score" (0-100점), "max_rate" (최고 금리, %), "term" (투자 기간, 개월), "reason" (이 사용자에게 적합한 추천 이유), "risk_level" (low, medium, high 중 하나), "min_amount" (최소 가입 금액, 원), "expected_return" (예상 수익금, 원).
+
+    가장 중요한 부분은 "simulation" 섹션입니다. 다음 내용을 포함해주세요:
+    1.  "expectedReturn": 전체 포트폴리오의 총 예상 수익금 (원).
+    2.  "returnRate": 전체 포트폴리오의 총 예상 수익률 (%).
+    3.  "risk_analysis": 전체 포트폴리오의 위험도에 대한 분석.
+    4.  "diversification": 자산 분산 전략에 대한 설명.
+    5.  "future_scenario": 여기가 핵심입니다!
+        *   "description": 사용자의 '투자 목적', '투자 기간', '투자 가능 금액'을 바탕으로, **카카오뱅크 저금통 문구처럼 간결하지만 임팩트 있고, 현실적이면서도 희망찬 메시지를 전달하는** 미래 시나리오를 작성해주세요. 사용자가 무엇을 경험하고 어떤 긍정적인 감정을 느낄 수 있는지에 초점을 맞춰주세요.
+            예를 들어, 사용자의 투자 가능 금액과 기간을 바탕으로 월별 또는 총 저축액을 추산하고, 이를 통해 달성 가능한 목표를 현실적이면서도 매력적으로 묘사해야 합니다.
+
+            예시 (투자 목적: '여행 자금', 투자 기간: 12개월, 투자 가능 금액: 120만원 가정 -> 월 10만원):
+            "매월 10만원, 1년 뒤엔 세부 해변에서 망고 주스! 짜릿한 자유를 향해 차곡차곡 모아봐요."
+            "지금 당장 목표를 이루기엔 부족해 보여도 괜찮아요. 이 작은 시작이 꿈을 향한 든든한 첫걸음이 될 거예요! 더 큰 미래를 위한 디딤돌로 만들어가요."
+            예시 (투자 목적: '여행 자금', 투자 기간: 24개월, 투자 가능 금액: 480만원 가정 -> 월 20만원):
+            "월 20만원, 2년 후엔 호주 배낭여행! 오페라 하우스 야경, 상상만 해도 설레죠?"
+
+            예시 (투자 목적: '여행 자금', 투자 기간: 36개월, 투자 가능 금액: 1080만원 가정 -> 월 30만원):
+            "월 30만원, 3년 뒤엔 꿈에 그리던 유럽 일주! 로마와 파리, 현실이 될 거예요."
+
+            사용자의 투자 목적이 '집 마련'이라면 아늑한 보금자리를, '차량 구매'라면 도로를 달리는 자유를, '노후 자금'이라면 여유로운 황혼을 그려주세요. 현실적이면서도 가슴 뛰는 이야기로 만들어주세요.
+
+        *   "visualization":
+            *   "type": 사용자의 투자 목적 (예: '${profile.investment_purpose || '목표 달성'}').
+            *   "object": 투자 목적의 핵심 키워드를 구체적으로 지정해주세요. (예: 집 마련 -> '따뜻한 햇살이 드는 거실', 차량 구매 -> '새 차와 함께하는 해안도로 드라이브', 세부 여행 -> '세부의 청록색 바다와 해변').
+            *   "style": "현실적이면서도 따뜻한 감성이 느껴지는 3D 렌더링, 밝고 희망찬 색감, 보는 이에게 행복과 성취감을 전달하는 스타일."
+            *   "emotion": "성취감, 행복, 기대감, 자유, 평온함."
+            *   "image_prompt": 위 "description"과 "visualization"의 세부 사항을 바탕으로 DALL-E가 이미지를 생성할 수 있도록, 매우 구체적이고 생생한 장면을 묘사하는 프롬프트를 작성해주세요.
+                예시 (세부 여행): "따스한 햇살 아래, 필리핀 세부의 청록색 수정처럼 맑은 바다에서 친구들과 함께 스노클링을 즐기며 환하게 웃고 있는 모습. 다채로운 산호초와 열대어들이 보이고, 멀리 야자수가 우거진 하얀 모래사장이 펼쳐져 있음. 현실적이면서도 꿈같은 휴가의 행복감과 자유로움이 넘치는 밝고 선명한 3D 렌더링."
+                예시 (집 마련): "따스한 오후 햇살이 가득 들어오는 넓은 창을 가진 현대적이고 아늑한 거실 풍경. 편안한 소파와 예쁜 화분들이 놓여있고, 창밖으로는 푸른 정원이 보임. 가족의 행복과 안락함, 꿈을 이룬 성취감이 느껴지는 고품질 3D 렌더링. 부드럽고 따뜻한 색조 사용."
+
+    출력 형식:
+    반드시 아래와 같은 순수 JSON 객체만을 출력해야 합니다. JSON 객체 앞뒤로 어떠한 설명이나 추가 텍스트도 포함하지 마세요.
     {
       "products": [
         {
           "product_name": "상품명",
-          "product_type": "deposit(예금), saving(적금), stock(주식), fund(펀드), bond(채권), real_estate(부동산) 중 하나",
-          "score": "0-100 사이의 점수",
-          "max_rate": "예상 수익률(%)",
-          "term": "투자 기간(개월)",
-          "reason": "추천 이유",
+          "product_type": "deposit (예금), saving (적금), stock (주식), fund (펀드), bond (채권), real_estate (부동산) 중 하나",
+          "score": "점수 (0-100)",
+          "max_rate": "최고 예상 수익률 (%)",
+          "term": "투자 기간 (개월)",
+          "reason": "추천 이유 상세 설명",
           "risk_level": "low, medium, high 중 하나",
-          "min_amount": "최소 투자 금액(원)",
-          "expected_return": "예상 수익금(원)"
+          "min_amount": "최소 투자 금액 (원)",
+          "expected_return": "예상 수익금 (원)"
         }
+        // ... (최대 2개까지 추가 상품 추천)
       ],
       "simulation": {
-        "expectedReturn": "전체 예상 수익금(원)",
-        "returnRate": "전체 예상 수익률(%)",
-        "risk_analysis": "전체 포트폴리오의 위험도 분석",
-        "diversification": "자산 분산 전략 설명",
+        "expectedReturn": "전체 예상 수익금 (원)",
+        "returnRate": "전체 예상 수익률 (%)",
+        "risk_analysis": "포트폴리오 위험도 종합 분석",
+        "diversification": "자산 분산 전략 및 이유 설명",
         "future_scenario": {
-          "description": "투자 목적(${profile.investment_purpose || '미정'})에 맞춘 3년 후 달성 가능한 구체적인 목표 (예: '현재 투자금으로 3년 후 원하는 아파트의 계약금을 마련할 수 있습니다')",
+          "description": "위에서 설명한 감동적이고 구체적인 미래 시나리오",
           "visualization": {
-            "type": "${profile.investment_purpose || '목표 달성'}",
-            "object": "투자 목적의 핵심 키워드 (예: 집 마련이면 '집', 차량 구매면 '자동차' 등)",
-            "style": "현실적인 3D 렌더링, 고급스러움",
-            "emotion": "성취감, 성공",
-            "image_prompt": "realistic, luxurious 3D rendering depicting the achievement of '${profile.investment_purpose || 'financial goal'}'. Focus on high-quality textures, sophisticated lighting, and a sense of tangible realism. For example, if the goal is '집 마련', show a stunning modern house with elegant design. If '차량 구매', a sleek high-end car. The overall mood should be aspirational and convey success and prestige."
+            "type": "사용자 투자 목적",
+            "object": "미래 시나리오의 핵심 대상 또는 장면",
+            "style": "이미지 스타일",
+            "emotion": "이미지에 담길 감정",
+            "image_prompt": "DALL-E 이미지 생성용 상세 프롬프트"
           }
         }
       }
