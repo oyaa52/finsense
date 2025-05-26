@@ -14,6 +14,7 @@ import VideoDetailView from '@/views/VideoDetailView.vue'
 import FavoriteChannelsView from '@/views/FavoriteChannelsView.vue'
 import FavoriteVideosView from '@/views/FavoriteVideosView.vue'
 import AIRecommendationView from '@/views/AIRecommendationView.vue'
+import AdminPanelView from '@/views/AdminPanelView.vue'
 import { useAuthStore } from '@/stores/authStore'
 
 // 임시 플레이스홀더 컴포넌트 (실제 컴포넌트로 교체 필요)
@@ -159,6 +160,25 @@ const router = createRouter({
             const authStore = useAuthStore()
             if (authStore.isAuthenticated) {
               next()
+            } else {
+              alert('로그인이 필요한 서비스입니다.')
+              next({ name: 'login' })
+            }
+          }
+        },
+        {
+          path: 'admin-panel',
+          name: 'adminPanel',
+          components: {
+            mainServiceView: AdminPanelView
+          },
+          beforeEnter: (to, from, next) => {
+            const authStore = useAuthStore()
+            if (authStore.isAuthenticated && authStore.currentUser && (authStore.currentUser.is_superuser || authStore.currentUser.is_staff)) {
+              next()
+            } else if (authStore.isAuthenticated) {
+              alert('관리자 권한이 없습니다.')
+              next(from.path || '/main')
             } else {
               alert('로그인이 필요한 서비스입니다.')
               next({ name: 'login' })

@@ -4,17 +4,17 @@
     <aside class="sidebar" data-aos="fade-right">
       <div class="logo-container">
         <router-link to="/main">
-          <img src="@/assets/FS_logo.png" alt="Fin Sense Logo" class="sidebar-logo"/>
+          <img src="@/assets/FS_logo.png" alt="Fin Sense Logo" class="sidebar-logo" />
         </router-link>
       </div>
-      
+
       <div v-if="!isLoggedIn" class="auth-links">
         <router-link to="/login" class="auth-button login-button">로그인</router-link>
         <router-link to="/signup" class="auth-button signup-button">회원가입</router-link>
       </div>
       <div v-else class="user-info-box">
         <template v-if="currentUser">
-          <img :src="profileImageUrl" alt="User Profile" class="profile-image"/>
+          <img :src="profileImageUrl" alt="User Profile" class="profile-image" />
           <p class="welcome-message">{{ currentUser.username || '사용자' }}님, 환영합니다!</p>
         </template>
         <div class="user-actions">
@@ -22,6 +22,14 @@
           <span class="separator">|</span>
           <button @click="logout" class="action-link logout-link">로그아웃</button>
         </div>
+        <!-- 관리자 기능 메뉴 추가 -->
+        <nav class="sidebar-nav admin-nav"
+          v-if="isLoggedIn && currentUser && (currentUser.is_superuser || currentUser.is_staff)">
+          <h3 class="nav-title">관리자 기능</h3>
+          <ul>
+            <li><router-link to="/main/admin-panel" class="action-link">관리자 페이지</router-link></li>
+          </ul>
+        </nav>
         <!-- 즐겨찾기 메뉴 추가 -->
         <nav class="sidebar-nav favorite-nav" v-if="isLoggedIn">
           <h3 class="nav-title">즐겨찾기</h3>
@@ -31,13 +39,8 @@
           </ul>
         </nav>
       </div>
-      
-      <!-- <nav class="sidebar-nav">
-        <ul>
-          <li><router-link to="/main/profile-management">회원정보관리</router-link></li>
-          <li><router-link to="/main/settings">설정</router-link></li>
-        </ul>
-      </nav> -->
+
+
     </aside>
 
     <!-- 메인 컨텐츠 영역 -->
@@ -149,7 +152,8 @@ watch(isLoggedIn, (newIsLoggedIn) => {
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
 
-body, html {
+body,
+html {
   margin: 0;
   padding: 0;
   height: 100%;
@@ -159,16 +163,21 @@ body, html {
 .main-page-container {
   display: flex;
   height: 100vh;
-  background-color: #ffffff; /* 밝은 테마: 흰색 배경 */
-  color: #191919; /* 밝은 테마: 기본 텍스트 색상 */
+  background-color: #ffffff;
+  /* 밝은 테마: 흰색 배경 */
+  color: #191919;
+  /* 밝은 테마: 기본 텍스트 색상 */
   overflow: hidden;
 }
 
 /* Sidebar Styles */
 .sidebar {
-  width: 320px; /* 고정 너비로 변경 */
-  min-width: 320px; /* 최소 너비 설정 */
-  max-width: 320px; /* 최대 너비 설정 */
+  width: 320px;
+  /* 고정 너비로 변경 */
+  min-width: 320px;
+  /* 최소 너비 설정 */
+  max-width: 320px;
+  /* 최대 너비 설정 */
   background-color: #f5f5f5;
   padding: 30px 20px;
   display: flex;
@@ -176,14 +185,19 @@ body, html {
   align-items: center;
   box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
   overflow-y: auto;
-  position: fixed; /* 사이드바 고정 */
-  height: 100vh; /* 전체 높이 */
-  left: 0; /* 왼쪽에 고정 */
-  top: 0; /* 상단에 고정 */
+  position: fixed;
+  /* 사이드바 고정 */
+  height: 100vh;
+  /* 전체 높이 */
+  left: 0;
+  /* 왼쪽에 고정 */
+  top: 0;
+  /* 상단에 고정 */
 }
 
 .logo-container {
-  margin-bottom: 20px; /* user-info-box와의 간격을 살짝 줄임 */
+  margin-bottom: 20px;
+  /* user-info-box와의 간격을 살짝 줄임 */
 }
 
 .sidebar-logo {
@@ -192,14 +206,20 @@ body, html {
   align-items: center;
 }
 
-.auth-links, .user-info-box { /* user-info 에서 user-info-box로 클래스명 변경 */
+.auth-links,
+.user-info-box {
+  /* user-info 에서 user-info-box로 클래스명 변경 */
   width: 100%;
   text-align: center;
   margin-bottom: 30px;
-  padding: 20px; /* 박스 형태를 위한 패딩 추가 */
-  background-color: #ffffff; /* 박스 배경색 */
-  border-radius: 8px; /* 박스 모서리 둥글게 */
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05); /* 박스 그림자 */
+  padding: 20px;
+  /* 박스 형태를 위한 패딩 추가 */
+  background-color: #ffffff;
+  /* 박스 배경색 */
+  border-radius: 8px;
+  /* 박스 모서리 둥글게 */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  /* 박스 그림자 */
 }
 
 .auth-button {
@@ -220,6 +240,7 @@ body, html {
   background-color: #0064FF;
   color: #ffffff;
 }
+
 .login-button:hover {
   background-color: #0052cc;
   transform: translateY(-1px);
@@ -230,6 +251,7 @@ body, html {
   border: 1px solid #0064FF;
   color: #0064FF;
 }
+
 .signup-button:hover {
   background-color: rgba(0, 100, 255, 0.05);
   transform: translateY(-1px);
@@ -240,17 +262,21 @@ body, html {
   height: 80px;
   border-radius: 50%;
   object-fit: cover;
-  margin-bottom: 15px; /* 환영 메시지와의 간격 늘림 */
+  margin-bottom: 15px;
+  /* 환영 메시지와의 간격 늘림 */
   border: 2px solid #0064FF;
-  flex-shrink: 0; /* 이미지 크기 고정 */
+  flex-shrink: 0;
+  /* 이미지 크기 고정 */
 }
 
-.user-info-box .welcome-message { /* user-info 에서 user-info-box로 클래스명 변경 및 새 클래스 */
+.user-info-box .welcome-message {
+  /* user-info 에서 user-info-box로 클래스명 변경 및 새 클래스 */
   font-size: 1rem;
   margin: 15px 0;
   color: #191919;
   font-weight: 500;
-  text-overflow: ellipsis; /* 내용이 넘칠 경우 말줄임표(...) 표시 */
+  text-overflow: ellipsis;
+  /* 내용이 넘칠 경우 말줄임표(...) 표시 */
   overflow: hidden;
   white-space: nowrap;
   max-width: 100%;
@@ -261,8 +287,10 @@ body, html {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 5px; /* 버튼과 구분자 사이 간격 */
-  width: 100%; /* 너비를 100%로 설정하여 내부 요소들이 공간을 갖도록 함 */
+  gap: 5px;
+  /* 버튼과 구분자 사이 간격 */
+  width: 100%;
+  /* 너비를 100%로 설정하여 내부 요소들이 공간을 갖도록 함 */
 }
 
 .action-link {
@@ -272,33 +300,42 @@ body, html {
   font: inherit;
   cursor: pointer;
   outline: inherit;
-  color: #0064FF; /* 링크 색상 */
+  color: #0064FF;
+  /* 링크 색상 */
   text-decoration: none;
-  font-size: 0.9rem; /* 글자 크기 더 줄임 */
+  font-size: 0.9rem;
+  /* 글자 크기 더 줄임 */
   font-weight: 500;
   transition: color 0.2s ease;
-  white-space: nowrap; /* 내부 텍스트 줄바꿈 방지 */
+  white-space: nowrap;
+  /* 내부 텍스트 줄바꿈 방지 */
 }
 
 .action-link:hover {
-  color: #004cb3; /* 호버 시 색상 변경 */
+  color: #004cb3;
+  /* 호버 시 색상 변경 */
   text-decoration: underline;
 }
 
 .separator {
-  margin: 0 5px; /* 구분자 좌우 간격 5px로 수정 */
-  color: #cccccc; /* 구분자 색상 연하게 */
+  margin: 0 5px;
+  /* 구분자 좌우 간격 5px로 수정 */
+  color: #cccccc;
+  /* 구분자 색상 연하게 */
   font-size: 0.9rem;
 }
 
 .logout-link {
   /* .action-link 스타일 상속 */
-  color: #555555; /* 로그아웃 링크 기본 색상 */
-  white-space: nowrap; /* 내부 텍스트 줄바꿈 방지 */
+  color: #555555;
+  /* 로그아웃 링크 기본 색상 */
+  white-space: nowrap;
+  /* 내부 텍스트 줄바꿈 방지 */
 }
 
 .logout-link:hover {
-  color: #191919; /* 로그아웃 링크 호버 시 색상 */
+  color: #191919;
+  /* 로그아웃 링크 호버 시 색상 */
   text-decoration: underline;
 }
 
@@ -309,8 +346,10 @@ body, html {
   flex-direction: column;
   overflow-y: auto;
   background-color: #ffffff;
-  margin-left: 320px; /* 사이드바 너비만큼 여백 추가 */
-  min-height: 100vh; /* 최소 높이 설정 */
+  margin-left: 320px;
+  /* 사이드바 너비만큼 여백 추가 */
+  min-height: 100vh;
+  /* 최소 높이 설정 */
 }
 
 /* Top Navbar Styles */
@@ -319,20 +358,26 @@ body, html {
   padding: 0 30px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
   z-index: 10;
-  height: 70px; /* 고정 높이 */
-  min-height: 70px; /* 최소 높이 설정 */
-  max-height: 70px; /* 최대 높이 설정 */
+  height: 70px;
+  /* 고정 높이 */
+  min-height: 70px;
+  /* 최소 높이 설정 */
+  max-height: 70px;
+  /* 최대 높이 설정 */
   display: flex;
   align-items: center;
-  position: sticky; /* 스크롤 시 상단에 고정 */
-  top: 0; /* 상단에 고정 */
+  position: sticky;
+  /* 스크롤 시 상단에 고정 */
+  top: 0;
+  /* 상단에 고정 */
 }
 
 .top-navbar nav {
   display: flex;
   flex-grow: 1;
   justify-content: center;
-  height: 100%; /* 네비게이션 높이 100% */
+  height: 100%;
+  /* 네비게이션 높이 100% */
 }
 
 .top-navbar nav ul {
@@ -341,14 +386,18 @@ body, html {
   margin: 0;
   display: flex;
   gap: 25px;
-  height: 100%; /* ul 높이 100% */
-  align-items: center; /* 수직 중앙 정렬 */
+  height: 100%;
+  /* ul 높이 100% */
+  align-items: center;
+  /* 수직 중앙 정렬 */
 }
 
 .top-navbar nav ul li {
-  height: 100%; /* li 높이 100% */
+  height: 100%;
+  /* li 높이 100% */
   display: flex;
-  align-items: center; /* 수직 중앙 정렬 */
+  align-items: center;
+  /* 수직 중앙 정렬 */
 }
 
 .top-navbar nav ul li a {
@@ -360,10 +409,13 @@ body, html {
   border-radius: 6px;
   transition: color 0.3s ease, background-color 0.3s ease;
   position: relative;
-  white-space: nowrap; /* 텍스트 줄바꿈 방지 */
-  height: 100%; /* 링크 높이 100% */
+  white-space: nowrap;
+  /* 텍스트 줄바꿈 방지 */
+  height: 100%;
+  /* 링크 높이 100% */
   display: flex;
-  align-items: center; /* 수직 중앙 정렬 */
+  align-items: center;
+  /* 수직 중앙 정렬 */
 }
 
 .top-navbar nav ul li a::after {
@@ -396,7 +448,8 @@ body, html {
   padding: 40px;
   background-color: #ffffff;
   overflow-y: auto;
-  min-height: calc(100vh - 70px); /* 전체 높이에서 네비게이션 바 높이를 뺀 값 */
+  min-height: calc(100vh - 70px);
+  /* 전체 높이에서 네비게이션 바 높이를 뺀 값 */
 }
 
 .default-content {
@@ -425,32 +478,42 @@ body, html {
 /* 메인 이미지 슬라이더 섹션 스타일 */
 .main-image-slider-section {
   width: 80%;
-  max-width: 80%; /* 슬라이더 섹션 최대 가로폭 설정 */
-  margin: 0 auto 40px auto; /* 위아래 마진 유지, 좌우 auto로 가운데 정렬, 아래쪽 마진 40px */
+  max-width: 80%;
+  /* 슬라이더 섹션 최대 가로폭 설정 */
+  margin: 0 auto 40px auto;
+  /* 위아래 마진 유지, 좌우 auto로 가운데 정렬, 아래쪽 마진 40px */
 }
 
 .main-promo-slider {
-  width: 100%; /* 부모 요소인 .main-image-slider-section의 너비를 따름 */
-  height: 65vh; /* 이전 값으로 복원 */
+  width: 100%;
+  /* 부모 요소인 .main-image-slider-section의 너비를 따름 */
+  height: 65vh;
+  /* 이전 값으로 복원 */
   border-radius: 12px;
-  overflow: hidden; /* 중요: 슬라이드 내용이 넘치지 않도록 */
-  position: relative; /* 네비게이션/페이지네이션 위치 기준 */
+  overflow: hidden;
+  /* 중요: 슬라이드 내용이 넘치지 않도록 */
+  position: relative;
+  /* 네비게이션/페이지네이션 위치 기준 */
 }
 
 .promo-slide-image {
   width: 100%;
   height: 100%;
-  object-fit: cover; /* 이미지가 슬라이드 영역을 꽉 채우도록 */
+  object-fit: cover;
+  /* 이미지가 슬라이드 영역을 꽉 채우도록 */
   display: block;
 }
 
 /* Swiper 네비게이션 버튼 스타일 (토스뱅크 스타일 참고) */
 .swiper-button-prev,
 .swiper-button-next {
-  color: rgba(255, 255, 255, 0.7); /* 반투명 흰색 */
+  color: rgba(255, 255, 255, 0.7);
+  /* 반투명 흰색 */
   background-color: rgba(0, 0, 0, 0.3);
-  width: 40px; /* 크기 조정 */
-  height: 40px; /* 크기 조정 */
+  width: 40px;
+  /* 크기 조정 */
+  height: 40px;
+  /* 크기 조정 */
   border-radius: 50%;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
@@ -463,17 +526,20 @@ body, html {
 
 .swiper-button-prev::after,
 .swiper-button-next::after {
-  font-size: 18px; /* 아이콘 크기 조정 */
+  font-size: 18px;
+  /* 아이콘 크기 조정 */
   font-weight: bold;
 }
 
 /* Swiper 페이지네이션 스타일 (토스뱅크 스타일 참고) */
 .swiper-pagination {
-  bottom: 20px !important; /* 위치 조정 */
+  bottom: 20px !important;
+  /* 위치 조정 */
 }
 
 .swiper-pagination .swiper-pagination-bullet {
-  background-color: rgba(255, 255, 255, 0.5); /* 비활성 점 색상 */
+  background-color: rgba(255, 255, 255, 0.5);
+  /* 비활성 점 색상 */
   opacity: 1;
   width: 8px;
   height: 8px;
@@ -482,8 +548,10 @@ body, html {
 }
 
 .swiper-pagination .swiper-pagination-bullet-active {
-  background-color: #ffffff; /* 활성 점 색상 */
-  width: 24px; /* 토스뱅크처럼 활성 시 길어지는 효과 */
+  background-color: #ffffff;
+  /* 활성 점 색상 */
+  width: 24px;
+  /* 토스뱅크처럼 활성 시 길어지는 효과 */
   border-radius: 4px;
 }
 
@@ -522,11 +590,17 @@ body, html {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
-.error-message, .no-videos-message {
+.error-message,
+.no-videos-message {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -535,10 +609,11 @@ body, html {
   background-color: #fff;
   border-radius: 8px;
   min-height: 200px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.error-message p, .no-videos-message p {
+.error-message p,
+.no-videos-message p {
   color: #666;
   margin-bottom: 15px;
   text-align: center;
@@ -573,7 +648,7 @@ body, html {
   background-color: #ffffff;
   border-radius: 8px;
   padding: 15px;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
 }
@@ -616,7 +691,8 @@ body, html {
   color: #555;
   margin-bottom: 10px;
   text-align: left;
-  padding-left: 5px; /* 약간의 왼쪽 여백 */
+  padding-left: 5px;
+  /* 약간의 왼쪽 여백 */
   border-bottom: 1px solid #e0e0e0;
   padding-bottom: 5px;
 }
@@ -643,8 +719,55 @@ body, html {
 
 .favorite-nav .action-link:hover,
 .favorite-nav .action-link.router-link-active {
-  background-color: #e0e0e0; /* 호버 및 활성 링크 배경색 */
+  background-color: #e0e0e0;
+  /* 호버 및 활성 링크 배경색 */
   color: #0064FF;
   font-weight: 500;
 }
-</style> 
+
+/* 관리자 기능 네비게이션 스타일 추가 */
+.admin-nav {
+  margin-top: 20px;
+  width: 100%;
+}
+
+.admin-nav .nav-title {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #555;
+  margin-bottom: 10px;
+  text-align: left;
+  padding-left: 5px;
+  /* 약간의 왼쪽 여백 */
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 5px;
+}
+
+.admin-nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.admin-nav li {
+  margin-bottom: 8px;
+}
+
+.admin-nav .action-link {
+  display: block;
+  padding: 8px 10px;
+  color: #333;
+  text-decoration: none;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.admin-nav .action-link:hover {
+  background-color: #e0e0e0;
+  /* 호버 배경색 */
+  color: #d32f2f;
+  /* 관리자 기능은 다른 색으로 강조 가능 */
+  font-weight: 500;
+}
+</style>
