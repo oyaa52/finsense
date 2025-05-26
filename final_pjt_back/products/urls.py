@@ -63,4 +63,16 @@ urlpatterns = [
     path('deposit/<str:product_id>/<int:option_id>/subscribe/', views.subscribe_deposit, name='subscribe_deposit'),
     path('saving/<str:product_id>/<int:option_id>/subscribe/', views.subscribe_saving, name='subscribe_saving'),
     path('subscriptions/', views.get_user_subscriptions, name='get_user_subscriptions'),
+
+    # 상품 가입 여부 확인 API
+    path(
+        "deposit/<str:product_id>/is_subscribed/",
+        views.check_deposit_subscription_status,
+        name="check_deposit_subscription_status",
+    ),
+    path(
+        "saving/<str:product_id>/is_subscribed/",
+        views.check_saving_subscription_status,
+        name="check_saving_subscription_status",
+    ),
 ]

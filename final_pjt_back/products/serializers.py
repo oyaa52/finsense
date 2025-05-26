@@ -20,10 +20,21 @@ class DepositOptionSerializer(serializers.ModelSerializer):
 
 class DepositProductSerializer(serializers.ModelSerializer):
     options = DepositOptionSerializer(many=True, read_only=True)  # 중첩 시리얼라이저
+    # 현재 사용자의 해당 상품 구독 여부를 반환하는 필드 추가
+    is_subscribed = serializers.SerializerMethodField()
 
     class Meta:
         model = DepositProduct
         fields = "__all__"  # 모든 필드를 포함하고, options 필드를 통해 관련 옵션들을 함께 보여줌
+
+    def get_is_subscribed(self, obj):
+        # 시리얼라이저가 호출될 때 context에서 request 객체를 가져옴
+        request = self.context.get('request')
+        # request가 있고, 사용자가 인증된 경우에만 구독 여부 확인
+        if request and hasattr(request, "user") and request.user.is_authenticated:
+            # obj는 현재 DepositProduct 인스턴스
+            return DepositSubscription.objects.filter(user=request.user, product=obj).exists()
+        return False # 사용자가 인증되지 않았거나 request 객체가 없으면 False 반환
 
 
 class SavingOptionSerializer(serializers.ModelSerializer):
@@ -35,10 +46,19 @@ class SavingOptionSerializer(serializers.ModelSerializer):
 
 class SavingProductSerializer(serializers.ModelSerializer):
     options = SavingOptionSerializer(many=True, read_only=True)  # 중첩 시리얼라이저
+    # 현재 사용자의 해당 상품 구독 여부를 반환하는 필드 추가
+    is_subscribed = serializers.SerializerMethodField()
 
     class Meta:
         model = SavingProduct
         fields = "__all__"
+
+    def get_is_subscribed(self, obj):
+        request = self.context.get('request')
+        if request and hasattr(request, "user") and request.user.is_authenticated:
+            # obj는 현재 SavingProduct 인스턴스
+            return SavingSubscription.objects.filter(user=request.user, product=obj).exists()
+        return False
 
 
 class DepositSubscriptionSerializer(serializers.ModelSerializer):

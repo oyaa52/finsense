@@ -105,6 +105,7 @@
               <span class="period-label">가입 기간</span>
               <span class="period-value">{{ product.period }}개월</span>
             </div>
+            <span v-if="product.isSubscribed" class="subscribed-tag">가입완료</span>
           </div>
         </div>
       </div>
@@ -299,7 +300,8 @@ const fetchProducts = async (page = 1) => {
             product.join_member,
             product.etc_note
           ].filter(Boolean),
-          options: product.options || [] // 옵션 정보 저장
+          options: product.options || [], // 옵션 정보 저장
+          isSubscribed: product.is_subscribed || false // 구독 정보 추가
         }
       })
 
@@ -386,10 +388,16 @@ const selectBank = (bankId) => {
   selectedBank.value = selectedBank.value === bankId ? null : bankId
 }
 
-const showProductDetail = (product) => {
-  selectedProduct.value = product
-  showModal.value = true
-}
+const showProductDetail = async (product) => {
+  selectedProduct.value = product;
+  // 목록에서 가져온 isSubscribed 값으로 초기화
+  isSubscribed.value = product.isSubscribed || false; 
+  showModal.value = true;
+  // 모달이 열린 후, 최신 구독 상태를 다시 한번 확인 (선택 사항이지만, 더 정확한 상태를 위해 유지 가능)
+  if (product && product.id) {
+    await checkSubscriptionStatus(product.id); 
+  }
+};
 
 const closeModal = () => {
   showModal.value = false
@@ -424,6 +432,40 @@ const refreshData = async () => {
     loading.value = false
   }
 }
+
+// 새로운 함수: 상품 가입 상태 확인
+const checkSubscriptionStatus = async (productId) => {
+  const token = localStorage.getItem('accessToken');
+  if (!token || !productId) {
+    isSubscribed.value = false; // 토큰이나 상품 ID가 없으면 미가입으로 처리
+    return;
+  }
+
+  try {
+    const endpointType = productType.value === 'deposit' ? 'deposit' : 'saving';
+    // 실제 API 엔드포인트는 백엔드 구현에 따라 달라질 수 있습니다.
+    // 여기서는 예시 엔드포인트를 사용합니다.
+    const response = await axios.get(
+      `http://127.0.0.1:8000/api/v1/products/${endpointType}/${productId}/is_subscribed/`,
+      {
+        headers: {
+          Authorization: `Token ${token}`
+        }
+      }
+    );
+    // API 응답에서 가입 여부를 나타내는 필드를 사용합니다. (예: response.data.is_subscribed)
+    isSubscribed.value = response.data.is_subscribed || false;
+  } catch (err) {
+    console.error('Error checking subscription status:', err);
+    // 에러 발생 시 기본적으로 미가입 상태로 둘 수 있습니다.
+    // 혹은 사용자가 이미 로그인하지 않았거나 다른 문제로 인해 상태를 알 수 없는 경우를 고려하여 처리할 수 있습니다.
+    isSubscribed.value = false;
+    if (err.response?.status === 401) { // Unauthorized
+        // 로그인이 필요하다는 것을 사용자에게 알릴 수 있습니다.
+        // alert('가입 상태를 확인하려면 로그인이 필요합니다.');
+    }
+  }
+};
 
 const handleSubscribe = async () => {
   if (isSubscribed.value) return
@@ -1013,5 +1055,17 @@ onMounted(() => {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* 가입 완료 태그 스타일 */
+.subscribed-tag {
+  display: inline-block;
+  background-color: #28a745; /* 초록색 배경 */
+  color: white;
+  padding: 0.2em 0.6em;
+  font-size: 0.8rem;
+  font-weight: bold;
+  border-radius: 4px;
+  margin-top: 10px;
 }
 </style> 
