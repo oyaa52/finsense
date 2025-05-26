@@ -6,6 +6,8 @@ from .models import Post, Comment, Follow
 from .serializers import PostSerializer, CommentSerializer, FollowSerializer, UserSerializer
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
+from rest_framework.generics import ListCreateAPIView
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
 
 User = get_user_model()
 
@@ -35,6 +37,19 @@ class PostViewSet(viewsets.ModelViewSet):
             serializer.save(user=request.user, post=post)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class CommentListCreateAPIView(ListCreateAPIView):
+    serializer_class = CommentSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        post_id = self.kwargs.get('post_id')
+        return Comment.objects.filter(post_id=post_id, parent_comment__isnull=True)
+
+    def perform_create(self, serializer):
+        post_id = self.kwargs.get('post_id')
+        post = get_object_or_404(Post, id=post_id)
+        serializer.save(user=self.request.user, post=post)
 
 class CommentViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.all()
