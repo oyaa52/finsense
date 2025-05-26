@@ -76,23 +76,25 @@ export const useCommunityStore = defineStore('community', {
       }
     },
 
-    async createComment(postId, content) {
+    async createComment(postId, content, parentCommentId = null) {
+      const token = localStorage.getItem('accessToken');
+      if (!token) throw new Error('Authentication required.');
       try {
-        const authStore = useAuthStore()
-        if (!authStore.accessToken) {
-          throw new Error('로그인이 필요합니다.')
+        const payload = { content };
+        if (parentCommentId) {
+          payload.parent_id = parentCommentId;
         }
-        const response = await axios.post(`/api/v1/community/posts/${postId}/comment/`, {
-          content
-        })
-        const post = this.posts.find(p => p.id === postId)
-        if (post) {
-          post.comments.push(response.data)
-        }
-        return response.data
+        console.log('최종 payload:', payload);
+
+        const response = await axios.post(
+          `/api/v1/community/posts/${postId}/comments/`,
+          payload,
+          { headers: { Authorization: `Token ${token}` } }
+        );
+        return response.data;
       } catch (error) {
-        this.error = error.response?.data?.detail || error.message
-        throw error
+        console.error('Error creating comment:', error);
+        throw error;
       }
     },
 
