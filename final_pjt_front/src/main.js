@@ -7,6 +7,7 @@ import router from './router'
 import AOS from 'aos'
 import 'aos/dist/aos.css'
 import { useAuthStore } from '@/stores/authStore'
+// import './assets/main.css'
 
 // Axios 기본 URL 설정
 axios.defaults.baseURL = 'http://127.0.0.1:8000'
@@ -34,6 +35,8 @@ const app = createApp(App)
 
 app.use(createPinia())
 app.use(router)
-app.use(AOS.init())
+// app.use(AOS.init())
 
 app.mount('#app')
+
+AOS.init();
