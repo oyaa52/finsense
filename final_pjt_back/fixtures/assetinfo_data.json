@@ -1,0 +1,1928 @@
+[
+{
+  "model": "assetinfo.assetprice",
+  "pk": 1,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-01-09",
+    "price": "1967.10"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 2,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-01-11",
+    "price": "1987.50"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 3,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-01-12",
+    "price": "2089.70"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 4,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-02-10",
+    "price": "1847.20"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 5,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-02-11",
+    "price": "1993.50"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 6,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-03-10",
+    "price": "1841.50"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 7,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-03-11",
+    "price": "1999.20"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 8,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-04-10",
+    "price": "1834.80"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 9,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-04-12",
+    "price": "2042.20"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 10,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-05-09",
+    "price": "1952.60"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 11,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-05-10",
+    "price": "1831.80"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 12,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-05-12",
+    "price": "2036.30"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 13,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-06-09",
+    "price": "1944.20"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 14,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-06-10",
+    "price": "1845.20"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 15,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-06-11",
+    "price": "1988.60"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 16,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-06-12",
+    "price": "2047.90"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 17,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-07-09",
+    "price": "1942.50"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 18,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-07-11",
+    "price": "1973.50"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 19,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-07-12",
+    "price": "2046.40"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 20,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-08-09",
+    "price": "1942.70"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 21,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-08-11",
+    "price": "1957.80"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 22,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-08-12",
+    "price": "2014.50"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 23,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-08-18",
+    "price": "1916.50"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 24,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-08-21",
+    "price": "1923.00"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 25,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-08-22",
+    "price": "1926.00"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 26,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-08-23",
+    "price": "1948.10"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 27,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-08-24",
+    "price": "1947.10"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 28,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-08-25",
+    "price": "1939.90"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 29,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-08-28",
+    "price": "1946.80"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 30,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-08-29",
+    "price": "1965.10"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 31,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-08-30",
+    "price": "1973.00"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 32,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-08-31",
+    "price": "1965.90"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 33,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-09-10",
+    "price": "1864.30"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 34,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-09-11",
+    "price": "1969.80"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 35,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-09-13",
+    "price": "1932.50"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 36,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-09-14",
+    "price": "1932.80"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 37,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-09-15",
+    "price": "1946.20"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 38,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-09-18",
+    "price": "1953.40"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 39,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-09-19",
+    "price": "1953.70"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 40,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-09-20",
+    "price": "1967.10"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 41,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-09-21",
+    "price": "1939.60"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 42,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-09-22",
+    "price": "1945.60"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 43,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-09-25",
+    "price": "1936.60"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 44,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-09-26",
+    "price": "1919.80"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 45,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-09-27",
+    "price": "1890.90"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 46,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-09-28",
+    "price": "1878.60"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 47,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-09-29",
+    "price": "1866.10"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 48,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-10-10",
+    "price": "1875.30"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 49,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-10-11",
+    "price": "1937.70"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 50,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-10-13",
+    "price": "1941.50"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 51,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-10-16",
+    "price": "1934.30"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 52,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-10-17",
+    "price": "1935.70"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 53,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-10-18",
+    "price": "1968.30"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 54,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-10-19",
+    "price": "1980.50"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 55,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-10-20",
+    "price": "1994.40"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 56,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-10-23",
+    "price": "1987.80"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 57,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-10-24",
+    "price": "1986.10"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 58,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-10-25",
+    "price": "1994.90"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 59,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-10-26",
+    "price": "1997.40"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 60,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-10-27",
+    "price": "1998.50"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 61,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-10-30",
+    "price": "2005.60"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 62,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-10-31",
+    "price": "1994.30"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 63,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-11-09",
+    "price": "1947.20"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 64,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-11-10",
+    "price": "1887.30"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 65,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-11-12",
+    "price": "1993.70"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 66,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-11-13",
+    "price": "1950.20"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 67,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-11-14",
+    "price": "1966.50"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 68,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-11-15",
+    "price": "1964.30"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 69,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-11-16",
+    "price": "1987.30"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 70,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-11-17",
+    "price": "1984.70"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 71,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-11-20",
+    "price": "1980.30"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 72,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-11-21",
+    "price": "2001.60"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 73,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-11-22",
+    "price": "1992.80"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 74,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-11-24",
+    "price": "2003.00"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 75,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-11-27",
+    "price": "2012.40"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 76,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-11-28",
+    "price": "2040.00"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 77,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-11-29",
+    "price": "2067.10"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 78,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-11-30",
+    "price": "2057.20"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 79,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-12-09",
+    "price": "1935.10"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 80,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-12-10",
+    "price": "1883.00"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 81,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-12-12",
+    "price": "1993.20"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 82,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-12-13",
+    "price": "1997.30"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 83,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-12-14",
+    "price": "2044.90"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 84,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-12-15",
+    "price": "2035.70"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 85,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-12-18",
+    "price": "2040.50"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 86,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-12-19",
+    "price": "2052.10"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 87,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-12-20",
+    "price": "2047.70"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 88,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-12-21",
+    "price": "2051.30"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 89,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-12-22",
+    "price": "2069.10"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 90,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-12-26",
+    "price": "2069.80"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 91,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-12-27",
+    "price": "2093.10"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 92,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-12-28",
+    "price": "2083.50"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 93,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2023-12-29",
+    "price": "2071.80"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 94,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2024-01-16",
+    "price": "2030.20"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 95,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2024-01-17",
+    "price": "2006.50"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 96,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2024-01-18",
+    "price": "2021.60"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 97,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2024-01-19",
+    "price": "2029.30"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 98,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2024-01-22",
+    "price": "2022.20"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 99,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2024-02-01",
+    "price": "2073.40"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 100,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2024-03-01",
+    "price": "2042.80"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 101,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2024-04-01",
+    "price": "2050.00"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 102,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2024-05-01",
+    "price": "2049.80"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 103,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2024-08-01",
+    "price": "2033.50"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 104,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2024-09-01",
+    "price": "2033.00"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 105,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2024-10-01",
+    "price": "2027.80"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 106,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2024-11-01",
+    "price": "2019.20"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 107,
+  "fields": {
+    "asset_name": "Gold",
+    "date": "2024-12-01",
+    "price": "2051.60"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 108,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-01-09",
+    "price": "24.56"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 109,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-01-11",
+    "price": "22.79"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 110,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-01-12",
+    "price": "25.86"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 111,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-02-10",
+    "price": "21.42"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 112,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-02-11",
+    "price": "22.85"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 113,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-03-10",
+    "price": "21.38"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 114,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-03-11",
+    "price": "23.28"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 115,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-04-10",
+    "price": "21.15"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 116,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-04-12",
+    "price": "24.91"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 117,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-05-09",
+    "price": "23.87"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 118,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-05-10",
+    "price": "21.02"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 119,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-05-12",
+    "price": "24.55"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 120,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-06-09",
+    "price": "23.50"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 121,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-06-10",
+    "price": "21.72"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 122,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-06-11",
+    "price": "23.23"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 123,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-06-12",
+    "price": "24.23"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 124,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-07-09",
+    "price": "23.24"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 125,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-07-11",
+    "price": "22.59"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 126,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-07-12",
+    "price": "24.06"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 127,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-08-09",
+    "price": "23.17"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 128,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-08-11",
+    "price": "22.73"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 129,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-08-12",
+    "price": "23.28"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 130,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-08-18",
+    "price": "23.28"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 131,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-08-21",
+    "price": "23.66"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 132,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-08-22",
+    "price": "23.76"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 133,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-08-23",
+    "price": "24.71"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 134,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-08-24",
+    "price": "24.58"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 135,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-08-25",
+    "price": "24.58"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 136,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-08-28",
+    "price": "24.60"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 137,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-08-29",
+    "price": "25.14"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 138,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-08-30",
+    "price": "25.10"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 139,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-08-31",
+    "price": "24.81"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 140,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-09-10",
+    "price": "21.92"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 141,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-09-11",
+    "price": "22.90"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 142,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-09-13",
+    "price": "23.18"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 143,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-09-14",
+    "price": "22.99"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 144,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-09-15",
+    "price": "23.39"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 145,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-09-18",
+    "price": "23.50"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 146,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-09-19",
+    "price": "23.46"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 147,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-09-20",
+    "price": "23.84"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 148,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-09-21",
+    "price": "23.69"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 149,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-09-22",
+    "price": "23.84"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 150,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-09-25",
+    "price": "23.38"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 151,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-09-26",
+    "price": "23.20"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 152,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-09-27",
+    "price": "22.72"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 153,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-09-28",
+    "price": "22.74"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 154,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-09-29",
+    "price": "22.45"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 155,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-10-10",
+    "price": "21.95"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 156,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-10-11",
+    "price": "22.28"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 157,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-10-13",
+    "price": "22.90"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 158,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-10-16",
+    "price": "22.76"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 159,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-10-17",
+    "price": "23.02"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 160,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-10-18",
+    "price": "23.10"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 161,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-10-19",
+    "price": "23.03"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 162,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-10-20",
+    "price": "23.53"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 163,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-10-23",
+    "price": "23.21"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 164,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-10-24",
+    "price": "23.12"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 165,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-10-25",
+    "price": "23.01"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 166,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-10-26",
+    "price": "22.91"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 167,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-10-27",
+    "price": "22.89"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 168,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-10-30",
+    "price": "23.40"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 169,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-10-31",
+    "price": "22.95"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 170,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-11-09",
+    "price": "23.38"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 171,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-11-10",
+    "price": "22.13"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 172,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-11-12",
+    "price": "23.06"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 173,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-11-13",
+    "price": "22.36"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 174,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-11-14",
+    "price": "23.13"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 175,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-11-15",
+    "price": "23.54"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 176,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-11-16",
+    "price": "23.93"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 177,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-11-17",
+    "price": "23.78"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 178,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-11-20",
+    "price": "23.96"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 179,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-11-21",
+    "price": "24.22"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 180,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-11-22",
+    "price": "24.03"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 181,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-11-24",
+    "price": "24.69"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 182,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-11-27",
+    "price": "25.04"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 183,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-11-28",
+    "price": "25.30"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 184,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-11-29",
+    "price": "25.44"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 185,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-11-30",
+    "price": "25.66"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 186,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-12-09",
+    "price": "23.40"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 187,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-12-10",
+    "price": "21.96"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 188,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-12-12",
+    "price": "23.02"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 189,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-12-13",
+    "price": "22.92"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 190,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-12-14",
+    "price": "24.39"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 191,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-12-15",
+    "price": "24.15"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 192,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-12-18",
+    "price": "24.11"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 193,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-12-19",
+    "price": "24.32"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 194,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-12-20",
+    "price": "24.63"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 195,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-12-21",
+    "price": "24.58"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 196,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-12-22",
+    "price": "24.56"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 197,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-12-26",
+    "price": "24.40"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 198,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-12-27",
+    "price": "24.64"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 199,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-12-28",
+    "price": "24.37"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 200,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2023-12-29",
+    "price": "24.09"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 201,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2024-01-16",
+    "price": "23.09"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 202,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2024-01-17",
+    "price": "22.67"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 203,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2024-01-18",
+    "price": "22.81"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 204,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2024-01-19",
+    "price": "22.71"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 205,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2024-01-22",
+    "price": "22.30"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 206,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2024-02-01",
+    "price": "23.95"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 207,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2024-03-01",
+    "price": "23.16"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 208,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2024-04-01",
+    "price": "23.19"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 209,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2024-05-01",
+    "price": "23.32"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 210,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2024-08-01",
+    "price": "23.31"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 211,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2024-09-01",
+    "price": "23.09"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 212,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2024-10-01",
+    "price": "23.07"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 213,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2024-11-01",
+    "price": "22.70"
+  }
+},
+{
+  "model": "assetinfo.assetprice",
+  "pk": 214,
+  "fields": {
+    "asset_name": "Silver",
+    "date": "2024-12-01",
+    "price": "23.33"
+  }
+}
+]
