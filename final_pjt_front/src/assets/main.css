@@ -1,0 +1,338 @@
+/* 전역 다크 모드 스타일 */
+body.dark-mode {
+    background-color: #1c1c1e;
+    /* 매우 어두운 회색 (토스 느낌 배경) */
+    color: #f2f2f7;
+    /* 밝은 회색 텍스트 */
+    /* 브라우저 기본 스크롤바 스타일링 (선택적) */
+    scrollbar-color: #555 #2c2c2e;
+    /* 스크롤바 색상 (썸, 트랙) - Firefox */
+}
+
+/* 웹킷 기반 브라우저 스크롤바 (Chrome, Safari, Edge 등) */
+body.dark-mode::-webkit-scrollbar {
+    width: 10px;
+    /* 스크롤바 너비 */
+}
+
+body.dark-mode::-webkit-scrollbar-track {
+    background: #2c2c2e;
+    /* 트랙 배경 */
+    border-radius: 5px;
+}
+
+body.dark-mode::-webkit-scrollbar-thumb {
+    background-color: #555558;
+    /* 썸 색상 */
+    border-radius: 5px;
+    border: 2px solid #2c2c2e;
+    /* 트랙 배경과 동일한 색상의 테두리로 썸이 약간 떠 보이게 */
+}
+
+body.dark-mode::-webkit-scrollbar-thumb:hover {
+    background-color: #6a6a6e;
+    /* 썸 호버 색상 */
+}
+
+
+body.dark-mode a {
+    color: #0A84FF;
+    /* iOS 블루 - 다크모드에서 더 잘 보임 */
+}
+
+body.dark-mode a:hover {
+    color: #389bff;
+}
+
+/* 기본 HTML 요소에 대한 다크 모드 스타일 */
+body.dark-mode h1,
+body.dark-mode h2,
+body.dark-mode h3,
+body.dark-mode h4,
+body.dark-mode h5,
+body.dark-mode h6 {
+    color: #f2f2f7;
+}
+
+body.dark-mode p,
+body.dark-mode span,
+body.dark-mode div,
+body.dark-mode li,
+body.dark-mode label {
+    color: #c7c7cc;
+    /* 기본 텍스트보다 약간 더 어두운 밝은 회색 */
+}
+
+/* 좀 더 중요한 텍스트는 더 밝게 */
+body.dark-mode .important-text {
+    color: #f2f2f7;
+}
+
+
+body.dark-mode button.primary-action {
+    /* 주요 액션 버튼 */
+    background-color: #0A84FF;
+    color: white;
+}
+
+body.dark-mode button.primary-action:hover {
+    background-color: #0070f0;
+}
+
+body.dark-mode button.secondary-action {
+    /* 보조 액션 버튼 */
+    background-color: #3a3a3c;
+    color: #f2f2f7;
+    border: 1px solid #555558;
+}
+
+body.dark-mode button.secondary-action:hover {
+    background-color: #4a4a4c;
+}
+
+
+body.dark-mode input,
+body.dark-mode select,
+body.dark-mode textarea {
+    background-color: #2c2c2e;
+    color: #f2f2f7;
+    border: 1px solid #444447;
+    border-radius: 4px;
+    padding: 8px 10px;
+}
+
+body.dark-mode input::placeholder,
+body.dark-mode textarea::placeholder {
+    color: #8e8e93;
+}
+
+/* 카드, 박스, 테이블 등의 공통 UI 요소 */
+body.dark-mode .card,
+body.dark-mode .box,
+body.dark-mode .content-box {
+    /* .content-box 같은 일반적인 클래스 추가 */
+    background-color: #2c2c2e;
+    border: 1px solid #444447;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    /* 그림자 약간 더 강조 */
+}
+
+body.dark-mode hr {
+    border-color: #444447;
+}
+
+body.dark-mode table {
+    border-collapse: collapse;
+    width: 100%;
+    color: #c7c7cc;
+}
+
+body.dark-mode th,
+body.dark-mode td {
+    border: 1px solid #444447;
+    padding: 8px;
+    text-align: left;
+}
+
+body.dark-mode th {
+    background-color: #3a3a3c;
+    color: #f2f2f7;
+}
+
+/* 특정 컴포넌트에서 자주 사용될 수 있는 클래스에 대한 다크모드 스타일 */
+body.dark-mode .item-list .item {
+    background-color: #3a3a3c;
+    border-bottom: 1px solid #444447;
+}
+
+body.dark-mode .item-list .item:last-child {
+    border-bottom: none;
+}
+
+/* 폼 요소 그룹 */
+body.dark-mode .form-group label {
+    color: #f2f2f7;
+}
+
+/* 탭 스타일 */
+body.dark-mode .tabs .tab-item {
+    background-color: #2c2c2e;
+    border: 1px solid #444447;
+    color: #ababaf;
+}
+
+body.dark-mode .tabs .tab-item.active {
+    background-color: #3a3a3c;
+    color: #0A84FF;
+    border-bottom-color: #3a3a3c;
+    /* 활성 탭 하단 테두리 색상 */
+}
+
+
+/* 로고 이미지는 filter: invert(1) brightness(1.5) 와 같이 조정할 수도 있지만, */
+/* 요청에 따라 그대로 유지해야 하므로 특별한 스타일을 적용하지 않습니다. */
+/* body.dark-mode .logo-class { filter: invert(1) hue-rotate(180deg); } */
+
+/* 페이지네이션 예시 (라이브러리 사용 시 해당 라이브러리 클래스에 맞게 조정) */
+body.dark-mode .pagination .page-item .page-link {
+    background-color: #2c2c2e;
+    color: #0A84FF;
+    border: 1px solid #444447;
+}
+
+body.dark-mode .pagination .page-item.active .page-link {
+    background-color: #0A84FF;
+    color: white;
+    border-color: #0A84FF;
+}
+
+body.dark-mode .pagination .page-item.disabled .page-link {
+    color: #555558;
+    background-color: #2c2c2e;
+}
+
+/* 알림/메시지 박스 */
+body.dark-mode .alert.alert-info {
+    background-color: #0e3c60;
+    /* 어두운 파란색 계열 */
+    color: #add8e6;
+    /* 밝은 파란색 텍스트 */
+    border: 1px solid #1c5a8a;
+}
+
+body.dark-mode .alert.alert-success {
+    background-color: #104a2b;
+    /* 어두운 녹색 계열 */
+    color: #a7d7b8;
+    /* 밝은 녹색 텍스트 */
+    border: 1px solid #207c42;
+}
+
+body.dark-mode .alert.alert-warning {
+    background-color: #5d450c;
+    /* 어두운 노란색 계열 */
+    color: #ffe8a9;
+    /* 밝은 노란색 텍스트 */
+    border: 1px solid #8a6f21;
+}
+
+body.dark-mode .alert.alert-danger {
+    background-color: #5a1a1a;
+    /* 어두운 빨간색 계열 */
+    color: #f8b8b8;
+    /* 밝은 빨간색 텍스트 */
+    border: 1px solid #8a2828;
+}
+
+
+/* 다른 뷰(View) 컴포넌트들 내부의 주요 컨테이너/카드 스타일 예시 */
+/* MainPageDefaultView.vue의 YouTube 영상 카드 */
+body.dark-mode .youtube-video-item {
+    background-color: #2c2c2e;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+body.dark-mode .youtube-video-item .video-title {
+    color: #f2f2f7;
+}
+
+body.dark-mode .loading-message,
+body.dark-mode .error-message,
+body.dark-mode .no-videos-message {
+    background-color: #2c2c2e;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+body.dark-mode .loading-message p,
+body.dark-mode .error-message p,
+body.dark-mode .no-videos-message p {
+    color: #c7c7cc;
+}
+
+body.dark-mode .loading-spinner {
+    border-top: 4px solid #0A84FF;
+    /* 스피너 색상도 브랜드 색상으로 */
+}
+
+body.dark-mode .retry-button {
+    background-color: #0A84FF;
+    color: white;
+}
+
+body.dark-mode .retry-button:hover {
+    background-color: #0070f0;
+}
+
+body.dark-mode .news-section h2 {
+    /* MainPageDefaultView.vue 뉴스 섹션 타이틀 */
+    color: #0A84FF;
+}
+
+/* DepositComparisonView.vue 등 다른 컴포넌트의 테이블, 카드 등 공통 요소들... */
+/* 예시: body.dark-mode .deposit-table { ... } */
+/* 예시: body.dark-mode .product-card { ... } */
+
+/* CommunityView.vue 관련 스타일 */
+body.dark-mode .post-card {
+    /* 게시글 카드 */
+    background-color: #2c2c2e;
+    border: 1px solid #444447;
+}
+
+body.dark-mode .post-card .post-title {
+    color: #f2f2f7;
+}
+
+body.dark-mode .post-card .post-meta {
+    color: #ababaf;
+}
+
+body.dark-mode .post-card .post-content {
+    color: #c7c7cc;
+}
+
+body.dark-mode .comment-item {
+    /* 댓글 아이템 */
+    background-color: #3a3a3c;
+    border-top: 1px solid #444447;
+}
+
+body.dark-mode .comment-author {
+    color: #f2f2f7;
+}
+
+body.dark-mode .comment-content {
+    color: #c7c7cc;
+}
+
+body.dark-mode .comment-form textarea {
+    background-color: #222224;
+    border-color: #3a3a3c;
+    color: #f2f2f7;
+}
+
+/* LandingPageView는 일반적으로 다크모드와 별개로 디자인되지만, 만약 일관성을 원한다면... */
+/* body.dark-mode .landing-container { ... } */
+/* body.dark-mode .hero-section { ... } */
+
+/* 스크롤 투 탑 버튼에 대한 다크모드 스타일 */
+body.dark-mode .scroll-top-btn {
+    background-color: #555558;
+    /* 다크모드 버튼과 유사한 배경 */
+    color: #f2f2f7;
+    /* 밝은 아이콘/텍스트 */
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+body.dark-mode .scroll-top-btn::before {
+    border-color: #f2f2f7;
+    /* 화살표 색상 */
+}
+
+body.dark-mode .scroll-top-btn:hover {
+    background-color: #6a6a6e;
+}
+
+body.dark-mode .scroll-top-btn:hover::before {
+    border-color: #ffffff;
+}

@@ -7,6 +7,7 @@ import router from './router'
 import AOS from 'aos'
 import 'aos/dist/aos.css'
 import { useAuthStore } from '@/stores/authStore'
+import './assets/main.css'
 
 // Axios 기본 URL 설정
 axios.defaults.baseURL = 'http://127.0.0.1:8000'
