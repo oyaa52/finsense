@@ -78,6 +78,8 @@ export const useAuthStore = defineStore('auth', () => {
           localStorage.removeItem('userInfo')
         }
         axios.defaults.headers.common['Authorization'] = `Token ${tokenData}`
+        // 로그인 성공 후 프로필 정보 가져오기
+        // await fetchProfile(); // 필요하다면 주석 해제
         return true
       } else {
         loginError.value = '로그인에 성공했으나, 인증 토큰을 받지 못했습니다.'
@@ -132,11 +134,6 @@ export const useAuthStore = defineStore('auth', () => {
         'http://127.0.0.1:8000/dj-rest-auth/registration/', 
         credentials
       )
-
-      // 회원가입 성공 시 (보통 201 Created)
-      // dj-rest-auth는 기본적으로 회원가입 후 바로 로그인시키지 않음.
-      // 성공 메시지를 반환하거나, 로그인 페이지로 유도할 수 있음.
-      // 여기서는 성공 여부만 반환하고, UI 단에서 후속 처리 (예: 로그인 페이지로 이동 안내)
       return true 
     } catch (error) {
       if (error.response) {
@@ -146,26 +143,24 @@ export const useAuthStore = defineStore('auth', () => {
       if (error.response && error.response.data) {
         const errors = error.response.data;
         if (typeof errors === 'object' && errors !== null) {
-           // dj-rest-auth는 필드 에러를 {username: ["error"], email: ["error"]} 형태로 반환
-           // non_field_errors나 detail이 올 수도 있음
           if (errors.non_field_errors && Array.isArray(errors.non_field_errors)) {
             signupError.value = errors.non_field_errors.join(' ');
           } else if (errors.detail && typeof errors.detail === 'string') {
             signupError.value = errors.detail;
-          } else { // 필드 에러 객체로 처리
+          } else { 
             const fieldMessages = {};
             let hasFieldErrors = false;
             for (const key in errors) {
               if (Array.isArray(errors[key]) && errors[key].length > 0) {
-                fieldMessages[key] = errors[key].join(' '); // 배열 내 메시지들을 합침
+                fieldMessages[key] = errors[key].join(' '); 
                 hasFieldErrors = true;
-              } else if (typeof errors[key] === 'string') { // 간혹 문자열로 올 경우
+              } else if (typeof errors[key] === 'string') { 
                 fieldMessages[key] = errors[key];
                 hasFieldErrors = true;
               }
             }
             if (hasFieldErrors) {
-              signupError.value = fieldMessages; // 객체 형태로 저장
+              signupError.value = fieldMessages; 
             } else {
               signupError.value = '회원가입 중 오류가 발생했습니다. 입력 정보를 확인해주세요.';
             }
@@ -346,6 +341,47 @@ export const useAuthStore = defineStore('auth', () => {
   //   }
   // });
 
+  const loginSuccessFromSocial = async ({ token, userId }) => {
+    loginError.value = null 
+    try {
+      if (token && userId) { // userId는 직접 사용 안하지만, 전달받는 약속은 유지
+        accessToken.value = token
+        isLoggedIn.value = true
+        localStorage.setItem('accessToken', token)
+        axios.defaults.headers.common['Authorization'] = `Token ${token}`
+
+        try {
+          const userResponse = await axios.get('http://127.0.0.1:8000/dj-rest-auth/user/')
+          if (userResponse.data) {
+            user.value = userResponse.data
+            localStorage.setItem('userInfo', JSON.stringify(userResponse.data))
+            // 소셜 로그인 후 프로필 정보도 가져오도록 fetchProfile 호출
+            await fetchProfile(); 
+          } else {
+            _resetAuthSate() 
+            loginError.value = '사용자 정보를 가져오는데 실패했습니다.'
+            return false
+          }
+        } catch (fetchError) {
+          console.error('소셜 로그인 후 사용자 정보 가져오기 실패:', fetchError)
+          _resetAuthSate() 
+          loginError.value = '사용자 정보를 가져오는 중 오류가 발생했습니다.'
+          return false
+        }
+        return true
+      } else {
+        loginError.value = '소셜 로그인에 성공했으나, 인증 토큰 또는 사용자 ID를 받지 못했습니다.'
+        _resetAuthSate()
+        return false
+      }
+    } catch (error) {
+      console.error('loginSuccessFromSocial 액션 중 예외 발생:', error)
+      _resetAuthSate()
+      loginError.value = '소셜 로그인 처리 중 예기치 않은 오류가 발생했습니다.'
+      return false
+    }
+  }
+
   // 스토어가 반환해야 하는 모든 상태, 게터, 액션을 객체로 반환
   return {
     accessToken,
@@ -369,5 +405,6 @@ export const useAuthStore = defineStore('auth', () => {
     fetchProfile,
     updateProfile,
     _resetAuthSate,
+    loginSuccessFromSocial
   }
 }) 

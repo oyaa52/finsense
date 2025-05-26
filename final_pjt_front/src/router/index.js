@@ -16,6 +16,7 @@ import FavoriteVideosView from '@/views/FavoriteVideosView.vue'
 import AIRecommendationView from '@/views/AIRecommendationView.vue'
 import AdminPanelView from '@/views/AdminPanelView.vue'
 import UserProfileView from '@/views/UserProfileView.vue'
+import SocialCallbackView from '@/views/SocialCallbackView.vue'
 import { useAuthStore } from '@/stores/authStore'
 import MyProductsView from '@/views/MyProductsView.vue'
 
@@ -213,6 +214,11 @@ const router = createRouter({
       path: '/signup',
       name: 'signup',
       component: SignupView
+    },
+    {
+      path: '/social-callback',
+      name: 'socialCallback',
+      component: SocialCallbackView
     },
     {
       path: '/ai-recommendation',

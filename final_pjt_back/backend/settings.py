@@ -62,6 +62,10 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.sites",
+    # 각 소셜 프로바이더 추가
+    "allauth.socialaccount.providers.google",
+    "allauth.socialaccount.providers.kakao",
 ]
 
 SITE_ID = 1
@@ -83,6 +87,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
 ]
 
+CORS_ALLOW_CREDENTIALS = True
+
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -94,7 +100,7 @@ ROOT_URLCONF = "backend.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -102,12 +108,15 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                # 아래 두 줄은 ModuleNotFoundError를 유발하므로 제거 또는 주석 처리
+                # "allauth.account.context_processors.account",
+                # "allauth.socialaccount.context_processors.socialaccount",
             ],
         },
     },
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True
+# CORS_ALLOW_ALL_ORIGINS = True
 
 WSGI_APPLICATION = "backend.wsgi.application"
 
@@ -185,10 +194,6 @@ REST_FRAMEWORK = {
 # ACCOUNT_AUTHENTICATION_METHOD = 'email'
 # ACCOUNT_EMAIL_VERIFICATION = 'optional'
 
-ACCOUNT_EMAIL_VERIFICATION = "none"
-ACCOUNT_AUTHENTICATION_METHOD = "username"
-ACCOUNT_EMAIL_REQUIRED = False
-
 AUTH_USER_MODEL = "accounts.User"
 
 REST_AUTH = {
@@ -233,3 +238,90 @@ CACHES = {
         "OPTIONS": {"MAX_ENTRIES": 1000},
     }
 }
+
+AUTHENTICATION_BACKENDS = [
+    # Needed to login by username in Django admin, regardless of `allauth`
+    'django.contrib.auth.backends.ModelBackend',
+    # `allauth` specific authentication methods, such as login by e-mail
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+
+# 로그인이 필요한 경우 리디렉션될 로그인 페이지 URL
+LOGIN_URL = '/accounts/login/'
+
+# Allauth 설정 (필요에 따라 커스터마이징)
+ACCOUNT_AUTHENTICATION_METHOD = 'email' # 이메일 또는 (username + 이메일)로 로그인
+ACCOUNT_EMAIL_REQUIRED = True          # 이메일 필드를 필수로 설정
+ACCOUNT_USERNAME_REQUIRED = True       # User 모델에 username이 있으므로 True로 설정.
+                                       # 소셜 로그인 시 username은 이메일 등으로 자동 생성되거나,
+                                       # adapter를 통해 커스터마이징 가능.
+ACCOUNT_EMAIL_VERIFICATION = 'optional'# 이메일 인증은 선택적으로. (소셜은 이미 인증된 경우가 많음)
+                                       # 'none'으로 하면 인증 메일 발송 안 함.
+
+# LOGIN_REDIRECT_URL = '/'               # 로그인 후 리디렉션될 URL. Vue 앱의 콜백 핸들러로 변경.
+LOGIN_REDIRECT_URL = 'http://localhost:5173/social-callback' # Vue 앱의 소셜 로그인 콜백 처리 경로
+LOGOUT_REDIRECT_URL = '/'              # 로그아웃 후 리디렉션될 URL (추가 권장)
+ACCOUNT_LOGOUT_ON_GET = True           # GET 요청으로 로그아웃 처리 (편의성)
+
+# 이메일 중복 허용 안 함 (User 모델에 email unique=True 이므로 필수)
+ACCOUNT_UNIQUE_EMAIL = True
+
+# 소셜 계정으로 가입 시 추가 정보 입력 없이 자동 가입 (필요에 따라 False로 변경 후 폼 제공)
+SOCIALACCOUNT_AUTO_SIGNUP = True
+
+# 소셜 계정 관련 설정
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        # For each OAuth based provider, either add a ``SocialApp``
+        # (``socialaccount`` app) containing the client secrets
+        # or list them here:
+        # 'APP': {  # 주석 처리 또는 삭제
+            # 'client_id': 'YOUR_GOOGLE_CLIENT_ID',
+            # 'secret': 'YOUR_GOOGLE_CLIENT_SECRET',
+            # 'key': ''
+        # },
+        'SCOPE': [
+            'profile',
+            'email',
+        ],
+        'AUTH_PARAMS': {
+            'access_type': 'online',
+        }
+    },
+    'kakao': {
+        # 'APP': {  # 주석 처리 또는 삭제
+            # 'client_id': 'YOUR_KAKAO_NATIVE_APP_KEY_OR_REST_API_KEY',
+            # 'secret': 'YOUR_KAKAO_CLIENT_SECRET',
+        # },
+        'SCOPE': [
+            'profile_nickname',
+            'profile_image',
+            # 'account_email', # 이메일 스코프 제거
+        ],
+        # 'AUTH_PARAMS': {'auth_type': 'reauthenticate'}, # 필요시
+    }
+}
+
+# 기존 settings.py 파일의 맨 아래에 추가합니다.
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'allauth': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+    },
+}
+
+SESSION_COOKIE_SAMESITE = 'Lax' # SameSite 설정 추가
+
+# Custom Adapters
+ACCOUNT_ADAPTER = 'accounts.adapter.CustomAccountAdapter'
+SOCIALACCOUNT_ADAPTER = 'accounts.adapter.CustomSocialAccountAdapter'
+

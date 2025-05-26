@@ -32,6 +32,21 @@
         <span>|</span>
         <router-link to="/find-credentials">아이디/비밀번호 찾기</router-link>
       </div>
+
+      <!-- Social Login Buttons Start -->
+      <div class="social-login-container">
+        <div class="social-login-divider">
+          <span>OR</span>
+        </div>
+        <a :href="`${djangoBaseUrl}/accounts/google/login/?process=login`" class="social-login-btn google-btn">
+          <img src="@/assets/google-logo.png" alt="Google logo" class="social-logo"/> Google로 계속하기
+        </a>
+        <a :href="`${djangoBaseUrl}/accounts/kakao/login/?process=login`" class="social-login-btn kakao-btn">
+          <img src="@/assets/kakao-logo.png" alt="Kakao logo" class="social-logo"/> Kakao로 계속하기
+        </a>
+      </div>
+      <!-- Social Login Buttons End -->
+
        <div class="home-link-container">
         <router-link to="/main" class="home-button">홈으로 돌아가기</router-link>
       </div>
@@ -52,6 +67,9 @@ const password = ref('')
 
 const router = useRouter()
 const authStore = useAuthStore()
+
+// Django 백엔드 기본 URL (소셜 로그인 링크용)
+const djangoBaseUrl = import.meta.env.VITE_DJANGO_API_URL || 'http://127.0.0.1:8000';
 
 const loginError = computed(() => authStore.getLoginError)
 
@@ -257,4 +275,74 @@ onMounted(() => {
   color: #ffffff;
 }
 
+/* Social Login Styles */
+.social-login-container {
+  margin-top: 25px;
+  margin-bottom: 25px;
+}
+
+.social-login-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: #888;
+  margin-bottom: 20px;
+  font-size: 0.9rem;
+}
+
+.social-login-divider::before,
+.social-login-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #444;
+}
+
+.social-login-divider span {
+  padding: 0 15px;
+}
+
+.social-login-btn {
+  display: flex; /* 로고와 텍스트 정렬을 위해 flex 사용 */
+  align-items: center; /* 세로 중앙 정렬 */
+  justify-content: center; /* 가로 중앙 정렬 */
+  width: 100%;
+  padding: 12px 15px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s ease, box-shadow 0.2s ease;
+  border: 1px solid transparent; /* 테두리 초기화 */
+  box-sizing: border-box;
+}
+
+.social-logo {
+  width: 20px; /* 로고 크기 */
+  height: 20px; /* 로고 크기 */
+  margin-right: 10px; /* 로고와 텍스트 간격 */
+}
+
+.google-btn {
+  background-color: #fff;
+  color: #444; /* 구글은 보통 검은색 또는 회색 텍스트 */
+  border: 1px solid #ddd;
+}
+
+.google-btn:hover {
+  background-color: #f8f8f8;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.kakao-btn {
+  background-color: #FEE500;
+  color: #3C1E1E; /* 카카오 텍스트 색상 */
+  border: 1px solid #FEE500;
+}
+
+.kakao-btn:hover {
+  background-color: #fada0a;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
 </style> 
