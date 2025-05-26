@@ -21,7 +21,6 @@ export const useCommunityStore = defineStore('community', {
           throw new Error('로그인이 필요합니다.')
         }
         const response = await axios.get('/api/v1/community/posts/')
-        console.log('API Response for /api/v1/community/posts/:', JSON.stringify(response.data, null, 2));
         this.posts = response.data
       } catch (error) {
         this.error = error.response?.data?.detail || error.message
