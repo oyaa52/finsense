@@ -88,7 +88,10 @@ const chartOptions = reactive({
     },
     y: {
       title: { display: true, text: '가격' },
-      ticks: { callback: value => value.toLocaleString() }
+      ticks: { 
+        callback: value => value.toLocaleString(),
+        // stepSize: 20000 // y축 눈금 간격을 20000으로 설정
+      }
     }
   },
   plugins: {
@@ -107,9 +110,8 @@ const chartOptions = reactive({
   }
 });
 
-// AssetPriceListAPIView를 사용하고, 파라미터는 asset_name, start_date, end_date
-const API_BASE_URL = 'http://127.0.0.1:8000/api/v1/assetinfo/list-prices/';
-
+// 한국금거래소 API를 사용하도록 URL 변경
+const API_BASE_URL = 'http://127.0.0.1:8000/api/v1/assetinfo/koreaexgold-prices/';
 
 const fetchAssetPrices = async () => {
   isLoading.value = true;
@@ -122,66 +124,98 @@ const fetchAssetPrices = async () => {
     clearChartDataAndSetDefault();
     return;
   }
-  
-  if (startDate.value && endDate.value && startDate.value > endDate.value) {
-    errorMessage.value = '시작일은 종료일보다 이전 날짜여야 합니다.';
-    isLoading.value = false;
-    clearChartDataAndSetDefault();
-    return;
+
+  // 선택된 자산에 따라 y축 stepSize 동적 변경
+  if (selectedAsset.value === 'gold') {
+    chartOptions.scales.y.ticks.stepSize = 20000;
+  } else if (selectedAsset.value === 'silver') {
+    chartOptions.scales.y.ticks.stepSize = 500; // 은(Silver)의 경우 500으로 변경
   }
 
+  // 날짜 파라미터 동적 생성 (오늘 & 한달 전)
+  const today = new Date();
+  const oneMonthAgo = new Date();
+  oneMonthAgo.setMonth(today.getMonth() - 1);
+
+  // YYYY-MM-DD 형식으로 변환
+  const formatDate = (date) => {
+    const year = date.getFullYear();
+    const month = ('0' + (date.getMonth() + 1)).slice(-2);
+    const day = ('0' + date.getDate()).slice(-2);
+    return `${year}-${month}-${day}`;
+  };
+
+  const dateToParam = formatDate(today);
+  const dateFromParam = formatDate(oneMonthAgo);
+
+  // 기존 UI의 startDate, endDate는 사용하지 않지만, 사용자가 날짜를 선택했을 경우에 대한 처리는 일단 보류
+  // (현재는 무조건 최근 한달 조회)
+  // 사용자가 입력한 날짜를 사용하려면, 아래 params 설정 부분을 조건부로 수정해야 함
+  //   let queryFromDate = dateFromParam;
+  //   let queryToDate = dateToParam;
+  //   if (startDate.value && endDate.value) {
+  //       if (startDate.value > endDate.value) {
+  //           errorMessage.value = '시작일은 종료일보다 이전 날짜여야 합니다.';
+  //           isLoading.value = false;
+  //           clearChartDataAndSetDefault();
+  //           return;
+  //       }
+  //       queryFromDate = startDate.value;
+  //       queryToDate = endDate.value;
+  //   } else if (startDate.value || endDate.value) {
+  //       // 하나만 입력된 경우에 대한 처리 (예: 둘 다 입력하도록 유도)
+  //       errorMessage.value = '시작일과 종료일을 모두 입력하거나, 최근 한달 조회를 사용하세요.';
+  //       isLoading.value = false;
+  //       clearChartDataAndSetDefault();
+  //       return;
+  //   }
+
   try {
-    const params = { asset_name: selectedAsset.value }; 
-    if (startDate.value) params.start_date = startDate.value;
-    if (endDate.value) params.end_date = endDate.value;
+    const params = {
+      type: selectedAsset.value === 'gold' ? 'Au' : 'Ag',
+      from: dateFromParam, // 무조건 최근 한달
+      to: dateToParam     // 무조건 최근 한달
+      // from: queryFromDate, // 사용자가 선택한 날짜를 사용하려면 이것으로 교체
+      // to: queryToDate       // 사용자가 선택한 날짜를 사용하려면 이것으로 교체
+    };
 
     const response = await axios.get(API_BASE_URL, { params });
-    console.log('API Response Data:', response.data);
-    
-    if (response.data && Array.isArray(response.data)) {
-      if (response.data.length === 0) {
+    console.log('New API Response Data:', response.data);
+
+    // 백엔드에서 이미 Chart.js 형식으로 데이터를 가공해서 보내주므로, 그대로 사용
+    if (response.data && response.data.labels && response.data.datasets) {
+      if (response.data.labels.length === 0) {
         chartData.labels = [];
         chartData.datasets = [];
       } else {
-        chartData.labels = response.data.map(item => item.date);
-        const assetNameDisplay = selectedAsset.value === 'gold' ? '금' : '은';
-        const color = selectedAsset.value === 'gold' ? 'rgb(255, 215, 0)' : 'rgb(192, 192, 192)';
-        const bgColor = selectedAsset.value === 'gold' ? 'rgba(255, 215, 0, 0.1)' : 'rgba(192, 192, 192, 0.1)';
-
-        chartData.datasets = [{
-          label: `${assetNameDisplay} 가격`,
-          data: response.data.map(item => parseFloat(item.price)),
-          borderColor: color,
-          backgroundColor: bgColor,
-          tension: 0.1,
-          fill: true
-        }];
+        chartData.labels = response.data.labels;
+        chartData.datasets = response.data.datasets;
       }
     } else {
       clearChartDataAndSetDefault();
-      errorMessage.value = '데이터를 불러오는 데 실패했습니다. 응답 형식을 확인해주세요.';
+      errorMessage.value = '데이터를 불러오는 데 실패했습니다. (응답 형식 오류)';
     }
 
   } catch (error) {
-    console.error('Error fetching asset prices:', error);
+    console.error('Error fetching asset prices from new API:', error);
     if (error.response && error.response.data && error.response.data.error) {
       errorMessage.value = error.response.data.error;
+    } else if (error.message.includes('Network Error')) {
+      errorMessage.value = '네트워크 오류가 발생했습니다. 백엔드 서버가 실행 중인지 확인해주세요.';
     } else {
       errorMessage.value = '데이터를 불러오는 중 오류가 발생했습니다.';
     }
     clearChartDataAndSetDefault();
   }
   chartKey.value++;
-  updateChartTitle();
+  updateChartTitle(); // 차트 제목은 계속 동적으로 업데이트
   isLoading.value = false;
 
-  // DOM 업데이트 후 차트 업데이트 시도
-  await nextTick(); 
+  await nextTick();
   if (lineChart.value && lineChart.value.chart) {
-    console.log("Chart Instance Data (after fetch):", lineChart.value.chart.data);
-    console.log("Chart Instance Options (after fetch):", lineChart.value.chart.options);
+    // console.log("Chart Instance Data (after fetch from new API):", lineChart.value.chart.data);
   } else {
-    console.log("Chart instance not found for update (after fetch)", lineChart.value);
+    // console.log("Chart instance not found for update (new API)", lineChart.value);
   }
 };
 
