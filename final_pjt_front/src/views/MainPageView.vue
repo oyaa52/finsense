@@ -18,11 +18,8 @@
           <p class="welcome-message">{{ currentUser.username || '사용자' }}님, 환영합니다!</p>
         </template>
         <div class="user-actions">
-          <router-link 
-            :to="{ name: 'userProfile', params: { username: currentUser.username } }" 
-            class="action-link profile-link" 
-            v-if="currentUser && currentUser.username"
-          >
+          <router-link :to="{ name: 'userProfile', params: { username: currentUser.username } }"
+            class="action-link profile-link" v-if="currentUser && currentUser.username">
             내 프로필
           </router-link>
           <span class="separator" v-if="currentUser && currentUser.username">|</span>
@@ -44,8 +41,16 @@
             <li><router-link to="/main/favorite-videos" class="action-link">즐겨찾는 영상</router-link></li>
           </ul>
         </nav>
-      </div>
 
+        <!-- 내가 가입한 상품 메뉴 추가 -->
+        <nav class="sidebar-nav my-products-nav" v-if="isLoggedIn">
+          <h3 class="nav-title">나의 상품</h3>
+          <ul>
+            <li><router-link to="/main/my-subscribed-products" class="action-link">가입 상품 조회</router-link></li>
+          </ul>
+        </nav>
+
+      </div>
 
     </aside>
 
@@ -111,6 +116,8 @@ const promoSlides = ref([
 const authStore = useAuthStore() // authStore 인스턴스 생성
 const router = useRouter()
 const route = useRoute() // 현재 라우트 정보를 가져오기 위해 추가
+
+// const isDarkMode = ref(false); // 다크 모드 상태 ref -- 제거
 
 // authStore의 상태를 computed 속성으로 사용
 const isLoggedIn = computed(() => authStore.isAuthenticated)
@@ -775,5 +782,75 @@ html {
   color: #d32f2f;
   /* 관리자 기능은 다른 색으로 강조 가능 */
   font-weight: 500;
+}
+
+/* 나의 상품 네비게이션 스타일 추가 */
+.my-products-nav {
+  margin-top: 20px;
+  width: 100%;
+}
+
+.my-products-nav .nav-title {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #555;
+  margin-bottom: 10px;
+  text-align: left;
+  padding-left: 5px;
+  /* 약간의 왼쪽 여백 */
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 5px;
+}
+
+.my-products-nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.my-products-nav li {
+  margin-bottom: 8px;
+}
+
+.my-products-nav .action-link {
+  display: block;
+  padding: 8px 10px;
+  color: #333;
+  text-decoration: none;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.my-products-nav .action-link:hover,
+.my-products-nav .action-link.router-link-active {
+  background-color: #e0e0e0;
+  /* 호버 및 활성 링크 배경색 */
+  color: #0064FF;
+  font-weight: 500;
+}
+
+/* Scroll to Top Button Styles */
+.scroll-top-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: #0064FF;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  transition: background-color 0.3s ease;
+}
+
+.scroll-top-btn:hover {
+  background-color: #0052cc;
 }
 </style>
