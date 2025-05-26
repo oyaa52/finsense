@@ -214,14 +214,22 @@ EMAIL_HOST_USER = env(
 EMAIL_HOST_PASSWORD = env("NAVER_EMAIL_APP_PASSWORD")  # 네이버 메일 앱 비밀번호
 DEFAULT_FROM_EMAIL = f"{env('NAVER_EMAIL_ID')}@naver.com"  # 발신자 이메일 주소
 
+# 캐시 디렉토리 자동 생성
+CACHE_DIR = os.path.join(BASE_DIR, "django_cache")
+if not os.path.exists(CACHE_DIR):
+    try:
+        os.makedirs(CACHE_DIR)
+        # print(f"캐시 디렉토리 생성됨: {CACHE_DIR}") # 개발 중 확인용. 프로덕션 환경에서는 Django 로깅 시스템 사용 권장.
+    except OSError as e:
+        print(f"캐시 디렉토리 생성 오류 {CACHE_DIR}: {e}")
+        # 선택 사항: 다른 캐시로 대체하거나, 에러를 발생시켜 문제를 알릴 수 있습니다.
+
 # Cache Settings (File-based cache example)
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
-        "LOCATION": os.path.join(
-            BASE_DIR, "django_cache"
-        ),  # Ensure this directory exists and is writable
-        "TIMEOUT": 60 * 60 * 24,  # 24 hours
+        "LOCATION": CACHE_DIR,  # 정의된 CACHE_DIR 사용
+        "TIMEOUT": 60 * 60 * 24,  # 24시간
         "OPTIONS": {"MAX_ENTRIES": 1000},
     }
 }
