@@ -8,17 +8,17 @@
         <button @click="$refs.fileInput.click()" class="image-btn">
           <i class="fas fa-image"></i>
         </button>
-        <button @click="createPost" :disabled="!newPostContent.trim()">
+        <button @click="createPost" :disabled="!newPostContent.trim() && !selectedImage">
           게시하기
         </button>
       </div>
-      <img v-if="selectedImage" :src="imagePreview" class="image-preview" />
+      <img v-if="imagePreview && selectedImage" :src="imagePreview" class="image-preview" />
     </div>
 
     <!-- Posts Feed -->
-    <div class="posts-feed">
-      <div v-if="loading" class="loading">로딩 중...</div>
-      <div v-else-if="error" class="error">{{ error }}</div>
+    <div class="posts-feed" ref="feedContainer">
+      <div v-if="store.loading && posts.length === 0" class="loading">로딩 중...</div>
+      <div v-else-if="store.error && posts.length === 0" class="error">{{ store.error }}</div>
       <div v-else class="posts">
         <div v-for="post in posts" :key="post.id" class="post-card">
           <div class="post-header">
@@ -31,11 +31,25 @@
               </router-link>
               <span class="timestamp">{{ formatDate(post.created_at) }}</span>
             </div>
-            <button v-if="post.user.id !== currentUserId" class="follow-btn"
-              :class="{ 'following': post.user.is_following }"
-              @click="post.user.is_following ? unfollowUser(post.user.id) : followUser(post.user.id)">
-              {{ post.user.is_following ? '언팔로우' : '팔로우' }}
-            </button>
+            <button v-if="currentUserId && post.user.id !== currentUserId && !post.user.is_following" 
+                    class="follow-btn" 
+                    @click="toggleFollow(post.user)">팔로우</button>
+            <button v-if="currentUserId && post.user.id !== currentUserId && post.user.is_following" 
+                    class="follow-btn following" 
+                    @click="toggleFollow(post.user)">언팔로우</button>
+
+            <!-- More Options Menu for Posts -->
+            <div v-if="currentUserId && post.user.id === currentUserId" class="post-options-container">
+              <button @click.stop="togglePostOptionsMenu(post.id)" class="more-options-btn">
+                <i class="fas fa-ellipsis-h"></i>
+              </button>
+              <div v-if="openPostOptionsMenu === post.id" class="options-menu post-options-menu">
+                <button @click="handleDeletePost(post.id)" class="menu-item delete-item">
+                  <i class="fas fa-trash-alt"></i> 삭제
+                </button>
+              </div>
+            </div>
+            <!-- End More Options Menu for Posts -->
           </div>
 
           <div class="post-content">
@@ -46,255 +60,296 @@
           <div class="post-actions">
             <button @click="likePost(post.id)" :class="{ liked: post.is_liked }">
               <i :class="post.is_liked ? 'fas fa-heart' : 'far fa-heart'"></i>
-              <span>좋아요 {{ post.likes_count }}</span>
+              <span> {{ post.likes_count }}</span>
             </button>
             <button @click="toggleComments(post)">
               <i class="far fa-comment"></i>
-              <span>댓글 {{ post.comments.length }}</span>
+              <span> {{ post.comments ? post.comments.length : 0 }}</span>
             </button>
           </div>
 
           <!-- Comments Section -->
           <div v-if="post.showComments" class="comments-section">
             <div
-              v-if="replyingToCommentId && post.comments.some(c => c.id === replyingToCommentId || (c.replies && c.replies.some(r => r.id === replyingToCommentId)))"
+              v-if="replyingToCommentId && activePostForReply && activePostForReply.id === post.id" 
               class="replying-to-info">
               <span>@{{ replyingToUsername }}님에게 답글 남기는 중...</span>
-              <button @click="replyingToCommentId = null; replyingToUsername = ''" class="cancel-reply-btn">취소</button>
+              <button @click="cancelReply" class="cancel-reply-btn">취소</button>
             </div>
-            <div class="comment-input">
-              <input v-model="newComments[post.id]" :placeholder="commentPlaceholder"
-                @keyup.enter="createComment(post.id)" :ref="el => commentInputRefs[`post-${post.id}`] = el" />
-              <button @click="createComment(post.id)">{{ replyingToCommentId ? '답글 게시' : '댓글 게시' }}</button>
-            </div>
+            <form class="comment-input" @submit.prevent="handleCommentSubmit(post.id)">
+              <input v-model="newComments[post.id]" 
+                     :placeholder="commentPlaceholder(post.id)" 
+                     :ref="el => commentInputRefs[`post-${post.id}`] = el" />
+              <button type="submit">{{ replyingToCommentId && activePostForReply && activePostForReply.id === post.id ? '답글 게시' : '댓글 게시' }}</button>
+            </form>
             <div class="comments-list">
-              <div v-for="comment in post.comments" :key="comment.id" class="comment-item">
-                <div class="comment">
-                  <img :src="comment.user.profile_image || defaultProfileImageUrl" class="avatar comment-avatar" />
-                  <div class="comment-body">
-                    <div class="comment-header">
-                      <span class="username">{{ comment.user.username }}</span>
-                      <span class="timestamp">{{ formatDate(comment.created_at) }}</span>
-                    </div>
-                    <p class="comment-text">{{ comment.content }}</p>
-                    <button @click="setReplyingTo(comment, post)" class="reply-btn">답글</button>
-                  </div>
-                </div>
-
-                <div v-if="comment.replies && comment.replies.length > 0" class="replies-list">
-                  <div v-for="reply in comment.replies" :key="reply.id" class="comment-item reply-item">
-                    <div class="comment">
-                      <img :src="reply.user.profile_image || defaultProfileImageUrl" class="avatar comment-avatar" />
-                      <div class="comment-body">
-                        <div class="comment-header">
-                          <span class="username">{{ reply.user.username }}</span>
-                          <span class="timestamp">{{ formatDate(reply.created_at) }}</span>
-                        </div>
-                        <p class="comment-text">
-                          <span v-if="reply.parent_comment_author_username" class="reply-target">
-                            @{{ reply.parent_comment_author_username }}
-                          </span>
-                          {{ reply.content }}
-                        </p>
-                        <button @click="setReplyingTo(reply, post)" class="reply-btn">답글</button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <comment-item 
+                v-for="comment in post.comments"
+                :key="comment.id"
+                :comment="comment"
+                :post="post"
+                :depth="0"
+                :defaultProfileImageUrl="defaultProfileImageUrl"
+                :formatDateFunction="formatDate"
+                @initiate-reply="handleInitiateReply"
+              />
             </div>
           </div>
         </div>
+      </div>
+      <div v-if="store.isLoadingMore" class="loading">
+        <i class="fas fa-spinner fa-spin"></i> 더 많은 게시글을 불러오는 중...
+      </div>
+      <div v-if="!store.hasMorePosts && posts.length > 0 && !store.loading && !store.isLoadingMore" class="no-more-posts">
+        모든 게시글을 불러왔습니다.
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import { useCommunityStore } from '@/stores/community'
 import { useAuthStore } from '@/stores/authStore'
 import { formatDistanceToNow } from 'date-fns'
 import { ko } from 'date-fns/locale'
+import { useRouter } from 'vue-router'
+import CommentItem from '@/components/CommentItem.vue'
 
 const defaultProfileImageUrl = new URL('@/assets/default_profile.png', import.meta.url).href
 const store = useCommunityStore()
 const authStore = useAuthStore()
-const currentUserId = computed(() => authStore.getUserProfile?.id)
+const router = useRouter()
+
+const currentUserId = computed(() => {
+  const id = authStore.user?.pk;
+  console.log('[CommunityView] Computed currentUserId (now using .pk from authStore.user):', id);
+  return id;
+})
+
+const posts = computed(() => {
+  if (store.posts && store.posts.length > 0 && authStore.user) {
+    const postAuthorId = store.posts[0].user?.id;
+    const authUserIdToCompare = authStore.user?.pk;
+    console.log('[CommunityView] Computed posts: First post user ID (now .id):', postAuthorId, 'Current Auth User ID (pk):', authUserIdToCompare);
+    console.log('[CommunityView] Computed posts: Comparison for delete button (first post):', postAuthorId === authUserIdToCompare);
+  }
+  return store.posts
+})
+
 const newPostContent = ref('')
 const selectedImage = ref(null)
 const imagePreview = ref(null)
 const newComments = ref({})
 const replyingToCommentId = ref(null)
 const replyingToUsername = ref('')
+const activePostForReply = ref(null)
 const commentInputRefs = ref({})
+const openPostOptionsMenu = ref(null); // New state for post options menu
 
-const loading = ref(false)
-const error = ref(null)
-const posts = ref([])
+const feedContainer = ref(null)
+const scrollableContainer = ref(null)
 
-// Helper function to find a comment (and its parent array and index if it's a reply)
-// This will be used to add replies correctly.
-function findCommentInPost(post, commentId) {
-  if (!post || !post.comments) return null;
+const formatDate = (dateString) => {
+  if (!dateString) return ''
+  return formatDistanceToNow(new Date(dateString), { addSuffix: true, locale: ko })
+}
 
-  for (let i = 0; i < post.comments.length; i++) {
-    const comment = post.comments[i];
-    if (comment.id === commentId) {
-      return comment; // Found top-level comment
-    }
-    if (comment.replies) {
-      for (let j = 0; j < comment.replies.length; j++) {
-        const reply = comment.replies[j];
-        if (reply.id === commentId) {
-          return reply; // Found reply
-        }
-      }
-    }
+const handleScroll = async () => {
+  if (!scrollableContainer.value) {
+    return;
   }
-  return null;
+  const target = scrollableContainer.value === window ? document.documentElement : scrollableContainer.value;
+  const { scrollTop, clientHeight, scrollHeight } = target;
+  const nearBottomOfContainer = clientHeight + scrollTop >= scrollHeight - 150;
+
+  if (nearBottomOfContainer && !store.isLoadingMore && store.hasMorePosts) {
+    await store.fetchPosts();
+  }
+}
+
+const toggleFollow = async (targetUser) => {
+  if (!authStore.isAuthenticated) {
+    alert('로그인이 필요합니다.')
+    router.push({ name: 'login' })
+    return
+  }
+  try {
+    await store.toggleFollowUser(targetUser.id)
+  } catch (error) {
+    console.error('Error toggling follow:', error)
+  }
 }
 
 onMounted(async () => {
-  await fetchPosts()
+  await nextTick(); 
+  let parent = feedContainer.value?.parentElement;
+  let attempts = 0;
+  while (parent && attempts < 10) { 
+    const found = parent.closest('.content-area');
+    if (found) {
+      scrollableContainer.value = found;
+      break;
+    }
+    parent = parent.parentElement;
+    attempts++;
+  }
+
+  if (!scrollableContainer.value) {
+    scrollableContainer.value = window; 
+  }
+  
+  if (store.posts.length === 0 && store.hasMorePosts) { 
+    await store.fetchPosts(true); 
+  }
+
+  if (scrollableContainer.value) {
+    scrollableContainer.value.addEventListener('scroll', handleScroll);
+  }
 })
 
-async function fetchPosts() {
-  loading.value = true
-  try {
-    await store.fetchPosts()
-    posts.value = store.posts.map(p => ({
-      ...p,
-      showComments: p.showComments || false
-    }))
-  } catch (err) {
-    error.value = err.message
-  } finally {
-    loading.value = false
+onUnmounted(() => {
+  if (scrollableContainer.value) {
+    scrollableContainer.value.removeEventListener('scroll', handleScroll);
   }
-}
+})
 
 function handleFileSelect(event) {
   const file = event.target.files[0]
   if (file) {
     selectedImage.value = file
     imagePreview.value = URL.createObjectURL(file)
+  } else {
+    selectedImage.value = null
+    imagePreview.value = null
   }
 }
 
 async function createPost() {
-  if (!newPostContent.value.trim()) return
-
+  if (!newPostContent.value.trim() && !selectedImage.value) {
+    alert('내용을 입력하거나 이미지를 선택해주세요.')
+    return
+  }
   try {
     await store.createPost(newPostContent.value, selectedImage.value)
     newPostContent.value = ''
     selectedImage.value = null
     imagePreview.value = null
-    await fetchPosts()
   } catch (err) {
-    error.value = err.message
+    alert(store.error || '게시글 작성 중 오류가 발생했습니다.')
   }
 }
 
 async function likePost(postId) {
+  if (!authStore.isAuthenticated) {
+    alert('로그인이 필요합니다.')
+    router.push({ name: 'login' })
+    return
+  }
   try {
     await store.likePost(postId)
   } catch (err) {
-    error.value = err.message
+    alert(store.error || '좋아요 처리 중 오류가 발생했습니다.')
   }
 }
 
 function toggleComments(post) {
   post.showComments = !post.showComments
-}
-
-async function createComment(postId) {
-  const content = newComments.value[postId];
-  if (!content?.trim()) return;
-
-  // console.log('Creating comment:', { 
-  //   postId, 
-  //   content, 
-  //   replyingToCommentId: replyingToCommentId.value 
-  // });
-
-  try {
-    const newCommentData = await store.createComment(postId, content, replyingToCommentId.value);
-
-    // Find the post in the local 'posts' ref
-    const targetPost = posts.value.find(p => p.id === postId);
-
-    if (targetPost) {
-      if (replyingToCommentId.value) { // It's a reply
-        const parentComment = findCommentInPost(targetPost, replyingToCommentId.value);
-        if (parentComment) {
-          if (!parentComment.replies) {
-            parentComment.replies = [];
-          }
-          parentComment.replies.push(newCommentData);
-        } else {
-          // Fallback or error: parent comment not found, add as a top-level comment for now
-          // This case should ideally not happen if replyingToCommentId is correctly set.
-          console.warn('Parent comment not found for reply. Adding as top-level comment.');
-          targetPost.comments.push(newCommentData);
-        }
-      } else { // It's a new top-level comment
-        if (!targetPost.comments) {
-          targetPost.comments = [];
-        }
-        targetPost.comments.push(newCommentData);
-      }
+  if (!post.showComments) {
+    if (activePostForReply.value && activePostForReply.value.id === post.id) {
+        cancelReply();
     }
-
-    newComments.value[postId] = '';
-    replyingToCommentId.value = null;
-    replyingToUsername.value = '';
-    // await fetchPosts(); // No longer calling fetchPosts, local state is updated
-  } catch (err) {
-    console.error('Error creating comment:', err);
-    error.value = err.message;
   }
 }
 
-async function followUser(userId) {
-  try {
-    await store.followUser(userId)
-    await fetchPosts()
-  } catch (err) {
-    error.value = err.message
+const commentPlaceholder = (postId) => {
+  if (replyingToCommentId.value && activePostForReply.value && activePostForReply.value.id === postId) {
+    return `@${replyingToUsername.value}님에게 답글 남기기`;
   }
+  return '댓글을 입력하세요...';
 }
 
-async function unfollowUser(userId) {
-  try {
-    await store.unfollowUser(userId)
-    await fetchPosts()
-  } catch (err) {
-    error.value = err.message
-  }
-}
-
-function formatDate(date) {
-  return formatDistanceToNow(new Date(date), { addSuffix: true, locale: ko })
-}
-
-const commentPlaceholder = computed(() => {
-  if (replyingToUsername.value) {
-    return `@${replyingToUsername.value}님에게 답글 작성...`;
-  }
-  return '댓글을 작성하세요...';
-})
-
-function setReplyingTo(comment, post) {
-  console.log('Setting reply to:', { commentId: comment.id, username: comment.user.username });
+function handleInitiateReply({ comment, post }) {
   replyingToCommentId.value = comment.id;
   replyingToUsername.value = comment.user.username;
+  activePostForReply.value = post; 
+
   nextTick(() => {
-    const inputEl = commentInputRefs.value[`post-${post.id}`];
-    if (inputEl) {
-      inputEl.focus();
+    const inputRefKey = `post-${post.id}`;
+    const inputRef = commentInputRefs.value[inputRefKey];
+    if (inputRef) {
+      inputRef.focus();
     }
   });
+}
+
+function cancelReply() {
+  replyingToCommentId.value = null;
+  replyingToUsername.value = '';
+  activePostForReply.value = null;
+}
+
+function handleCommentSubmit(postId) {
+  // This function is called by the form's submit event.
+  // By this time, v-model should have updated newComments.value[postId].
+  createComment(postId);
+}
+
+async function createComment(postId) { // Removed keyUpEvent parameter
+  if (!authStore.isAuthenticated) {
+    alert('로그인이 필요합니다.');
+    router.push({ name: 'login' });
+    return;
+  }
+
+  const content = newComments.value[postId]; // Directly use v-model value
+
+  // For debugging
+  console.log(`[View] createComment for postId: ${postId}. Content via v-model: "${content}"`);
+
+  if (!content?.trim()) {
+    alert('댓글 내용을 입력해주세요.');
+    // For debugging
+    console.log(`[View] Alert: Content is empty. Value was: "${content}"`);
+    return;
+  }
+
+  const finalContent = content.trim();
+
+  try {
+    await store.createComment(postId, finalContent, replyingToCommentId.value);
+    
+    if (newComments.value.hasOwnProperty(postId)) {
+        newComments.value[postId] = ''; 
+    }
+    
+    cancelReply(); // Clear reply state after successfully submitting
+
+  } catch (err) {
+    const errorMessage = store.error || '댓글 작성 중 오류가 발생했습니다.';
+    alert(errorMessage);
+    console.error('[View] Error creating comment:', err);
+  }
+}
+
+const togglePostOptionsMenu = (postId) => {
+  if (openPostOptionsMenu.value === postId) {
+    openPostOptionsMenu.value = null; // Close if already open
+  } else {
+    openPostOptionsMenu.value = postId; // Open for this post
+  }
+};
+
+async function handleDeletePost(postId) {
+  openPostOptionsMenu.value = null; // Close the menu
+  if (window.confirm('정말로 이 게시글을 삭제하시겠습니까?')) {
+    try {
+      await store.deletePost(postId);
+      // Optionally, add a success notification here
+    } catch (error) {
+      alert(store.error || '게시글 삭제 중 오류가 발생했습니다.');
+    }
+  }
 }
 </script>
 
@@ -322,9 +377,9 @@ textarea {
   font-size: 16px;
 }
 
-.post-actions {
+.create-post .post-actions {
   display: flex;
-  justify-content: space-between;
+  justify-content: space-between; 
   align-items: center;
 }
 
@@ -336,7 +391,7 @@ textarea {
   font-size: 20px;
 }
 
-button {
+.create-post .post-actions button:not(.image-btn) {
   background: #1da1f2;
   color: white;
   border: none;
@@ -345,16 +400,16 @@ button {
   cursor: pointer;
 }
 
-button:disabled {
+.create-post .post-actions button:disabled {
   background: #ccc;
   cursor: not-allowed;
 }
 
 .image-preview {
   max-width: 100%;
-  max-height: 300px;
+  max-height: 300px; 
   margin-top: 10px;
-  border-radius: 10px;
+  border-radius: 10px; 
 }
 
 .posts-feed {
@@ -365,7 +420,7 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 1rem;
-  align-items: start;
+  align-items: start; 
 }
 
 .post-card {
@@ -382,6 +437,7 @@ button:disabled {
   display: flex;
   align-items: center;
   padding-bottom: 0.75rem;
+  position: relative; /* For absolute positioning of options menu */
 }
 
 .avatar {
@@ -389,6 +445,7 @@ button:disabled {
   height: 40px;
   border-radius: 50%;
   margin-right: 10px;
+  object-fit: cover;
 }
 
 .user-info {
@@ -411,214 +468,247 @@ button:disabled {
   flex-grow: 1;
 }
 
+.post-content p { 
+  margin-bottom: 10px; 
+  white-space: pre-wrap; 
+  word-break: break-word; 
+}
+
 .post-image {
   max-width: 100%;
   border-radius: 8px;
   margin-top: 0.75rem;
 }
 
-.post-actions {
+.post-card .post-actions {
   display: flex;
-  gap: 1rem;
-  margin-top: auto;
+  gap: 1rem; 
+  margin-top: auto; 
 }
 
-.post-actions button {
+.post-card .post-actions button {
   background: none;
-  color: #657786;
+  color: #657786; 
   padding: 5px 10px;
   display: flex;
   align-items: center;
   gap: 5px;
-  transition: all 0.2s ease;
+  transition: all 0.2s ease; 
+  border: none; 
+  cursor: pointer; 
+  font-size: 0.9em; 
 }
 
-.post-actions button:hover {
-  color: #1da1f2;
+.post-card .post-actions button:hover {
+  color: #1da1f2; 
 }
 
-.post-actions button.liked {
+.post-card .post-actions button.liked { 
+  color: #e0245e; 
+}
+.post-card .post-actions button.liked i.fas { 
   color: #e0245e;
 }
 
-.post-actions button.liked:hover {
-  color: #c01e4f;
+.post-card .post-actions button.liked:hover {
+  color: #c01e4f; 
 }
 
-.post-actions i {
+.post-card .post-actions i {
   font-size: 1.1em;
+  margin: 0;
 }
 
-.comments-section {
-  border-top: 1px solid #eee;
-  padding-top: 1rem;
+.post-card .post-actions button.liked i.fas {
+  color: #e0245e;
+}
+
+.comments-section { 
+  border-top: 1px solid #eee; 
+  padding-top: 1rem; 
+  margin-top: 15px; 
 }
 
 .comment-input {
   display: flex;
-  gap: 10px;
-  margin-bottom: 15px;
+  gap: 10px; 
+  margin-bottom: 15px; 
 }
 
 .comment-input input {
   flex-grow: 1;
-  padding: 8px;
-  border: 1px solid #eee;
-  border-radius: 20px;
+  padding: 8px; 
+  border: 1px solid #eee; 
+  border-radius: 20px; 
 }
 
-.comment-item {
-  margin-bottom: 0.75rem;
+.comment-input button { 
+  padding: 6px 12px !important; 
+  background-color: #5cb85c; 
+  color: white; 
+  border: none; 
+  border-radius: 20px; 
+  cursor: pointer;
+  font-size: 0.9rem; 
 }
 
-.comment {
+.comments-list { 
+  /* display: flex; */ /* No longer directly styling flex here, CommentItem handles its layout */
+  /* flex-direction: column; */
+  /* gap: 15px; */ /* Gap is now between CommentItem instances if desired, or handled by CommentItem's own margin */
+}
+
+/* Removed .comment-item, .comment, .comment-avatar, .comment-body, */
+/* .comment-header, .comment-text, .reply-btn, .replies-list, .reply-item, */
+/* .nested-replies as these are now encapsulated or handled by CommentItem.vue */
+/* Styles for .reply-target might be needed in CommentItem.vue if not already there */
+
+.replying-to-info { 
+  font-size: 0.85rem; 
+  color: #657786; 
+  margin-bottom: 0.5rem; 
   display: flex;
-  align-items: flex-start;
+  justify-content: space-between; 
+  align-items: center; 
+  padding: 0.25rem 0.5rem; 
+  background-color: #e9ecef; 
+  border-radius: 4px; 
 }
 
-.comment-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
+.replying-to-info span { 
   margin-right: 8px;
 }
 
-.comment-body {
-  flex-grow: 1;
-  background: #f0f2f5;
-  padding: 0.5rem 0.75rem;
-  border-radius: 8px;
-  font-size: 0.9rem;
-}
-
-.comment-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.25rem;
-}
-
-.comment-header .username {
-  font-weight: 600;
-}
-
-.comment-header .timestamp {
-  font-size: 0.75rem;
-  color: #657786;
-}
-
-.comment-text {
-  margin: 0;
-  line-height: 1.4;
-  word-wrap: break-word;
-}
-
-.reply-btn {
-  background: none !important;
-  border: none !important;
-  color: #657786 !important;
-  padding: 0.25rem 0.5rem !important;
-  font-size: 0.8rem !important;
-  margin-top: 0.25rem;
-  cursor: pointer;
-}
-
-.reply-btn:hover {
-  text-decoration: underline;
-  color: #1da1f2 !important;
-}
-
-.replies-list {
-  margin-left: 40px;
-  margin-top: 0.5rem;
-  border-left: 2px solid #e0e0e0;
-  padding-left: 0.75rem;
-}
-
-.reply-item {
-  /* 대댓글 자체에 특별한 스타일이 필요하면 여기에 추가 */
-  /* 예: 약간 다른 배경색 등 */
-}
-
-.replying-to-info {
-  font-size: 0.85rem;
-  color: #657786;
-  margin-bottom: 0.5rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.25rem 0.5rem;
-  background-color: #e9ecef;
-  border-radius: 4px;
-}
-
 .cancel-reply-btn {
-  font-size: 0.75rem !important;
-  color: #6c757d !important;
-  background: none !important;
-  border: none !important;
-  padding: 0.1rem 0.3rem !important;
+  font-size: 0.75rem !important; 
+  color: #6c757d !important; 
+  background: none !important; 
+  border: none !important; 
+  padding: 0.1rem 0.3rem !important; 
   cursor: pointer;
 }
 
 .cancel-reply-btn:hover {
-  text-decoration: underline;
-}
-
-.reply-target {
-  color: #007bff;
-  font-weight: 500;
-  margin-right: 0.25em;
-}
-
-.comment-input button {
-  font-size: 0.9rem;
-  padding: 6px 12px !important;
+  text-decoration: underline; 
 }
 
 .loading,
 .error {
   text-align: center;
-  padding: 20px;
-  color: #657786;
+  padding: 20px; 
+  color: #657786; 
 }
 
 .error {
-  color: #e0245e;
+  color: #e0245e; 
+}
+
+.posts-feed > .loading { 
+  text-align: center;
+  padding: 20px;
+  color: #666; 
+}
+.posts-feed > .loading i { 
+  margin-right: 8px;
+}
+
+.no-more-posts { 
+  text-align: center;
+  padding: 20px;
+  color: #666; 
 }
 
 .follow-btn {
-  background: #1da1f2;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 20px;
+  padding: 8px 16px; 
+  font-size: 0.9em; 
+  border-radius: 20px; 
   cursor: pointer;
-  transition: all 0.2s ease;
+  border: 1px solid #1da1f2; 
+  background-color: #1da1f2; 
+  color: white; 
+  transition: all 0.2s ease; 
 }
 
 .follow-btn.following {
-  background: #dc3545;
+  background: #dc3545; 
+  border-color: #dc3545; 
 }
 
 .follow-btn:hover {
-  opacity: 0.9;
+  opacity: 0.9; 
 }
 
 .profile-link,
 .username-link {
   text-decoration: none;
-  color: inherit; /* 부모 요소의 색상 상속 */
+  color: inherit; 
 }
 
 .username-link:hover .username {
-  text-decoration: underline; /* 호버 시 밑줄 */
-  color: #007bff; /* 호버 시 색상 변경 (선택 사항) */
+  text-decoration: underline; 
+  color: #007bff; 
 }
 
 .profile-link:hover .avatar {
-  opacity: 0.8; /* 프로필 이미지 호버 효과 (선택 사항) */
+  opacity: 0.8; 
 }
+
+/* Styles for More Options Menu */
+.post-options-container {
+  margin-left: auto; /* Pushes the button to the right */
+  position: relative; /* Context for the dropdown */
+}
+
+.more-options-btn {
+  background: none;
+  border: none;
+  color: #657786; /* Icon color */
+  cursor: pointer;
+  padding: 8px; /* Adjust for better click area */
+  font-size: 1.2em; /* Icon size */
+  line-height: 1; /* Align icon nicely */
+}
+
+.more-options-btn:hover {
+  color: #1da1f2; /* Highlight on hover */
+}
+
+.options-menu {
+  position: absolute;
+  top: 100%; /* Position below the button */
+  right: 0; /* Align to the right of the container */
+  background-color: white;
+  border: 1px solid #dbdbdb;
+  border-radius: 6px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  z-index: 10;
+  min-width: 120px; /* Minimum width for the menu */
+  padding: 5px 0;
+}
+
+.options-menu .menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 8px 12px;
+  font-size: 0.9em;
+  cursor: pointer;
+}
+
+.options-menu .menu-item:hover {
+  background-color: #f5f5f5;
+}
+
+.options-menu .menu-item.delete-item {
+  color: #e74c3c; /* Red color for delete */
+}
+
+.options-menu .menu-item.delete-item i {
+  margin-right: 8px;
+}
+/* End Styles for More Options Menu */
 
 @media (max-width: 480px) {
   .posts {

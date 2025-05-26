@@ -8,13 +8,22 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from rest_framework.generics import ListCreateAPIView
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.pagination import PageNumberPagination
+from .permissions import IsOwnerOrReadOnly
 
 User = get_user_model()
+
+# 페이지네이션 클래스 정의
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 10  # 기본 페이지 크기
+    page_size_query_param = 'page_size' # 클라이언트가 page_size를 변경할 수 있도록 허용
+    max_page_size = 100 # 클라이언트가 요청할 수 있는 최대 page_size
 
 class PostViewSet(viewsets.ModelViewSet):
     queryset = Post.objects.all().order_by('-created_at')
     serializer_class = PostSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsOwnerOrReadOnly]
+    pagination_class = StandardResultsSetPagination
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
@@ -39,23 +48,10 @@ class PostViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class CommentListCreateAPIView(ListCreateAPIView):
-    serializer_class = CommentSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
-
-    def get_queryset(self):
-        post_id = self.kwargs.get('post_id')
-        return Comment.objects.filter(post_id=post_id, parent_comment__isnull=True)
-
-    def perform_create(self, serializer):
-        post_id = self.kwargs.get('post_id')
-        post = get_object_or_404(Post, id=post_id)
-        serializer.save(user=self.request.user, post=post)
-
 class CommentViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsOwnerOrReadOnly]
 
     def perform_create(self, serializer):
         post_id = self.kwargs.get('post_pk')
