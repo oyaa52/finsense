@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from .utils import get_subscribers_and_send_emails
 
 
 # 추상 기본 상품 클래스
@@ -91,6 +92,40 @@ class DepositOption(BaseOption):
     # option_id를 AutoField로 자동 생성되도록 하거나, 복합키 역할을 하는 필드들로 unique_together 설정
     # 여기서는 Django의 관례에 따라 AutoField를 PK로 사용하고, 필요시 unique_together 추가
 
+    def save(self, *args, **kwargs):
+        old_instance = None
+        if self.pk:  # 기존 인스턴스인 경우
+            try:
+                old_instance = DepositOption.objects.get(pk=self.pk)
+            except DepositOption.DoesNotExist:
+                pass  # 새로 생성되는 경우와 동일하게 처리
+
+        super().save(*args, **kwargs)  # 먼저 저장하여 self.pk가 확실히 있도록 함
+
+        if old_instance:
+            changes = {}
+            if old_instance.intr_rate != self.intr_rate:
+                changes["기본 금리"] = (
+                    (
+                        f"{old_instance.intr_rate:.2f}"
+                        if old_instance.intr_rate is not None
+                        else "N/A"
+                    ),
+                    f"{self.intr_rate:.2f}" if self.intr_rate is not None else "N/A",
+                )
+            if old_instance.intr_rate2 != self.intr_rate2:
+                changes["최고 우대금리"] = (
+                    (
+                        f"{old_instance.intr_rate2:.2f}"
+                        if old_instance.intr_rate2 is not None
+                        else "N/A"
+                    ),
+                    f"{self.intr_rate2:.2f}" if self.intr_rate2 is not None else "N/A",
+                )
+
+            if changes:
+                get_subscribers_and_send_emails(self, changes)
+
     class Meta(BaseOption.Meta):  # 부모 Meta 상속
         unique_together = (
             ("product", "intr_rate_type", "save_trm"),
@@ -129,6 +164,40 @@ class SavingOption(BaseOption):
         max_length=20, blank=True, null=True, help_text="적금 종류명(청년/일반 등)"
     )  # 금융감독원 API에 있는 필드
 
+    def save(self, *args, **kwargs):
+        old_instance = None
+        if self.pk:  # 기존 인스턴스인 경우
+            try:
+                old_instance = SavingOption.objects.get(pk=self.pk)
+            except SavingOption.DoesNotExist:
+                pass
+
+        super().save(*args, **kwargs)
+
+        if old_instance:
+            changes = {}
+            if old_instance.intr_rate != self.intr_rate:
+                changes["기본 금리"] = (
+                    (
+                        f"{old_instance.intr_rate:.2f}"
+                        if old_instance.intr_rate is not None
+                        else "N/A"
+                    ),
+                    f"{self.intr_rate:.2f}" if self.intr_rate is not None else "N/A",
+                )
+            if old_instance.intr_rate2 != self.intr_rate2:
+                changes["최고 우대금리"] = (
+                    (
+                        f"{old_instance.intr_rate2:.2f}"
+                        if old_instance.intr_rate2 is not None
+                        else "N/A"
+                    ),
+                    f"{self.intr_rate2:.2f}" if self.intr_rate2 is not None else "N/A",
+                )
+
+            if changes:
+                get_subscribers_and_send_emails(self, changes)
+
     class Meta(BaseOption.Meta):  # 부모 Meta 상속
         unique_together = (("product", "intr_rate_type", "save_trm"),)
 
@@ -156,7 +225,9 @@ class DepositSubscription(models.Model):
         null=True,  # 기존 데이터를 위해 null 허용
     )
     subscribed_at = models.DateTimeField(auto_now_add=True)
-    amount = models.DecimalField(max_digits=15, decimal_places=0, default=0)  # 가입 금액
+    amount = models.DecimalField(
+        max_digits=15, decimal_places=0, default=0
+    )  # 가입 금액
 
     class Meta:
         unique_together = (("user", "product", "option"),)
@@ -188,7 +259,9 @@ class SavingSubscription(models.Model):
         null=True,  # 기존 데이터를 위해 null 허용
     )
     subscribed_at = models.DateTimeField(auto_now_add=True)
-    amount = models.DecimalField(max_digits=15, decimal_places=0, default=0)  # 가입 금액
+    amount = models.DecimalField(
+        max_digits=15, decimal_places=0, default=0
+    )  # 가입 금액
 
     class Meta:
         unique_together = (("user", "product", "option"),)
