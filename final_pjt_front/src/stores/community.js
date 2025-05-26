@@ -21,6 +21,7 @@ export const useCommunityStore = defineStore('community', {
           throw new Error('로그인이 필요합니다.')
         }
         const response = await axios.get('/api/v1/community/posts/')
+        console.log('API Response for /api/v1/community/posts/:', JSON.stringify(response.data, null, 2));
         this.posts = response.data
       } catch (error) {
         this.error = error.response?.data?.detail || error.message
@@ -42,7 +43,7 @@ export const useCommunityStore = defineStore('community', {
         if (image) {
           formData.append('image', image)
         }
-        
+
         const response = await axios.post('/api/v1/community/posts/', formData, {
           headers: {
             'Content-Type': 'multipart/form-data'
@@ -82,9 +83,10 @@ export const useCommunityStore = defineStore('community', {
       try {
         const payload = { content };
         if (parentCommentId) {
-          payload.parent_id = parentCommentId;
+          payload.parent = parentCommentId;
         }
-        console.log('최종 payload:', payload);
+
+        console.log('Requesting POST /api/v1/community/posts/' + postId + '/comments/ with payload:', JSON.stringify(payload, null, 2));
 
         const response = await axios.post(
           `/api/v1/community/posts/${postId}/comments/`,

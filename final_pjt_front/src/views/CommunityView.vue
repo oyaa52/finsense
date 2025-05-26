@@ -2,19 +2,9 @@
   <div class="community-container">
     <!-- Create Post Section -->
     <div class="create-post">
-      <textarea
-        v-model="newPostContent"
-        placeholder="무슨 일이 일어나고 있나요?"
-        rows="3"
-      ></textarea>
+      <textarea v-model="newPostContent" placeholder="무슨 일이 일어나고 있나요?" rows="3"></textarea>
       <div class="post-actions">
-        <input
-          type="file"
-          ref="fileInput"
-          @change="handleFileSelect"
-          accept="image/*"
-          style="display: none"
-        />
+        <input type="file" ref="fileInput" @change="handleFileSelect" accept="image/*" style="display: none" />
         <button @click="$refs.fileInput.click()" class="image-btn">
           <i class="fas fa-image"></i>
         </button>
@@ -37,16 +27,13 @@
               <span class="username">{{ post.user.username }}</span>
               <span class="timestamp">{{ formatDate(post.created_at) }}</span>
             </div>
-            <button 
-              v-if="post.user.id !== currentUserId" 
-              class="follow-btn" 
+            <button v-if="post.user.id !== currentUserId" class="follow-btn"
               :class="{ 'following': post.user.is_following }"
-              @click="post.user.is_following ? unfollowUser(post.user.id) : followUser(post.user.id)"
-            >
+              @click="post.user.is_following ? unfollowUser(post.user.id) : followUser(post.user.id)">
               {{ post.user.is_following ? '언팔로우' : '팔로우' }}
             </button>
           </div>
-          
+
           <div class="post-content">
             <p>{{ post.content }}</p>
             <img v-if="post.image" :src="post.image" class="post-image" />
@@ -65,17 +52,15 @@
 
           <!-- Comments Section -->
           <div v-if="post.showComments" class="comments-section">
-            <div v-if="replyingToCommentId && post.comments.some(c => c.id === replyingToCommentId || (c.replies && c.replies.some(r => r.id === replyingToCommentId)))" class="replying-to-info">
+            <div
+              v-if="replyingToCommentId && post.comments.some(c => c.id === replyingToCommentId || (c.replies && c.replies.some(r => r.id === replyingToCommentId)))"
+              class="replying-to-info">
               <span>@{{ replyingToUsername }}님에게 답글 남기는 중...</span>
               <button @click="replyingToCommentId = null; replyingToUsername = ''" class="cancel-reply-btn">취소</button>
             </div>
             <div class="comment-input">
-              <input
-                v-model="newComments[post.id]"
-                :placeholder="commentPlaceholder"
-                @keyup.enter="createComment(post.id)"
-                :ref="el => commentInputRefs[`post-${post.id}`] = el"
-              />
+              <input v-model="newComments[post.id]" :placeholder="commentPlaceholder"
+                @keyup.enter="createComment(post.id)" :ref="el => commentInputRefs[`post-${post.id}`] = el" />
               <button @click="createComment(post.id)">{{ replyingToCommentId ? '답글 게시' : '댓글 게시' }}</button>
             </div>
             <div class="comments-list">
@@ -144,6 +129,28 @@ const loading = ref(false)
 const error = ref(null)
 const posts = ref([])
 
+// Helper function to find a comment (and its parent array and index if it's a reply)
+// This will be used to add replies correctly.
+function findCommentInPost(post, commentId) {
+  if (!post || !post.comments) return null;
+
+  for (let i = 0; i < post.comments.length; i++) {
+    const comment = post.comments[i];
+    if (comment.id === commentId) {
+      return comment; // Found top-level comment
+    }
+    if (comment.replies) {
+      for (let j = 0; j < comment.replies.length; j++) {
+        const reply = comment.replies[j];
+        if (reply.id === commentId) {
+          return reply; // Found reply
+        }
+      }
+    }
+  }
+  return null;
+}
+
 onMounted(async () => {
   await fetchPosts()
 })
@@ -173,7 +180,7 @@ function handleFileSelect(event) {
 
 async function createPost() {
   if (!newPostContent.value.trim()) return
-  
+
   try {
     await store.createPost(newPostContent.value, selectedImage.value)
     newPostContent.value = ''
@@ -201,18 +208,44 @@ async function createComment(postId) {
   const content = newComments.value[postId];
   if (!content?.trim()) return;
 
-  console.log('Creating comment:', { 
-    postId, 
-    content, 
-    replyingToCommentId: replyingToCommentId.value 
-  });
+  // console.log('Creating comment:', { 
+  //   postId, 
+  //   content, 
+  //   replyingToCommentId: replyingToCommentId.value 
+  // });
 
   try {
-    await store.createComment(postId, content, replyingToCommentId.value);
+    const newCommentData = await store.createComment(postId, content, replyingToCommentId.value);
+
+    // Find the post in the local 'posts' ref
+    const targetPost = posts.value.find(p => p.id === postId);
+
+    if (targetPost) {
+      if (replyingToCommentId.value) { // It's a reply
+        const parentComment = findCommentInPost(targetPost, replyingToCommentId.value);
+        if (parentComment) {
+          if (!parentComment.replies) {
+            parentComment.replies = [];
+          }
+          parentComment.replies.push(newCommentData);
+        } else {
+          // Fallback or error: parent comment not found, add as a top-level comment for now
+          // This case should ideally not happen if replyingToCommentId is correctly set.
+          console.warn('Parent comment not found for reply. Adding as top-level comment.');
+          targetPost.comments.push(newCommentData);
+        }
+      } else { // It's a new top-level comment
+        if (!targetPost.comments) {
+          targetPost.comments = [];
+        }
+        targetPost.comments.push(newCommentData);
+      }
+    }
+
     newComments.value[postId] = '';
     replyingToCommentId.value = null;
     replyingToUsername.value = '';
-    await fetchPosts();
+    // await fetchPosts(); // No longer calling fetchPosts, local state is updated
   } catch (err) {
     console.error('Error creating comment:', err);
     error.value = err.message;
@@ -539,7 +572,8 @@ button:disabled {
   padding: 6px 12px !important;
 }
 
-.loading, .error {
+.loading,
+.error {
   text-align: center;
   padding: 20px;
   color: #657786;
@@ -572,4 +606,4 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 }
-</style> 
+</style>
