@@ -50,6 +50,46 @@
           </ul>
         </nav>
 
+        <!-- 시장 지수 표시 영역 -->
+        <div class="market-indices-sidebar-section mt-4 pt-4 border-t border-gray-300">
+          <h3 class="nav-title text-gray-600 font-semibold mb-2">주요 시장 지수</h3>
+          <div v-if="isLoadingMarketIndices" class="text-center text-gray-500 py-2">
+            <span class="italic">지수 정보 로딩 중...</span>
+          </div>
+          <div v-else-if="marketIndicesError" class="text-center text-red-500 py-2">
+            <span class="font-medium">!</span> {{ marketIndicesError }}
+          </div>
+          <div v-else-if="marketIndices.length > 0" class="space-y-3">
+            <div v-for="index in marketIndices" :key="index.name" 
+                 class="market-index-item">
+              <div class="index-main-info">
+                <span class="index-name">{{ index.name }}</span>
+                <span :class="getChangeClass(index.change)" class="index-value">
+                  {{ formatNumber(index.value) }}
+                </span>
+              </div>
+              <div class="index-changes">
+                <span :class="getChangeClass(index.change)" class="index-change-amount">
+                  {{ formatNumber(index.change, true) }}
+                </span>
+                <span :class="getChangeClass(index.change)" class="index-change-rate">
+                  ({{ formatNumber(index.rate, true) }}%)
+                </span>
+              </div>
+              <div class="index-last-updated">
+                {{ new Date(index.last_updated).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) }} 기준
+              </div>
+            </div>
+          </div>
+          <div v-else class="text-center text-gray-500 py-2">
+            <span class="italic">지수 정보가 없습니다.</span>
+          </div>
+          <!-- 차트 표시 영역 -->
+          <div v-if="!isLoadingMarketIndices && marketIndices.length > 0 && chartData.datasets.length > 0" class="mt-4 pt-4 border-t border-gray-300" style="height: 250px;">
+            <Bar :data="chartData" :options="chartOptions" />
+          </div>
+        </div>
+        <!-- 시장 지수 표시 영역 끝 -->
       </div>
 
     </aside>
@@ -83,13 +123,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router' // useRoute import
 import AOS from 'aos'
 import 'aos/dist/aos.css'
 import { useAuthStore } from '@/stores/authStore' // authStore 임포트
 import axios from 'axios' // axios 임포트
 import defaultProfileImageSrc from '@/assets/default_profile.png'; // 기본 이미지 경로 import
+import { Bar } from 'vue-chartjs'
+import { Chart as ChartJS, Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale } from 'chart.js'
 
 // Swiper Vue.js 로부터 컴포넌트 가져오기
 import { Swiper, SwiperSlide } from 'swiper/vue'
@@ -104,6 +146,8 @@ import 'swiper/css/pagination'
 
 // 사용할 Swiper 모듈 배열
 const swiperModules = [Autoplay, Navigation, Pagination, EffectFade]
+
+ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale) // Chart.js 모듈 등록
 
 // 슬라이드 이미지 데이터 (src 경로는 실제 파일 위치에 맞게 조정 필요)
 const promoSlides = ref([
@@ -137,15 +181,167 @@ const logout = async () => {
   router.push('/') // 로그아웃 후 랜딩 페이지 등으로 이동
 }
 
+// --- 시장 지수 관련 로직 추가 --- 
+const marketIndices = ref([]);
+const isLoadingMarketIndices = ref(true);
+const marketIndicesError = ref(null);
+let marketIntervalId = null;
+
+const fetchMarketIndices = async () => {
+  try {
+    isLoadingMarketIndices.value = true;
+    const currentApiUrl = authStore.API_URL; // 함수 내에서 API_URL 참조
+    if (!currentApiUrl) {
+      // console.error('API_URL is not defined in authStore'); // 디버깅용 로그 제거
+      marketIndicesError.value = 'API URL 설정 오류입니다.';
+      isLoadingMarketIndices.value = false;
+      return;
+    }
+    const response = await axios.get(`${currentApiUrl}/api/v1/market-indices/`);
+    marketIndices.value = response.data;
+    marketIndicesError.value = null;
+  } catch (err) {
+    // console.error('시장 지수 로딩 실패:', err); // 디버깅용 로그 제거
+    if (err.response && err.response.status === 404) {
+        marketIndicesError.value = '지수 정보 API를 찾을 수 없습니다 (404).';
+    } else {
+        marketIndicesError.value = '지수 정보를 불러오는 데 실패했습니다.';
+    }
+  } finally {
+    isLoadingMarketIndices.value = false;
+  }
+};
+
+// 숫자 포맷팅 헬퍼
+const formatNumber = (num, showSign = false) => {
+  if (typeof num !== 'number') return num;
+  let formatted = num.toFixed(2);
+  if (showSign && num > 0) {
+    formatted = `+${formatted}`;
+  }
+  return formatted;
+};
+
+// 등락률에 따른 CSS 클래스 반환
+const getChangeClass = (value) => {
+  if (value > 0) return 'text-red-600'; // 좀 더 진한 빨간색 (Tailwind v3 기준)
+  if (value < 0) return 'text-blue-600';// 좀 더 진한 파란색
+  return 'text-gray-700';
+};
+
+// --- Chart.js 데이터 및 옵션 ---
+const chartData = computed(() => {
+  if (!marketIndices.value || marketIndices.value.length === 0) {
+    return {
+      labels: [],
+      datasets: []
+    };
+  }
+  return {
+    labels: marketIndices.value.map(index => index.name),
+    datasets: [
+      {
+        label: '현재 지수',
+        backgroundColor: marketIndices.value.map(index => index.change > 0 ? 'rgba(239, 68, 68, 0.7)' : index.change < 0 ? 'rgba(59, 130, 246, 0.7)' : 'rgba(107, 114, 128, 0.7)'), // Tailwind red-500, blue-500, gray-500 with opacity
+        borderColor: marketIndices.value.map(index => index.change > 0 ? 'rgb(239, 68, 68)' : index.change < 0 ? 'rgb(59, 130, 246)' : 'rgb(107, 114, 128)'),
+        borderWidth: 1,
+        data: marketIndices.value.map(index => parseFloat(index.value)), // 문자열일 수 있으므로 parseFloat
+        barThickness: 50, // 막대 두께 조절 (선택 사항)
+      }
+    ]
+  };
+});
+
+const chartOptions = ref({
+  responsive: true,
+  maintainAspectRatio: false, // 컨테이너 크기에 맞게 조절
+  plugins: {
+    legend: {
+      display: false, // 범례 숨김 (단일 데이터셋이므로)
+    },
+    title: {
+      display: true,
+      text: '주요 지수 현황',
+      font: {
+        size: 16,
+        weight: 'bold',
+      },
+      color: '#4B5563' // Tailwind gray-600
+    },
+    tooltip: {
+      callbacks: {
+        label: function(context) {
+          let label = context.dataset.label || '';
+          if (label) {
+            label += ': ';
+          }
+          if (context.parsed.y !== null) {
+            label += context.parsed.y.toFixed(2); // 소수점 둘째 자리까지 표시
+          }
+          // 등락 정보 추가
+          const indexData = marketIndices.value.find(idx => idx.name === context.label);
+          if (indexData) {
+            const changeFormatted = formatNumber(indexData.change, true);
+            const rateFormatted = formatNumber(indexData.rate, true);
+            return [label, `변동: ${changeFormatted} (${rateFormatted}%)`];
+          }
+          return label;
+        }
+      }
+    }
+  },
+  scales: {
+    y: {
+      beginAtZero: false, // y축이 0부터 시작하지 않도록 설정 (지수 값 범위에 따라 자동 조절)
+      ticks: {
+        color: '#6B7280', // Tailwind gray-500
+        font: {
+          size: 12,
+        },
+        // y축 눈금 포맷팅 (예: 1000 단위 콤마)
+        callback: function(value) {
+          return value.toLocaleString();
+        }
+      },
+      grid: {
+        color: '#E5E7EB' // Tailwind gray-200
+      }
+    },
+    x: {
+      ticks: {
+        color: '#4B5563', // Tailwind gray-600
+        font: {
+          size: 12,
+          weight: 'medium'
+        }
+      },
+      grid: {
+        display: false, // x축 그리드 라인 숨김
+      }
+    }
+  }
+});
+// --- 시장 지수 관련 로직 종료 ---
+
 onMounted(() => {
   AOS.init()
-  console.log('[MainPageView] onMounted: 시작')
-  console.log('[MainPageView] onMounted: currentUser:', currentUser.value)
+  // console.log('[MainPageView] onMounted: 시작'); // 디버깅용 로그 제거
+  // console.log('[MainPageView] onMounted: currentUser:', currentUser.value); // 디버깅용 로그 제거
   // 로그인 상태이고, 스토어에 프로필 정보가 아직 없다면 가져오기
   if (isLoggedIn.value && !userProfile.value) {
     authStore.fetchProfile();
   }
-  console.log('[MainPageView] onMounted: 종료')
+  // 시장 지수 로드
+  fetchMarketIndices();
+  marketIntervalId = setInterval(fetchMarketIndices, 5 * 60 * 1000); // 5분마다 갱신
+  // console.log('[MainPageView] onMounted: 종료'); // 디버깅용 로그 제거
+})
+
+onUnmounted(() => {
+  // 시장 지수 인터벌 정리
+  if (marketIntervalId) {
+    clearInterval(marketIntervalId);
+  }
 })
 
 // 현재 라우트가 MainPageView의 기본 경로인지 확인하는 computed 속성
@@ -853,4 +1049,91 @@ html {
 .scroll-top-btn:hover {
   background-color: #0052cc;
 }
+
+/* 사이드바 내의 메뉴 그룹들 사이 간격 조정 */
+.sidebar-nav + .sidebar-nav {
+  margin-top: 15px; /* 각 네비게이션 섹션 상단 마진 */
+}
+
+/* 시장 지수 섹션 스타일 */
+.market-indices-sidebar-section {
+  width: 100%;
+  margin-top: auto; /* 이 부분이 중요: 다른 요소들 아래, 사이드바 하단에 위치하도록 함 */
+  padding-top: 1rem; /* 상단 구분선과의 간격 */
+  border-top: 1px solid #e2e8f0; /* 구분선 (Tailwind: border-gray-300) */
+}
+
+.market-indices-sidebar-section .nav-title {
+  font-size: 0.9rem; /* 기존 nav-title과 유사하게 */
+  font-weight: 500;
+  color: #4a5568; /* Tailwind: text-gray-600 */
+  margin-bottom: 0.75rem; /* Tailwind: mb-3 */
+  text-align: left;
+  padding-left: 5px;
+}
+
+/* 시장 지수 텍스트 아이템 스타일 */
+.market-index-item {
+  padding: 12px;
+  border: 1px solid #e2e8f0; /* Tailwind: border-gray-300 */
+  border-radius: 8px; /* Tailwind: rounded-lg */
+  background-color: #ffffff; /* Tailwind: bg-white */
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); /* Tailwind: shadow-sm */
+  transition: box-shadow 0.2s ease-in-out;
+  margin-bottom: 10px; /* 아이템 간 간격 */
+}
+
+.market-index-item:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* Tailwind: shadow-md */
+}
+
+.index-main-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline; /* 이름과 값을 같은 선상에 보기 좋게 정렬 */
+  margin-bottom: 4px;
+}
+
+.index-name {
+  font-weight: bold;
+  font-size: 0.95rem; /* 기본 텍스트보다 약간 크게 */
+  color: #1f2937; /* Tailwind: text-gray-800 */
+}
+
+.index-value {
+  font-weight: 600; /* semibold */
+  font-size: 0.95rem;
+}
+
+.index-changes {
+  display: flex;
+  justify-content: flex-end; /* 등락폭과 등락률을 우측 정렬 */
+  align-items: center;
+  font-size: 0.8rem; /* Tailwind: text-xs */
+  margin-bottom: 6px;
+}
+
+.index-change-amount {
+  margin-right: 5px;
+}
+
+.index-last-updated {
+  font-size: 0.75rem; /* Tailwind: text-xs */
+  color: #9ca3af; /* Tailwind: text-gray-400 */
+  text-align: right;
+}
+
+/* 등락률 색상 클래스 (getChangeClass와 연동) */
+.text-red-600 { /* props에서 정의된 클래스를 직접 사용 */
+  color: #dc2626; /* Tailwind red-600 */
+}
+
+.text-blue-600 { /* props에서 정의된 클래스를 직접 사용 */
+  color: #2563eb; /* Tailwind blue-600 */
+}
+
+.text-gray-700 {
+  color: #374151; /* Tailwind gray-700 */
+}
+
 </style>
