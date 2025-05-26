@@ -237,7 +237,8 @@ const fetchProducts = async (page = 1) => {
   loading.value = true
   error.value = null
   try {
-    // 먼저 금융위원회 API에서 데이터를 가져와서 저장
+    // 먼저 금융위원회 API에서 데이터를 가져와서 저장 (주석 처리)
+    /*
     const saveEndpoint = productType.value === 'deposit' 
       ? 'http://127.0.0.1:8000/api/v1/products/save-deposit-products/'
       : 'http://127.0.0.1:8000/api/v1/products/save-saving-products/'
@@ -248,6 +249,7 @@ const fetchProducts = async (page = 1) => {
       console.warn('Failed to fetch latest data from API:', saveError)
       // 저장 실패해도 계속 진행
     }
+    */
     
     // 그 다음 저장된 상품 목록을 가져옴
     const listEndpoint = productType.value === 'deposit'
