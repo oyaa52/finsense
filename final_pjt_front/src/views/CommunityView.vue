@@ -32,7 +32,7 @@
       <div v-else class="posts">
         <div v-for="post in posts" :key="post.id" class="post-card">
           <div class="post-header">
-            <img :src="post.user.profile_image || '/default-avatar.png'" class="avatar" />
+            <img :src="post.user.profile_image || defaultProfileImageUrl" class="avatar" />
             <div class="user-info">
               <span class="username">{{ post.user.username }}</span>
               <span class="timestamp">{{ formatDate(post.created_at) }}</span>
@@ -65,21 +65,52 @@
 
           <!-- Comments Section -->
           <div v-if="post.showComments" class="comments-section">
+            <div v-if="replyingToCommentId && post.comments.some(c => c.id === replyingToCommentId || (c.replies && c.replies.some(r => r.id === replyingToCommentId)))" class="replying-to-info">
+              <span>@{{ replyingToUsername }}님에게 답글 남기는 중...</span>
+              <button @click="replyingToCommentId = null; replyingToUsername = ''" class="cancel-reply-btn">취소</button>
+            </div>
             <div class="comment-input">
               <input
                 v-model="newComments[post.id]"
-                placeholder="댓글을 작성하세요..."
+                :placeholder="commentPlaceholder"
                 @keyup.enter="createComment(post.id)"
+                :ref="el => commentInputRefs[`post-${post.id}`] = el"
               />
-              <button @click="createComment(post.id)">댓글</button>
+              <button @click="createComment(post.id)">{{ replyingToCommentId ? '답글 게시' : '댓글 게시' }}</button>
             </div>
             <div class="comments-list">
-              <div v-for="comment in post.comments" :key="comment.id" class="comment">
-                <img :src="comment.user.profile_image || '/default-avatar.png'" class="avatar" />
-                <div class="comment-content">
-                  <span class="username">{{ comment.user.username }}</span>
-                  <p>{{ comment.content }}</p>
-                  <span class="timestamp">{{ formatDate(comment.created_at) }}</span>
+              <div v-for="comment in post.comments" :key="comment.id" class="comment-item">
+                <div class="comment">
+                  <img :src="comment.user.profile_image || defaultProfileImageUrl" class="avatar comment-avatar" />
+                  <div class="comment-body">
+                    <div class="comment-header">
+                      <span class="username">{{ comment.user.username }}</span>
+                      <span class="timestamp">{{ formatDate(comment.created_at) }}</span>
+                    </div>
+                    <p class="comment-text">{{ comment.content }}</p>
+                    <button @click="setReplyingTo(comment, post)" class="reply-btn">답글</button>
+                  </div>
+                </div>
+
+                <div v-if="comment.replies && comment.replies.length > 0" class="replies-list">
+                  <div v-for="reply in comment.replies" :key="reply.id" class="comment-item reply-item">
+                    <div class="comment">
+                      <img :src="reply.user.profile_image || defaultProfileImageUrl" class="avatar comment-avatar" />
+                      <div class="comment-body">
+                        <div class="comment-header">
+                          <span class="username">{{ reply.user.username }}</span>
+                          <span class="timestamp">{{ formatDate(reply.created_at) }}</span>
+                        </div>
+                        <p class="comment-text">
+                          <span v-if="reply.parent_comment_author_username" class="reply-target">
+                            @{{ reply.parent_comment_author_username }}
+                          </span>
+                          {{ reply.content }}
+                        </p>
+                        <button @click="setReplyingTo(reply, post)" class="reply-btn">답글</button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -91,12 +122,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, nextTick } from 'vue'
 import { useCommunityStore } from '@/stores/community'
 import { useAuthStore } from '@/stores/authStore'
 import { formatDistanceToNow } from 'date-fns'
 import { ko } from 'date-fns/locale'
 
+const defaultProfileImageUrl = new URL('@/assets/default_profile.png', import.meta.url).href
 const store = useCommunityStore()
 const authStore = useAuthStore()
 const currentUserId = computed(() => authStore.getUserProfile?.id)
@@ -104,6 +136,9 @@ const newPostContent = ref('')
 const selectedImage = ref(null)
 const imagePreview = ref(null)
 const newComments = ref({})
+const replyingToCommentId = ref(null)
+const replyingToUsername = ref('')
+const commentInputRefs = ref({})
 
 const loading = ref(false)
 const error = ref(null)
@@ -117,7 +152,10 @@ async function fetchPosts() {
   loading.value = true
   try {
     await store.fetchPosts()
-    posts.value = store.posts
+    posts.value = store.posts.map(p => ({
+      ...p,
+      showComments: p.showComments || false
+    }))
   } catch (err) {
     error.value = err.message
   } finally {
@@ -160,14 +198,24 @@ function toggleComments(post) {
 }
 
 async function createComment(postId) {
-  const content = newComments.value[postId]
-  if (!content?.trim()) return
+  const content = newComments.value[postId];
+  if (!content?.trim()) return;
+
+  console.log('Creating comment:', { 
+    postId, 
+    content, 
+    replyingToCommentId: replyingToCommentId.value 
+  });
 
   try {
-    await store.createComment(postId, content)
-    newComments.value[postId] = ''
+    await store.createComment(postId, content, replyingToCommentId.value);
+    newComments.value[postId] = '';
+    replyingToCommentId.value = null;
+    replyingToUsername.value = '';
+    await fetchPosts();
   } catch (err) {
-    error.value = err.message
+    console.error('Error creating comment:', err);
+    error.value = err.message;
   }
 }
 
@@ -192,11 +240,30 @@ async function unfollowUser(userId) {
 function formatDate(date) {
   return formatDistanceToNow(new Date(date), { addSuffix: true, locale: ko })
 }
+
+const commentPlaceholder = computed(() => {
+  if (replyingToUsername.value) {
+    return `@${replyingToUsername.value}님에게 답글 작성...`;
+  }
+  return '댓글을 작성하세요...';
+})
+
+function setReplyingTo(comment, post) {
+  console.log('Setting reply to:', { commentId: comment.id, username: comment.user.username });
+  replyingToCommentId.value = comment.id;
+  replyingToUsername.value = comment.user.username;
+  nextTick(() => {
+    const inputEl = commentInputRefs.value[`post-${post.id}`];
+    if (inputEl) {
+      inputEl.focus();
+    }
+  });
+}
 </script>
 
 <style scoped>
 .community-container {
-  max-width: 600px;
+  max-width: 800px;
   margin: 0 auto;
   padding: 20px;
 }
@@ -253,18 +320,31 @@ button:disabled {
   border-radius: 10px;
 }
 
+.posts-feed {
+  margin-top: 1.5rem;
+}
+
+.posts {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
 .post-card {
-  background: white;
-  border-radius: 10px;
-  padding: 20px;
-  margin-bottom: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background-color: #ffffff;
+  border: 1px solid #dbdbdb;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  padding-bottom: 0.5rem;
 }
 
 .post-header {
   display: flex;
   align-items: center;
-  margin-bottom: 15px;
+  padding-bottom: 0.75rem;
 }
 
 .avatar {
@@ -289,21 +369,21 @@ button:disabled {
 }
 
 .post-content {
-  margin-bottom: 15px;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  flex-grow: 1;
 }
 
 .post-image {
   max-width: 100%;
-  border-radius: 10px;
-  margin-top: 10px;
+  border-radius: 8px;
+  margin-top: 0.75rem;
 }
 
 .post-actions {
   display: flex;
-  gap: 20px;
-  padding: 10px 0;
-  border-top: 1px solid #eee;
-  border-bottom: 1px solid #eee;
+  gap: 1rem;
+  margin-top: auto;
 }
 
 .post-actions button {
@@ -333,9 +413,8 @@ button:disabled {
 }
 
 .comments-section {
-  margin-top: 15px;
   border-top: 1px solid #eee;
-  padding-top: 15px;
+  padding-top: 1rem;
 }
 
 .comment-input {
@@ -351,16 +430,113 @@ button:disabled {
   border-radius: 20px;
 }
 
-.comment {
-  display: flex;
-  margin-bottom: 10px;
+.comment-item {
+  margin-bottom: 0.75rem;
 }
 
-.comment-content {
+.comment {
+  display: flex;
+  align-items: flex-start;
+}
+
+.comment-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+.comment-body {
   flex-grow: 1;
-  background: #f5f8fa;
-  padding: 10px;
-  border-radius: 10px;
+  background: #f0f2f5;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.comment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.comment-header .username {
+  font-weight: 600;
+}
+
+.comment-header .timestamp {
+  font-size: 0.75rem;
+  color: #657786;
+}
+
+.comment-text {
+  margin: 0;
+  line-height: 1.4;
+  word-wrap: break-word;
+}
+
+.reply-btn {
+  background: none !important;
+  border: none !important;
+  color: #657786 !important;
+  padding: 0.25rem 0.5rem !important;
+  font-size: 0.8rem !important;
+  margin-top: 0.25rem;
+  cursor: pointer;
+}
+
+.reply-btn:hover {
+  text-decoration: underline;
+  color: #1da1f2 !important;
+}
+
+.replies-list {
+  margin-left: 40px;
+  margin-top: 0.5rem;
+  border-left: 2px solid #e0e0e0;
+  padding-left: 0.75rem;
+}
+
+.reply-item {
+  /* 대댓글 자체에 특별한 스타일이 필요하면 여기에 추가 */
+  /* 예: 약간 다른 배경색 등 */
+}
+
+.replying-to-info {
+  font-size: 0.85rem;
+  color: #657786;
+  margin-bottom: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  background-color: #e9ecef;
+  border-radius: 4px;
+}
+
+.cancel-reply-btn {
+  font-size: 0.75rem !important;
+  color: #6c757d !important;
+  background: none !important;
+  border: none !important;
+  padding: 0.1rem 0.3rem !important;
+  cursor: pointer;
+}
+
+.cancel-reply-btn:hover {
+  text-decoration: underline;
+}
+
+.reply-target {
+  color: #007bff;
+  font-weight: 500;
+  margin-right: 0.25em;
+}
+
+.comment-input button {
+  font-size: 0.9rem;
+  padding: 6px 12px !important;
 }
 
 .loading, .error {
@@ -389,5 +565,11 @@ button:disabled {
 
 .follow-btn:hover {
   opacity: 0.9;
+}
+
+@media (max-width: 480px) {
+  .posts {
+    grid-template-columns: 1fr;
+  }
 }
 </style> 
