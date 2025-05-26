@@ -80,6 +80,13 @@ MIDDLEWARE = [
 
 CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
+    "http://localhost:5173",
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    # 필요한 경우 Django 서버 자체의 주소도 추가 (예: 'http://127.0.0.1:8000')
 ]
 
 ROOT_URLCONF = "backend.urls"
@@ -194,3 +201,15 @@ REST_AUTH = {
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 X_FRAME_OPTIONS = "SAMEORIGIN"  # 관리자페이지 같은 출처에서의 임베딩 허용
+
+
+# Email Settings (Naver SMTP Example)
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.naver.com"
+EMAIL_PORT = 587  # TLS
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = env(
+    "NAVER_EMAIL_ID"
+)  # 네이버 아이디 (YOUR_NAVER_ID@naver.com 에서 ID 부분)
+EMAIL_HOST_PASSWORD = env("NAVER_EMAIL_APP_PASSWORD")  # 네이버 메일 앱 비밀번호
+DEFAULT_FROM_EMAIL = f"{env('NAVER_EMAIL_ID')}@naver.com"  # 발신자 이메일 주소
