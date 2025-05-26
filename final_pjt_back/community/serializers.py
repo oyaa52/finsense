@@ -47,12 +47,11 @@ class ReplySerializer(serializers.ModelSerializer): # 대댓글 전용 시리얼
 
 class CommentSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
-    replies = ReplySerializer(many=True, read_only=True)
+    replies = serializers.SerializerMethodField()
     parent = serializers.PrimaryKeyRelatedField(
         queryset=Comment.objects.all(),
         allow_null=True,
-        required=False,
-        write_only=True
+        required=False
     )
     parent_comment_author_username = serializers.SerializerMethodField()
 
@@ -60,16 +59,16 @@ class CommentSerializer(serializers.ModelSerializer):
         model = Comment
         fields = [
             'id', 'user', 'content', 'created_at', 'post',
-            'replies', 'parent', 'parent_comment_author_username',
+            'parent', 'replies', 'parent_comment_author_username'
         ]
-        read_only_fields = ['user', 'created_at', 'post', 'replies']
+        read_only_fields = ['user', 'replies']
 
-    # PostSerializer 내의 CommentSerializer는 최상위 댓글만 보여주도록 할 수 있음
-    # 혹은 전체 댓글 구조를 재귀적으로 보여주도록 할 수도 있음
-    # 이 예시에서는 최상위 댓글에 replies가 중첩되도록 함
-    
+    def get_replies(self, obj):
+        replies = obj.replies.all()
+        return CommentSerializer(replies, many=True, context=self.context).data
+
     def get_parent_comment_author_username(self, obj):
-        if hasattr(obj, 'parent') and obj.parent:
+        if obj.parent:
             return obj.parent.user.username
         return None
 

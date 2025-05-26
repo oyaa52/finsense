@@ -32,9 +32,10 @@ class PostViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def comment(self, request, pk=None):
         post = self.get_object()
-        serializer = CommentSerializer(data=request.data)
+        # context에 request와 post 추가
+        serializer = CommentSerializer(data=request.data, context={'request': request, 'post': post})
         if serializer.is_valid():
-            serializer.save(user=request.user, post=post)
+            serializer.save(user=request.user, post=post) # ← 이렇게!
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
