@@ -1,5 +1,6 @@
 from dj_rest_auth.registration.serializers import RegisterSerializer
 from rest_framework import serializers
+from django.utils.translation import gettext_lazy as _ # 다국어 지원을 위해 추가
 from .models import (
     Profile,
     User,
@@ -10,6 +11,14 @@ from dj_rest_auth.serializers import UserDetailsSerializer
 
 
 class CustomRegisterSerializer(RegisterSerializer):
+
+    def validate_email(self, email):
+        # 부모 클래스의 email 유효성 검사를 먼저 수행 (선택 사항, 하지만 일반적으로 좋음)
+        # email 필드가 있는지, 그리고 값이 있는지 먼저 확인 (dj-rest-auth가 처리해주지만 명시적으로)
+        if email and User.objects.filter(email__iexact=email).exists(): # 대소문자 구분 없이 비교
+            raise serializers.ValidationError(_("이미 가입한 이메일입니다."))
+ 
+        return email
 
     def save(self, request):
         # super().save(request) = User 객체를 생성하고 반환
