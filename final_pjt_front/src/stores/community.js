@@ -6,6 +6,7 @@ export const useCommunityStore = defineStore('community', {
   state: () => ({
     posts: [],
     currentPost: null,
+    userProfileData: null,
     loading: false,
     error: null,
     followers: [],
@@ -99,6 +100,58 @@ export const useCommunityStore = defineStore('community', {
       }
     },
 
+    async fetchUserProfileByUsername(username) {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await axios.get(`/api/v1/accounts/profile/${username}/`)
+        this.userProfileData = response.data
+        return response.data
+      } catch (error) {
+        console.error('Error fetching user profile by username:', error)
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async toggleFollowUser(targetUserId, followIdForCurrentUser) {
+      const authStore = useAuthStore()
+      if (!authStore.accessToken) {
+        throw new Error('로그인이 필요합니다.')
+      }
+      this.loading = true
+      this.error = null
+      try {
+        if (followIdForCurrentUser) {
+          await axios.delete(`/api/v1/community/follows/${followIdForCurrentUser}/`)
+          if (this.userProfileData && this.userProfileData.id === targetUserId) {
+            this.userProfileData.is_following = false
+            this.userProfileData.followers_count -= 1
+            this.userProfileData.follow_id_for_current_user = null
+          }
+          return { followed: false }
+        } else {
+          const response = await axios.post('/api/v1/community/follows/', {
+            following_id: targetUserId
+          })
+          if (this.userProfileData && this.userProfileData.id === targetUserId) {
+            this.userProfileData.is_following = true
+            this.userProfileData.followers_count += 1
+            this.userProfileData.follow_id_for_current_user = response.data.id
+          }
+          return { followed: true, followData: response.data }
+        }
+      } catch (error) {
+        console.error('Error toggling follow status:', error.response?.data || error.message)
+        this.error = error.response?.data?.detail || error.message
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
     async followUser(userId) {
       try {
         const authStore = useAuthStore()
@@ -120,7 +173,6 @@ export const useCommunityStore = defineStore('community', {
         if (!authStore.accessToken) {
           throw new Error('로그인이 필요합니다.')
         }
-        // 현재 사용자의 팔로우 목록에서 해당 사용자를 찾아 삭제
         const follow = this.following.find(f => f.following.id === userId)
         if (follow) {
           await axios.delete(`/api/v1/community/follows/${follow.id}/`)

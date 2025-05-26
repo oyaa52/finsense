@@ -99,64 +99,6 @@
       </div>
 
       <div class="form-section">
-        <h3 class="section-title">팔로우 정보</h3>
-        <div class="follow-stats">
-          <div class="follow-stat">
-            <span class="count">{{ followers.length }}</span>
-            <span class="label">팔로워</span>
-          </div>
-          <div class="follow-stat">
-            <span class="count">{{ following.length }}</span>
-            <span class="label">팔로잉</span>
-          </div>
-        </div>
-        <div class="follow-lists">
-          <div class="follow-list">
-            <h4>팔로워 목록</h4>
-            <div v-if="followers.length === 0" class="empty-list">
-              <p>팔로워가 없습니다.</p>
-            </div>
-            <div v-else class="user-list">
-              <div v-for="follow in followers" :key="follow.id" class="user-item">
-                <span class="username">{{ follow.follower.username }}</span>
-                <button 
-                  v-if="!follow.following.is_following" 
-                  @click="followUser(follow.follower.id)"
-                  class="follow-button"
-                >
-                  팔로우
-                </button>
-                <button 
-                  v-else 
-                  @click="unfollowUser(follow.follower.id)"
-                  class="unfollow-button"
-                >
-                  언팔로우
-                </button>
-              </div>
-            </div>
-          </div>
-          <div class="follow-list">
-            <h4>팔로잉 목록</h4>
-            <div v-if="following.length === 0" class="empty-list">
-              <p>팔로잉이 없습니다.</p>
-            </div>
-            <div v-else class="user-list">
-              <div v-for="follow in following" :key="follow.id" class="user-item">
-                <span class="username">{{ follow.following.username }}</span>
-                <button 
-                  @click="unfollowUser(follow.following.id)"
-                  class="unfollow-button"
-                >
-                  언팔로우
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="form-section">
         <h3 class="section-title">구독 정보</h3>
         <div class="subscriptions-section">
           <!-- 예금 상품 구독 -->
@@ -246,12 +188,10 @@
 <script setup>
 import { ref, onMounted, reactive, watch, computed } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
-import { useCommunityStore } from '@/stores/community'
 import defaultProfileImage from '@/assets/default_profile.png' // 기본 이미지 import
 import axios from 'axios'
 
 const authStore = useAuthStore()
-const communityStore = useCommunityStore()
 
 const profileData = reactive({
   age: null,
@@ -263,7 +203,7 @@ const profileData = reactive({
   investment_purpose: '',
   investment_term: null,
   investment_tendency: '',
-  profile_image_url: '', // 이미지 URL을 저장할 필드 (스토어에서 가져옴)
+  profile_image: null,
 })
 
 const isLoading = ref(true)
@@ -313,9 +253,6 @@ const generalErrorMessage = computed(() => {
   return null;
 })
 
-const followers = ref([])
-const following = ref([])
-
 const depositSubscriptions = ref([])
 const savingSubscriptions = ref([])
 
@@ -337,7 +274,7 @@ const loadProfile = async () => {
         const numericKeys = ['age', 'monthly_income', 'amount_available', 'investment_term'];
         if (numericKeys.includes(key)) {
           profileData[key] = null; 
-        } else if (key !== 'profile_image_url') { 
+        } else if (key !== 'profile_image') { 
           profileData[key] = ''; 
         }
       }
@@ -370,7 +307,7 @@ watch(profileDataFromStore, (newProfile) => {
         const numericKeys = ['age', 'monthly_income', 'amount_available', 'investment_term'];
         if (numericKeys.includes(key)) {
           profileData[key] = null;
-        } else if (key !== 'profile_image_url') {
+        } else if (key !== 'profile_image') {
           profileData[key] = '';
         }
       }
@@ -380,11 +317,11 @@ watch(profileDataFromStore, (newProfile) => {
       const numericKeys = ['age', 'monthly_income', 'amount_available', 'investment_term'];
       if (numericKeys.includes(key)) {
         profileData[key] = null;
-      } else if (key !== 'profile_image_url') {
+      } else if (key !== 'profile_image') {
         profileData[key] = '';
       }
     });
-    profileData.profile_image_url = '';
+    profileData.profile_image = null;
     profileImagePreviewUrl.value = defaultProfileImage; 
   }
 }, { immediate: true, deep: true });
@@ -411,10 +348,11 @@ const handleFileChange = (event) => {
 const handleProfileUpdate = async () => {
   isUpdating.value = true;
   updateSuccessMessage.value = '';
-  authStore.profileError = null; 
+  generalErrorMessage.value = '';
+  fieldErrors.value = {};
 
   const formData = new FormData();
-  const { profile_image_url, ...otherProfileData } = profileData;
+  const { profile_image, ...otherProfileData } = profileData;
   for (const key in otherProfileData) {
     if (otherProfileData[key] !== null && otherProfileData[key] !== '') { 
       formData.append(key, otherProfileData[key]);
@@ -425,75 +363,24 @@ const handleProfileUpdate = async () => {
     formData.append('profile_image', profileImageFile.value);
   }
 
-  const success = await authStore.updateProfile(formData);
-
-  if (success) {
+  try {
+    await authStore.updateProfile(formData);
     updateSuccessMessage.value = '프로필 정보가 성공적으로 업데이트되었습니다.';
     profileImageFile.value = null; 
     selectedFileName.value = '';
     await authStore.fetchProfile(); 
+  } catch (error) {
+    console.error("프로필 업데이트 오류:", error.response?.data || error)
+    if (error.response && error.response.data && typeof error.response.data === 'object') {
+      fieldErrors.value = error.response.data // 필드별 오류
+      generalErrorMessage.value = "입력 내용을 다시 확인해주세요."
+    } else {
+      generalErrorMessage.value = error.response?.data?.detail || error.message || '프로필 업데이트에 실패했습니다.'
+    }
+  } finally {
+    isUpdating.value = false;
   }
-  isUpdating.value = false;
 };
-
-const loadFollowData = async () => {
-  try {
-    if (profileDataFromStore.value) {
-      const userId = profileDataFromStore.value.id
-      await communityStore.fetchUserFollowers(userId)
-      await communityStore.fetchUserFollowing(userId)
-      followers.value = communityStore.followers
-      following.value = communityStore.following
-    }
-  } catch (error) {
-    console.error('팔로우 데이터 로딩 실패:', error)
-  }
-}
-
-const followUser = async (userId) => {
-  try {
-    await communityStore.followUser(userId)
-    await loadFollowData() // 데이터 새로고침
-  } catch (error) {
-    console.error('팔로우 실패:', error)
-  }
-}
-
-const unfollowUser = async (userId) => {
-  try {
-    await communityStore.unfollowUser(userId)
-    await loadFollowData() // 데이터 새로고침
-  } catch (error) {
-    console.error('언팔로우 실패:', error)
-  }
-}
-
-const fetchUserInfo = () => {
-  try {
-    const userInfo = JSON.parse(localStorage.getItem('userInfo'))
-    if (userInfo) {
-      profileData.username = userInfo.username
-      profileData.email = userInfo.email
-    }
-  } catch (error) {
-    console.error('Error getting user info from localStorage:', error)
-  }
-}
-
-const fetchSubscriptions = async () => {
-  try {
-    const token = localStorage.getItem('accessToken')
-    const response = await axios.get('http://127.0.0.1:8000/api/v1/products/subscriptions/', {
-      headers: {
-        Authorization: `Token ${token}`
-      }
-    })
-    depositSubscriptions.value = response.data.deposit_subscriptions
-    savingSubscriptions.value = response.data.saving_subscriptions
-  } catch (error) {
-    console.error('Error fetching subscriptions:', error)
-  }
-}
 
 const formatDate = (dateString) => {
   const date = new Date(dateString)
@@ -507,9 +394,6 @@ const formatDate = (dateString) => {
 onMounted(async () => {
   if (authStore.isAuthenticated) {
     await loadProfile()
-    await loadFollowData()
-    await fetchUserInfo()
-    await fetchSubscriptions()
   } else {
     initialLoadingError.value = '로그인이 필요합니다. 로그인 후 다시 시도해주세요.';
     isLoading.value = false;

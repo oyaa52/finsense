@@ -15,6 +15,7 @@ import FavoriteChannelsView from '@/views/FavoriteChannelsView.vue'
 import FavoriteVideosView from '@/views/FavoriteVideosView.vue'
 import AIRecommendationView from '@/views/AIRecommendationView.vue'
 import AdminPanelView from '@/views/AdminPanelView.vue'
+import UserProfileView from '@/views/UserProfileView.vue'
 import { useAuthStore } from '@/stores/authStore'
 
 // 임시 플레이스홀더 컴포넌트 (실제 컴포넌트로 교체 필요)
@@ -184,6 +185,14 @@ const router = createRouter({
               next({ name: 'login' })
             }
           }
+        },
+        {
+          path: 'profile/:username',
+          name: 'userProfile',
+          components: {
+            mainServiceView: UserProfileView
+          },
+          props: { mainServiceView: true }
         }
       ]
     },

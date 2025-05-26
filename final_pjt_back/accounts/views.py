@@ -1,13 +1,19 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from rest_framework import generics, viewsets, status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from .models import Profile, FavoriteChannel, FavoriteVideo  # Profile 모델 임포트
-from .serializers import ProfileSerializer, FavoriteChannelSerializer, FavoriteVideoSerializer
+from .serializers import ProfileSerializer, FavoriteChannelSerializer, FavoriteVideoSerializer, UserProfileSerializer
 
 from dj_rest_auth.views import LoginView as DefaultLoginView
 from dj_rest_auth.serializers import UserDetailsSerializer
+
+from django.contrib.auth import get_user_model # User 모델 가져오기
+from community.models import Post # Post 모델 가져오기 (사용되지는 않지만, UserProfileSerializer에서 간접적으로 필요할 수 있음)
+# from community.serializers import PostSerializer # UserProfileSerializer 내부에서 사용
+
+User = get_user_model()
 
 
 class CustomLoginView(DefaultLoginView): # 다시 DefaultLoginView 상속
@@ -17,23 +23,32 @@ class CustomLoginView(DefaultLoginView): # 다시 DefaultLoginView 상속
         data['user'] = user_data
         return data
 
-class ProfileDetailAPIView(generics.RetrieveUpdateAPIView):
+class ProfileDetailAPIView(generics.RetrieveUpdateAPIView): # 원래대로 RetrieveUpdateAPIView
     """
     현재 로그인한 사용자의 프로필 정보를 조회하고 수정하는 API 뷰
     GET: 프로필 정보 조회
     PUT/PATCH: 프로필 정보 수정
     """
-
-    serializer_class = ProfileSerializer
-    permission_classes = [IsAuthenticated]  # 인증된 사용자만 접근 가능
+    serializer_class = ProfileSerializer # 원래 ProfileSerializer 사용
+    permission_classes = [IsAuthenticated]
 
     def get_object(self):
-        """
-        요청을 보낸 사용자에 해당하는 Profile 객체를 반환.
-        Profile이 없는 경우 (매우 드문 케이스, 시그널로 생성되므로) 404가 발생할 수 있음.
-        """
         return self.request.user.profile
 
+class UserProfileDetailAPIView(generics.RetrieveAPIView):
+    """
+    특정 사용자의 프로필 정보와 작성한 게시글 목록을 조회하는 API 뷰
+    GET: /api/accounts/profile/<username>/
+    """
+    queryset = User.objects.prefetch_related('profile', 'posts__comments', 'posts__likes', 'followers', 'following').all()
+    serializer_class = UserProfileSerializer
+    lookup_field = 'username'
+    permission_classes = [AllowAny] # AllowAny 사용
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
 
 class FavoriteChannelViewSet(viewsets.ModelViewSet):
     serializer_class = FavoriteChannelSerializer

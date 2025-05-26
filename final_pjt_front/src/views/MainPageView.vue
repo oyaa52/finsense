@@ -18,8 +18,14 @@
           <p class="welcome-message">{{ currentUser.username || '사용자' }}님, 환영합니다!</p>
         </template>
         <div class="user-actions">
-          <router-link to="/main/profile-management" class="action-link profile-link">내 프로필</router-link>
-          <span class="separator">|</span>
+          <router-link 
+            :to="{ name: 'userProfile', params: { username: currentUser.username } }" 
+            class="action-link profile-link" 
+            v-if="currentUser && currentUser.username"
+          >
+            내 프로필
+          </router-link>
+          <span class="separator" v-if="currentUser && currentUser.username">|</span>
           <button @click="logout" class="action-link logout-link">로그아웃</button>
         </div>
         <!-- 관리자 기능 메뉴 추가 -->

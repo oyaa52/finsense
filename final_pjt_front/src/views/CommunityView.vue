@@ -22,9 +22,13 @@
       <div v-else class="posts">
         <div v-for="post in posts" :key="post.id" class="post-card">
           <div class="post-header">
-            <img :src="post.user.profile_image || defaultProfileImageUrl" class="avatar" />
+            <router-link :to="{ name: 'userProfile', params: { username: post.user.username } }" class="profile-link">
+              <img :src="post.user.profile_image || defaultProfileImageUrl" class="avatar" />
+            </router-link>
             <div class="user-info">
-              <span class="username">{{ post.user.username }}</span>
+              <router-link :to="{ name: 'userProfile', params: { username: post.user.username } }" class="username-link">
+                <span class="username">{{ post.user.username }}</span>
+              </router-link>
               <span class="timestamp">{{ formatDate(post.created_at) }}</span>
             </div>
             <button v-if="post.user.id !== currentUserId" class="follow-btn"
@@ -599,6 +603,21 @@ button:disabled {
 
 .follow-btn:hover {
   opacity: 0.9;
+}
+
+.profile-link,
+.username-link {
+  text-decoration: none;
+  color: inherit; /* 부모 요소의 색상 상속 */
+}
+
+.username-link:hover .username {
+  text-decoration: underline; /* 호버 시 밑줄 */
+  color: #007bff; /* 호버 시 색상 변경 (선택 사항) */
+}
+
+.profile-link:hover .avatar {
+  opacity: 0.8; /* 프로필 이미지 호버 효과 (선택 사항) */
 }
 
 @media (max-width: 480px) {

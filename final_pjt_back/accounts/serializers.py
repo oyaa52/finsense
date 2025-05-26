@@ -8,6 +8,8 @@ from .models import (
     FavoriteVideo,
 )  # Profile 모델과 User 모델 임포트
 from dj_rest_auth.serializers import UserDetailsSerializer
+from community.serializers import PostSerializer  # PostSerializer 임포트
+from community.serializers import UserSerializer as CommunityUserSerializer # UserSerializer 임포트 (이름 충돌 방지)
 
 
 class CustomRegisterSerializer(RegisterSerializer):
@@ -70,3 +72,67 @@ class FavoriteVideoSerializer(serializers.ModelSerializer):
             "added_at",
         )
         read_only_fields = ("user", "added_at")
+
+
+# UserProfileSerializer 추가
+class UserProfileSerializer(serializers.ModelSerializer):
+    posts = PostSerializer(many=True, read_only=True)
+    profile_image = serializers.SerializerMethodField()
+    followers_count = serializers.SerializerMethodField()
+    following_count = serializers.SerializerMethodField()
+    is_following = serializers.SerializerMethodField()
+    follow_id_for_current_user = serializers.SerializerMethodField()
+    followers_list = serializers.SerializerMethodField()
+    followings_list = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            'id', 'username', 'email',
+            'profile_image',
+            'followers_count', 'following_count', 'is_following', 'follow_id_for_current_user',
+            'followers_list', 'followings_list',
+            'posts'
+        ]
+
+    def get_profile_image(self, obj):
+        if hasattr(obj, 'profile') and obj.profile.profile_image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.profile.profile_image.url)
+            return obj.profile.profile_image.url
+        return None
+
+    def get_followers_count(self, obj):
+        return obj.followers.count()
+
+    def get_following_count(self, obj):
+        return obj.following.count()
+
+    def get_is_following(self, obj):
+        request = self.context.get('request')
+        # 프로필 페이지의 주인이 현재 로그인한 유저와 같으면 is_following은 의미가 없으므로 False
+        if request and request.user.is_authenticated and request.user != obj:
+            # Follow 모델을 가져와야 함
+            from community.models import Follow # Follow 모델 임포트 (위치 조정 필요)
+            return Follow.objects.filter(follower=request.user, following=obj).exists()
+        return False
+
+    def get_follow_id_for_current_user(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated and request.user != obj:
+            from community.models import Follow
+            follow_instance = Follow.objects.filter(follower=request.user, following=obj).first()
+            if follow_instance:
+                return follow_instance.id
+        return None
+
+    def get_followers_list(self, obj): 
+        follower_users = [follow.follower for follow in obj.followers.all()]
+        request = self.context.get('request')
+        return CommunityUserSerializer(follower_users, many=True, context={'request': request}).data
+
+    def get_followings_list(self, obj): 
+        following_users = [follow.following for follow in obj.following.all()]
+        request = self.context.get('request')
+        return CommunityUserSerializer(following_users, many=True, context={'request': request}).data
