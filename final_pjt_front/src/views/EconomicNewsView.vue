@@ -17,12 +17,12 @@
       </div>
     </div>
 
-    <div v-if="isLoadingAllData && allVideos.length === 0" class="loading-indicator">
+    <div v-if="isLoadingAllData && currentVideos.length === 0" class="loading-indicator">
       <div class="spinner"></div>
       <p>금융 영상을 검색 중입니다...</p>
     </div>
 
-    <div v-if="error && allVideos.length === 0" class="error-message">
+    <div v-if="error && currentVideos.length === 0" class="error-message">
       <p>{{ error }}</p>
       <button v-if="displayedSearchQuery.trim()" @click="handleSearch" class="retry-button">다시 검색</button>
     </div>
@@ -72,7 +72,7 @@ export default {
 </script>
 
 <script setup>
-import { ref, computed, onMounted, onActivated, nextTick } from 'vue'
+import { ref, computed, onMounted, onActivated, nextTick, watch } from 'vue'
 import axios from 'axios'
 // import { useAuthStore } from '@/stores/authStore'
 // import AOS from 'aos'
@@ -83,22 +83,18 @@ import { useRouter } from 'vue-router'
 const resultsPerPage = ref(6)
 const searchQuery = ref('')
 const displayedSearchQuery = ref('')
-const allVideos = ref([])
+const currentVideos = ref([])
 const isLoadingAllData = ref(false)
 const error = ref(null)
 const totalResults = ref(0)
 const currentPage = ref(1)
 const initialSearchPerformed = ref(false)
 
+const nextPageToken = ref(null)
+const prevPageToken = ref(null)
+
 const API_BASE_URL = 'http://127.0.0.1:8000/api/v1/recommendations/youtube/economic-news/'
 const FIXED_KEYWORDS = '금융 경제 뉴스'
-
-const currentVideos = computed(() => {
-  if (allVideos.value.length === 0) return [];
-  const start = (currentPage.value - 1) * resultsPerPage.value;
-  const end = start + resultsPerPage.value;
-  return allVideos.value.slice(start, end);
-});
 
 const totalPages = computed(() => {
   if (totalResults.value === 0) return 0;
@@ -155,7 +151,7 @@ const displayedPageNumbers = computed(() => {
     } else {
       if (uniquePages.length > 0 && 
           uniquePages[uniquePages.length -1].text === '...' &&
-          pages[i-1] && pages[i-1].text === '...' &&
+          i > 0 && pages[i-1] && pages[i-1].text === '...' &&
           uniquePages[uniquePages.length -2] &&
           typeof uniquePages[uniquePages.length -2].number === 'number' &&
           uniquePages[uniquePages.length -2].number + 1 === pages[i].number
@@ -169,115 +165,113 @@ const displayedPageNumbers = computed(() => {
   return uniquePages;
 });
 
-const resetSearchState = () => {
-  allVideos.value = []
-  currentPage.value = 1
-  totalResults.value = 0
-  error.value = null
-  initialSearchPerformed.value = true
-  displayedSearchQuery.value = searchQuery.value
-}
-
-const fetchAllVideos = async () => {
+const fetchVideosForPage = async (page, pToken = null) => {
   if (!displayedSearchQuery.value.trim()) {
     initialSearchPerformed.value = false;
+    currentVideos.value = [];
+    totalResults.value = 0;
+    nextPageToken.value = null;
+    prevPageToken.value = null;
     return;
   }
-  
+
   isLoadingAllData.value = true;
-  resetSearchState();
+  error.value = null;
 
   const effectiveQuery = `${displayedSearchQuery.value.trim()} ${FIXED_KEYWORDS}`.trim();
-  let nextPageTokenForFetch = null;
-  let accumulatedVideos = [];
-  let fetchedResultsCount = 0;
-  let apiReportedTotal = 0;
+  const params = {
+    query: effectiveQuery,
+    max_results: resultsPerPage.value,
+  };
+
+  if (pToken) {
+    params.pageToken = pToken;
+  }
 
   try {
-    console.log(`[EconomicNewsView] fetchAllVideos - Starting to fetch all videos for query: ${effectiveQuery}`);
-    do {
-      const params = {
-        query: effectiveQuery,
-        max_results: resultsPerPage.value,
-      };
-      if (nextPageTokenForFetch) {
-        params.pageToken = nextPageTokenForFetch;
-      }
+    console.log(`[EconomicNewsView] fetchVideosForPage - Requesting page ${page} with params:`, JSON.parse(JSON.stringify(params)));
+    const response = await axios.get(API_BASE_URL, { params });
+    console.log('[EconomicNewsView] fetchVideosForPage - API Response Data (raw):', JSON.parse(JSON.stringify(response.data)));
 
-      console.log(`[EconomicNewsView] fetchAllVideos - Requesting with params:`, JSON.parse(JSON.stringify(params)));
-      const response = await axios.get(API_BASE_URL, { params });
-      console.log('[EconomicNewsView] fetchAllVideos - API Response Data (raw):', JSON.parse(JSON.stringify(response.data)));
+    if (response.data && response.data.videos) {
+      currentVideos.value = response.data.videos;
       
-      if (response.data && response.data.videos) {
-        accumulatedVideos.push(...response.data.videos);
-        fetchedResultsCount += response.data.videos.length;
-        nextPageTokenForFetch = response.data.nextPageToken || null;
-        
-        if (apiReportedTotal === 0 && response.data.totalResults !== undefined) { 
-          apiReportedTotal = response.data.totalResults || 0;
-          totalResults.value = apiReportedTotal; 
-          console.log(`[EconomicNewsView] fetchAllVideos - API reported totalResults: ${apiReportedTotal}. Stored in totalResults: ${totalResults.value}`);
-        }
-        
-        console.log(`[EconomicNewsView] fetchAllVideos - Received ${response.data.videos.length} videos this request. Accumulated: ${accumulatedVideos.length}. Next token: ${nextPageTokenForFetch}`);
-
-        if (totalResults.value > 0 && accumulatedVideos.length >= totalResults.value) {
-          console.log(`[EconomicNewsView] fetchAllVideos - Accumulated videos (${accumulatedVideos.length}) reached or exceeded API totalResults (${totalResults.value}). Stopping fetch.`);
-          if (accumulatedVideos.length > totalResults.value) {
-            accumulatedVideos = accumulatedVideos.slice(0, totalResults.value);
-            console.log(`[EconomicNewsView] fetchAllVideos - Trimmed accumulatedVideos to ${totalResults.value}`);
-          }
-          nextPageTokenForFetch = null;
-        }
-        if ((response.data.videos.length === 0 || response.data.videos.length < resultsPerPage.value) && !nextPageTokenForFetch) {
-            console.log('[EconomicNewsView] fetchAllVideos - Received less videos than requested and no next page token. Assuming end of results.');
-            break;
-        }
-
-      } else {
-        const errMsg = response.data.error || '영상을 불러오는데 실패했거나 데이터 형식이 올바르지 않습니다.';
-        console.error('[EconomicNewsView] fetchAllVideos - Error in response structure or explicit error:', errMsg);
-        throw new Error(errMsg);
+      if (page === 1 || totalResults.value === 0) {
+          totalResults.value = response.data.totalResults || 0;
       }
-    } while (nextPageTokenForFetch);
+      
+      nextPageToken.value = response.data.nextPageToken || null;
+      prevPageToken.value = response.data.prevPageToken || null;
 
-    allVideos.value = accumulatedVideos;
-    console.log(`[EconomicNewsView] fetchAllVideos - All videos fetched successfully. Total count: ${allVideos.value.length}`);
-    if (allVideos.value.length === 0 && initialSearchPerformed.value) {
-        console.log(`[EconomicNewsView] fetchAllVideos - No videos found for '${displayedSearchQuery.value}'.`);
+      currentPage.value = page;
+      initialSearchPerformed.value = true;
+
+      if (currentVideos.value.length === 0 && initialSearchPerformed.value) {
+        console.log(`[EconomicNewsView] fetchVideosForPage - No videos found for query '${displayedSearchQuery.value}' on page ${page}.`);
+      }
+    } else {
+      const errMsg = response.data.error || '영상을 불러오는데 실패했거나 데이터 형식이 올바르지 않습니다.';
+      console.error('[EconomicNewsView] fetchVideosForPage - Error in response structure or explicit error:', errMsg);
+      throw new Error(errMsg);
     }
-
   } catch (err) {
-    console.error('[EconomicNewsView] fetchAllVideos - Error during fetching videos:', err);
-    error.value = err.message || '영상 전체를 불러오는 중 오류가 발생했습니다.';
-    allVideos.value = [];
+    console.error(`[EconomicNewsView] fetchVideosForPage - Error during fetching videos for page ${page}:`, err);
+    error.value = err.response?.data?.error || err.message || `페이지 ${page}의 영상을 불러오는 중 오류가 발생했습니다.`;
+    currentVideos.value = [];
     totalResults.value = 0;
+    nextPageToken.value = null;
+    prevPageToken.value = null;
   } finally {
     isLoadingAllData.value = false;
-    console.log(`[EconomicNewsView] fetchAllVideos - Finished. isLoadingAllData: ${isLoadingAllData.value}. CurrentPage: ${currentPage.value}`);
+    console.log(`[EconomicNewsView] fetchVideosForPage - Finished. isLoadingAllData: ${isLoadingAllData.value}. CurrentPage: ${currentPage.value}`);
   }
+};
+
+const resetSearchStateAndFetchFirstPage = () => {
+  currentVideos.value = [];
+  currentPage.value = 1;
+  totalResults.value = 0;
+  error.value = null;
+  initialSearchPerformed.value = true;
+  displayedSearchQuery.value = searchQuery.value;
+  nextPageToken.value = null;
+  prevPageToken.value = null;
+
+  fetchVideosForPage(1);
 };
 
 const handleSearch = () => {
   if (!searchQuery.value.trim()) {
     error.value = '검색어를 입력해주세요.';
     initialSearchPerformed.value = false; 
-    allVideos.value = [];
+    currentVideos.value = [];
     totalResults.value = 0;
     displayedSearchQuery.value = '';
     return;
   }
-  
-  displayedSearchQuery.value = searchQuery.value;
-  fetchAllVideos();
+  resetSearchStateAndFetchFirstPage();
 };
 
-const goToPage = (page) => {
-  if (isLoadingAllData.value) return;
+const goToPage = (pageNumber) => {
+  if (isLoadingAllData.value || pageNumber < 1 || pageNumber > totalPages.value || pageNumber === currentPage.value) {
+    return;
+  }
 
-  if (typeof page === 'number' && page > 0 && page <= totalPages.value) {
-    currentPage.value = page;
-    console.log(`[EconomicNewsView] goToPage - Changed currentPage to: ${page}`);
+  let targetToken = null;
+  if (pageNumber > currentPage.value) {
+    if (pageNumber === currentPage.value + 1 && nextPageToken.value) {
+      targetToken = nextPageToken.value;
+    } else if (pageNumber === currentPage.value - 1 && prevPageToken.value) {
+      targetToken = prevPageToken.value;
+    } else {
+      console.warn(`[EconomicNewsView] goToPage - Direct page jump to ${pageNumber} without specific token. This might re-fetch from start or use stored tokens if available for prev/next.`);
+    }
+    fetchVideosForPage(pageNumber, targetToken);
+  } else {
+    if (pageNumber === currentPage.value -1 && prevPageToken.value) {
+       targetToken = prevPageToken.value
+    }
+    fetchVideosForPage(pageNumber, targetToken);
   }
 };
 
@@ -294,14 +288,11 @@ const formatPublishTime = (dateTimeString) => {
 }
 
 onMounted(() => {
-  // AOS 관련 코드 제거됨
   console.log('[EconomicNewsView] onMounted - Component mounted.');
 })
 
 onActivated(() => {
   console.log('[EconomicNewsView] onActivated - Component activated.');
-  // <keep-alive> 사용 시 필요할 수 있는 로직 (현재는 크게 필요 없어 보임)
-  // resultsPerPage.value = 6; // 이 값은 거의 변하지 않음
 })
 
 </script>
