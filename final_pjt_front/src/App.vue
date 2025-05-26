@@ -7,6 +7,8 @@ import { onMounted } from 'vue'
 import AOS from 'aos'
 import 'aos/dist/aos.css'
 import { useAuthStore } from '@/stores/authStore'
+import '@fortawesome/fontawesome-free/css/all.css'
+
 
 const authStore = useAuthStore()
 
