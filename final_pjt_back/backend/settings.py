@@ -44,6 +44,9 @@ INSTALLED_APPS = [
     "assetinfo",
     "kakaomap",
     "product_recommender",
+    # 크롤링 앱
+    'market_indices',
+    'django_apscheduler', # 스케줄러 앱 추가
     # 서드파티 앱
     "rest_framework",
     "rest_framework.authtoken",
@@ -233,3 +236,60 @@ CACHES = {
         "OPTIONS": {"MAX_ENTRIES": 1000},
     }
 }
+
+# 로깅 설정
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO', 
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'file': { 
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs/django_scheduler.log', 
+            'maxBytes': 1024*1024*5,  # 5 MB
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file'], 
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'django_apscheduler': { 
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False, 
+        },
+        'market_indices': { 
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
+
+# 로그 디렉토리 생성
+LOGS_DIR = BASE_DIR / 'logs'
+if not LOGS_DIR.exists():
+    LOGS_DIR.mkdir(parents=True, exist_ok=True)
+
+# APPSCHEDULER 설정 (선택적)
+# APPSCHEDULER_DATETIME_FORMAT = "N j, Y, f:s a"  
+# APPSCHEDULER_RUN_NOW_TIMEOUT = 25

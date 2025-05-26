@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 
 export const useAuthStore = defineStore('auth', () => {
   // --- State --- (ref 사용)
+  const API_URL = ref(import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'); // VITE_API_URL 환경 변수 사용, 실패하면 하드코딩
   const accessToken = ref(localStorage.getItem('accessToken') || null)
   const user = ref(JSON.parse(localStorage.getItem('userInfo')) || null)
   const isLoggedIn = ref(!!accessToken.value) // 토큰 유무로 초기 로그인 상태 결정
@@ -58,7 +59,7 @@ export const useAuthStore = defineStore('auth', () => {
     loginError.value = null
     try {
       const response = await axios.post(
-        'http://127.0.0.1:8000/dj-rest-auth/login/', 
+        `${API_URL.value}/dj-rest-auth/login/`, // API_URL 사용
         credentials
       )
 
@@ -129,14 +130,14 @@ export const useAuthStore = defineStore('auth', () => {
     signupError.value = null // 이전 에러 메시지 초기화
     try {
       const response = await axios.post(
-        'http://127.0.0.1:8000/dj-rest-auth/registration/', 
+        `${API_URL.value}/dj-rest-auth/registration/`, // API_URL 사용
         credentials
       )
 
       // 회원가입 성공 시 (보통 201 Created)
       // dj-rest-auth는 기본적으로 회원가입 후 바로 로그인시키지 않음.
       // 성공 메시지를 반환하거나, 로그인 페이지로 유도할 수 있음.
-      // 여기서는 성공 여부만 반환하고, UI 단에서 후속 처리 (예: 로그인 페이지로 이동 안내)
+      // 여기서는 성공 여부만 반환하고, UI 단에서 후속 처리
       return true 
     } catch (error) {
       if (error.response) {
@@ -202,7 +203,7 @@ export const useAuthStore = defineStore('auth', () => {
   const logoutAction = async () => { // async로 변경 (향후 로그아웃 API 호출 대비)
     try {
       // 실제 로그아웃 API 호출 (백엔드에서 토큰 무효화 등 처리)
-      await axios.post('http://127.0.0.1:8000/dj-rest-auth/logout/')
+      await axios.post(`${API_URL.value}/dj-rest-auth/logout/`)
     } catch (error) {
       // 로그아웃 API 호출 실패 시에도 프론트엔드에서는 로그아웃 처리를 진행할 수 있음
       // (예: 로컬 토큰 삭제 등)
@@ -219,7 +220,7 @@ export const useAuthStore = defineStore('auth', () => {
   const fetchUser = async () => {
     if (!accessToken.value) return
     try {
-      const response = await axios.get('http://127.0.0.1:8000/dj-rest-auth/user/')
+      const response = await axios.get(`${API_URL.value}/dj-rest-auth/user/`)
       user.value = response.data
       localStorage.setItem('userInfo', JSON.stringify(response.data))
     } catch (error) {
@@ -239,7 +240,7 @@ export const useAuthStore = defineStore('auth', () => {
     };
 
     try {
-      const response = await axios.get('http://127.0.0.1:8000/api/v1/accounts/profile/', {
+      const response = await axios.get(`${API_URL.value}/api/v1/accounts/profile/`, {
         headers: headers // 수정된 헤더 사용
       })
       userProfile.value = response.data
@@ -292,7 +293,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     try {
       const response = await axios.put(
-        'http://127.0.0.1:8000/api/v1/accounts/profile/',
+        `${API_URL.value}/api/v1/accounts/profile/`,
         formData, // FormData 사용
         { headers: headers }
       );
@@ -348,6 +349,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   // 스토어가 반환해야 하는 모든 상태, 게터, 액션을 객체로 반환
   return {
+    API_URL,
     accessToken,
     user,
     isLoggedIn,
@@ -370,4 +372,6 @@ export const useAuthStore = defineStore('auth', () => {
     updateProfile,
     _resetAuthSate,
   }
+}, {
+  persist: true, // persist 옵션이 있다면 유지
 }) 
