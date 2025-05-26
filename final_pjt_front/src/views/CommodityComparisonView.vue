@@ -129,15 +129,13 @@ const fetchAssetPrices = async () => {
   if (selectedAsset.value === 'gold') {
     chartOptions.scales.y.ticks.stepSize = 20000;
   } else if (selectedAsset.value === 'silver') {
-    chartOptions.scales.y.ticks.stepSize = 500; // 은(Silver)의 경우 500으로 변경
+    chartOptions.scales.y.ticks.stepSize = 500;
   }
 
-  // 날짜 파라미터 동적 생성 (오늘 & 한달 전)
-  const today = new Date();
-  const oneMonthAgo = new Date();
-  oneMonthAgo.setMonth(today.getMonth() - 1);
+  let queryFromDate;
+  let queryToDate;
 
-  // YYYY-MM-DD 형식으로 변환
+  // YYYY-MM-DD 형식으로 변환하는 헬퍼 함수
   const formatDate = (date) => {
     const year = date.getFullYear();
     const month = ('0' + (date.getMonth() + 1)).slice(-2);
@@ -145,8 +143,26 @@ const fetchAssetPrices = async () => {
     return `${year}-${month}-${day}`;
   };
 
-  const dateToParam = formatDate(today);
-  const dateFromParam = formatDate(oneMonthAgo);
+  // 사용자가 시작일과 종료일을 모두 입력했는지 확인
+  if (startDate.value && endDate.value) {
+    // 시작일이 종료일보다 늦는지 유효성 검사
+    if (new Date(startDate.value) > new Date(endDate.value)) {
+      errorMessage.value = '시작일은 종료일보다 이전 날짜여야 합니다.';
+      isLoading.value = false;
+      clearChartDataAndSetDefault(); // 또는 현재 차트 유지하고 에러만 표시
+      return;
+    }
+    queryFromDate = startDate.value;
+    queryToDate = endDate.value;
+  } else {
+    // 하나라도 입력되지 않았으면 최근 한 달로 설정
+    const today = new Date();
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setMonth(today.getMonth() - 1);
+    
+    queryFromDate = formatDate(oneMonthAgo);
+    queryToDate = formatDate(today);
+  }
 
   // 기존 UI의 startDate, endDate는 사용하지 않지만, 사용자가 날짜를 선택했을 경우에 대한 처리는 일단 보류
   // (현재는 무조건 최근 한달 조회)
@@ -173,10 +189,8 @@ const fetchAssetPrices = async () => {
   try {
     const params = {
       type: selectedAsset.value === 'gold' ? 'Au' : 'Ag',
-      from: dateFromParam, // 무조건 최근 한달
-      to: dateToParam     // 무조건 최근 한달
-      // from: queryFromDate, // 사용자가 선택한 날짜를 사용하려면 이것으로 교체
-      // to: queryToDate       // 사용자가 선택한 날짜를 사용하려면 이것으로 교체
+      from: queryFromDate, // 동적으로 결정된 시작일 사용
+      to: queryToDate       // 동적으로 결정된 종료일 사용
     };
 
     const response = await axios.get(API_BASE_URL, { params });
