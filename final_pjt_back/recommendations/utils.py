@@ -151,7 +151,22 @@ def get_youtube_videos(query, max_results=6, page_token=None):
     """
     YouTube API를 사용하여 영상을 검색합니다 (페이지네이션 지원).
     경제 뉴스 검색 기능에서 사용됩니다.
+    데이터는 하루 동안 캐시됩니다.
     """
+    # page_token이 None일 경우를 대비해 빈 문자열로 처리하여 캐시 키 일관성 유지
+    page_token_str = page_token if page_token else ""
+    cache_key = f"youtube_videos_{query}_{max_results}_{page_token_str}"
+
+    cached_data = cache.get(cache_key)
+    if cached_data:
+        print(
+            f"[CACHE] Returning youtube videos from cache for key: {cache_key}"
+        )
+        return cached_data
+    
+    print(
+        f"[API] Fetching youtube videos from YouTube API for key: {cache_key}"
+    )
     try:
         youtube = build(
             YOUTUBE_API_SERVICE_NAME,
@@ -194,7 +209,7 @@ def get_youtube_videos(query, max_results=6, page_token=None):
             "totalResults", 0
         )
 
-        return {
+        result_data = {
             "videos": videos,
             "nextPageToken": search_response.get("nextPageToken"),
             "prevPageToken": search_response.get("prevPageToken"),
@@ -204,6 +219,13 @@ def get_youtube_videos(query, max_results=6, page_token=None):
             "resultsPerPage": search_response.get("pageInfo", {}).get("resultsPerPage"),
             "error": None,
         }
+
+        # 캐시 저장 (만료 시간: 24시간)
+        if not result_data.get("error"): # API 에러가 없을 때만 캐시 저장
+            cache.set(cache_key, result_data, timeout=60 * 60 * 24)
+            print(f"[CACHE] Saved youtube videos to cache for key: {cache_key}")
+
+        return result_data
 
     except HttpError as e:
         error_details = e.resp.status, e._get_reason()
