@@ -200,7 +200,7 @@ def get_youtube_videos(query, max_results=6, page_token=None):
             "prevPageToken": search_response.get("prevPageToken"),
             "totalResults": min(
                 actual_total_results, 100
-            ),  # YouTube API는 최대 100개까지의 totalResults만 정확히 알려주는 경우가 있음
+            ),
             "resultsPerPage": search_response.get("pageInfo", {}).get("resultsPerPage"),
             "error": None,
         }
