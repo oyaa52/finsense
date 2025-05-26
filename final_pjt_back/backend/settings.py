@@ -213,3 +213,15 @@ EMAIL_HOST_USER = env(
 )  # 네이버 아이디 (YOUR_NAVER_ID@naver.com 에서 ID 부분)
 EMAIL_HOST_PASSWORD = env("NAVER_EMAIL_APP_PASSWORD")  # 네이버 메일 앱 비밀번호
 DEFAULT_FROM_EMAIL = f"{env('NAVER_EMAIL_ID')}@naver.com"  # 발신자 이메일 주소
+
+# Cache Settings (File-based cache example)
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+        "LOCATION": os.path.join(
+            BASE_DIR, "django_cache"
+        ),  # Ensure this directory exists and is writable
+        "TIMEOUT": 60 * 60 * 24,  # 24 hours
+        "OPTIONS": {"MAX_ENTRIES": 1000},
+    }
+}
