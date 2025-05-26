@@ -18,11 +18,8 @@
           <p class="welcome-message">{{ currentUser.username || '사용자' }}님, 환영합니다!</p>
         </template>
         <div class="user-actions">
-          <router-link 
-            :to="{ name: 'userProfile', params: { username: currentUser.username } }" 
-            class="action-link profile-link" 
-            v-if="currentUser && currentUser.username"
-          >
+          <router-link :to="{ name: 'userProfile', params: { username: currentUser.username } }"
+            class="action-link profile-link" v-if="currentUser && currentUser.username">
             내 프로필
           </router-link>
           <span class="separator" v-if="currentUser && currentUser.username">|</span>
@@ -53,14 +50,6 @@
           </ul>
         </nav>
 
-      </div>
-
-      <!-- 다크 모드 토글 버튼 -->
-      <div class="dark-mode-toggle-container">
-        <button @click="toggleDarkMode" class="dark-mode-toggle-btn">
-          <span v-if="isDarkMode">라이트 모드</span>
-          <span v-else>다크 모드</span>
-        </button>
       </div>
 
     </aside>
@@ -128,14 +117,7 @@ const authStore = useAuthStore() // authStore 인스턴스 생성
 const router = useRouter()
 const route = useRoute() // 현재 라우트 정보를 가져오기 위해 추가
 
-const isDarkMode = ref(false); // 다크 모드 상태 ref
-
-// 다크 모드 토글 함수
-const toggleDarkMode = () => {
-  isDarkMode.value = !isDarkMode.value;
-  // body에 dark-mode 클래스를 토글합니다.
-  document.body.classList.toggle('dark-mode', isDarkMode.value);
-};
+// const isDarkMode = ref(false); // 다크 모드 상태 ref -- 제거
 
 // authStore의 상태를 computed 속성으로 사용
 const isLoggedIn = computed(() => authStore.isAuthenticated)
@@ -871,179 +853,4 @@ html {
 .scroll-top-btn:hover {
   background-color: #0052cc;
 }
-
-/* 다크 모드 토글 버튼 스타일 */
-.dark-mode-toggle-container {
-  margin-top: auto;
-  /* 사이드바 하단으로 밀기 */
-  padding-top: 15px;
-  /* 패딩 약간 줄임 */
-  padding-bottom: 15px;
-  /* 하단 패딩 추가 */
-  border-top: 1px solid #e0e0e0;
-  /* 구분선 */
-  width: 100%;
-  display: flex;
-  justify-content: center;
-}
-
-.dark-mode-toggle-btn {
-  background-color: #191919;
-  /* 라이트 모드일 때 검정색 배경 */
-  color: #ffffff;
-  /* 라이트 모드일 때 흰색 글씨 */
-  border: 1px solid #191919;
-  /* 테두리도 배경과 동일하게 */
-  border-radius: 6px;
-  /* 약간 작은 radius */
-  padding: 6px 12px;
-  /* 패딩 줄여서 버튼 작게 */
-  font-size: 0.8rem;
-  /* 폰트 크기 약간 줄임 */
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-  width: auto;
-  /* 너비 자동으로 내용에 맞춤 */
-  min-width: 100px;
-  /* 최소 너비 설정 */
-  text-align: center;
-}
-
-.dark-mode-toggle-btn:hover {
-  opacity: 0.8;
-}
-
-/* 다크 모드 스타일 */
-/* body.dark-mode 스타일은 전역으로 이동했다고 가정하고 MainPageView.vue에 한정된 스타일만 남깁니다. */
-/* MainPageView.vue의 최상위 .main-page-container.dark-mode는 제거했으므로, */
-/* body.dark-mode를 기준으로 MainPageView 내부 요소들의 스타일을 조정합니다. */
-
-body.dark-mode .sidebar {
-  background-color: #2c2c2e;
-  /* 사이드바 배경 */
-  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.3);
-  border-top: 1px solid #444447;
-  /* 구분선 */
-}
-
-body.dark-mode .auth-links,
-body.dark-mode .user-info-box {
-  background-color: #3a3a3c;
-  /* 박스 배경 */
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-body.dark-mode .auth-button.login-button {
-  background-color: #0A84FF;
-  /* iOS 블루 - 다크모드에서 더 잘 보임 */
-  color: #ffffff;
-}
-
-body.dark-mode .auth-button.login-button:hover {
-  background-color: #0070f0;
-}
-
-body.dark-mode .auth-button.signup-button {
-  border: 1px solid #0A84FF;
-  color: #0A84FF;
-}
-
-body.dark-mode .auth-button.signup-button:hover {
-  background-color: rgba(10, 132, 255, 0.1);
-}
-
-body.dark-mode .user-info-box .welcome-message {
-  color: #f2f2f7;
-}
-
-body.dark-mode .action-link {
-  color: #0A84FF;
-}
-
-body.dark-mode .action-link:hover {
-  color: #389bff;
-}
-
-body.dark-mode .separator {
-  color: #555558;
-  /* 구분선 색상 */
-}
-
-body.dark-mode .logout-link {
-  color: #ababaf;
-  /* 로그아웃 링크 기본 색상 */
-}
-
-body.dark-mode .logout-link:hover {
-  color: #f2f2f7;
-}
-
-body.dark-mode .top-navbar {
-  background-color: #2c2c2e;
-  /* 네비게이션 바 배경 */
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
-}
-
-body.dark-mode .top-navbar nav ul li a {
-  color: #ababaf;
-}
-
-body.dark-mode .top-navbar nav ul li a:hover,
-body.dark-mode .top-navbar nav ul li a.router-link-exact-active {
-  color: #0A84FF;
-}
-
-body.dark-mode .top-navbar nav ul li a::after {
-  background-color: #0A84FF;
-}
-
-body.dark-mode .content-area {
-  background-color: #1c1c1e;
-  /* 메인 컨텐츠 영역 배경 */
-}
-
-body.dark-mode .default-content h2 {
-  color: #0A84FF;
-}
-
-body.dark-mode .default-content p {
-  color: #c7c7cc;
-}
-
-/* 다크모드에서 네비게이션 메뉴 타이틀 및 링크 */
-body.dark-mode .sidebar-nav .nav-title {
-  color: #ababaf;
-  border-bottom: 1px solid #444447;
-}
-
-body.dark-mode .sidebar-nav .action-link {
-  color: #d1d1d6;
-}
-
-body.dark-mode .sidebar-nav .action-link:hover,
-body.dark-mode .sidebar-nav .action-link.router-link-active {
-  background-color: #3a3a3c;
-  color: #0A84FF;
-}
-
-/* 다크모드 토글 버튼 (다크모드 상태일 때) */
-body.dark-mode .dark-mode-toggle-btn {
-  background-color: #ffffff;
-  /* 다크 모드일 때 흰색 배경 */
-  color: #1c1c1e;
-  /* 다크 모드일 때 어두운 글씨 */
-  border-color: #ffffff;
-}
-
-body.dark-mode .dark-mode-toggle-btn:hover {
-  opacity: 0.8;
-}
-
-body.dark-mode .dark-mode-toggle-container {
-  border-top: 1px solid #444447;
-  /* 구분선 */
-}
-
-/* 로고는 다크모드에서 스타일 변경 없음 (.sidebar-logo) */
 </style>

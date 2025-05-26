@@ -17,6 +17,7 @@ import AIRecommendationView from '@/views/AIRecommendationView.vue'
 import AdminPanelView from '@/views/AdminPanelView.vue'
 import UserProfileView from '@/views/UserProfileView.vue'
 import { useAuthStore } from '@/stores/authStore'
+import MyProductsView from '@/views/MyProductsView.vue'
 
 // 임시 플레이스홀더 컴포넌트 (실제 컴포넌트로 교체 필요)
 const PlaceholderComponent = (text) => ({
@@ -193,6 +194,13 @@ const router = createRouter({
             mainServiceView: UserProfileView
           },
           props: { mainServiceView: true }
+        },
+        {
+          path: 'my-subscribed-products',
+          name: 'mySubscribedProducts',
+          components: {
+            mainServiceView: MyProductsView
+          }
         }
       ]
     },

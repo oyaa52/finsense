@@ -43,7 +43,7 @@ def save_deposit_products(request):
     try:
         base_lst = []
         option_lst = []
-        
+
         # 4페이지까지의 데이터를 가져옴
         for page_no in range(1, 5):  # 1~4 페이지까지 가져오기
             # 금융위원회 API 호출
@@ -75,10 +75,10 @@ def save_deposit_products(request):
                 "details": {
                     "total_products": len(base_lst),
                     "new_products": result["new_products"],
-                    "updated_products": result["updated_products"]
-                }
-            }, 
-            status=status.HTTP_200_OK
+                    "updated_products": result["updated_products"],
+                },
+            },
+            status=status.HTTP_200_OK,
         )
     except requests.exceptions.RequestException as e:
         return Response(
@@ -94,12 +94,14 @@ def save_deposit_data(base_lst, option_lst):
     API에서 받아온 예금 상품 정보를 데이터베이스에 저장하는 함수
     """
     # 기존 상품 코드 목록 가져오기
-    existing_product_codes = set(DepositProduct.objects.values_list('fin_prdt_cd', flat=True))
-    
+    existing_product_codes = set(
+        DepositProduct.objects.values_list("fin_prdt_cd", flat=True)
+    )
+
     # 새로운 상품 개수 카운트
     new_products_count = 0
     updated_products_count = 0
-    
+
     for entry in base_lst:
         # DepositProduct 모델 필드에 맞게 API 응답 필드 매핑
         product_data = {
@@ -116,16 +118,16 @@ def save_deposit_data(base_lst, option_lst):
             "dcls_end_day": entry.get("dcls_end_day"),
             "fin_co_subm_day": entry.get("fin_co_subm_day"),
         }
-        
+
         # 상품 코드가 이미 존재하는지 확인
         is_new = entry["fin_prdt_cd"] not in existing_product_codes
-        
+
         # 상품 생성 또는 업데이트
         product, created = DepositProduct.objects.update_or_create(
             fin_prdt_cd=entry["fin_prdt_cd"],
             defaults=product_data,
         )
-        
+
         if created:
             new_products_count += 1
         else:
@@ -134,7 +136,9 @@ def save_deposit_data(base_lst, option_lst):
     # 옵션 데이터 처리
     for entry in option_lst:
         try:
-            parent_product = DepositProduct.objects.get(fin_prdt_cd=entry["fin_prdt_cd"])
+            parent_product = DepositProduct.objects.get(
+                fin_prdt_cd=entry["fin_prdt_cd"]
+            )
             # DepositOption 모델 필드에 맞게 API 응답 필드 매핑
             option_data = {
                 "intr_rate_type": entry.get("intr_rate_type"),
@@ -160,15 +164,17 @@ def save_deposit_data(base_lst, option_lst):
                 defaults=option_data,
             )
         except DepositProduct.DoesNotExist:
-            print(f"Warning: Product with code {entry['fin_prdt_cd']} not found for option")
+            print(
+                f"Warning: Product with code {entry['fin_prdt_cd']} not found for option"
+            )
             continue
         except Exception as e:
             print(f"Error saving option for product {entry['fin_prdt_cd']}: {str(e)}")
             continue
-    
+
     return {
         "new_products": new_products_count,
-        "updated_products": updated_products_count
+        "updated_products": updated_products_count,
     }
 
 
@@ -275,6 +281,7 @@ def save_saving_data(base_list, option_list):
             # 로깅 권장: print(f"Error saving saving option for product {entry['fin_prdt_cd']}: {str(e)}")
             continue
 
+
 # 사용자가 특정 예금 상품에 가입
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -282,21 +289,18 @@ def deposit_product_subscribe(request, fin_prdt_cd):
     try:
         product = get_object_or_404(DepositProduct, fin_prdt_cd=fin_prdt_cd)
         user = request.user
-        amount = request.data.get('amount', 0)
+        amount = request.data.get("amount", 0)
 
         # 상품의 첫 번째 옵션을 가져옴
         first_option = product.options.first()
         if not first_option:
             return Response(
                 {"error": "상품 옵션을 찾을 수 없습니다."},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         subscription, created = DepositSubscription.objects.get_or_create(
-            user=user,
-            product=product,
-            option=first_option,
-            defaults={'amount': amount}
+            user=user, product=product, option=first_option, defaults={"amount": amount}
         )
 
         if created:
@@ -311,10 +315,8 @@ def deposit_product_subscribe(request, fin_prdt_cd):
             )
     except Exception as e:
         print(f"Subscription error: {str(e)}")  # 서버 로그에 에러 출력
-        return Response(
-            {"error": str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 # 사용자가 특정 적금 상품에 가입
 @api_view(["POST"])
@@ -323,12 +325,10 @@ def saving_product_subscribe(request, fin_prdt_cd):
     try:
         product = get_object_or_404(SavingProduct, fin_prdt_cd=fin_prdt_cd)
         user = request.user
-        amount = request.data.get('amount', 0)
+        amount = request.data.get("amount", 0)
 
         subscription, created = SavingSubscription.objects.get_or_create(
-            user=user,
-            product=product,
-            defaults={'amount': amount}
+            user=user, product=product, defaults={"amount": amount}
         )
 
         if created:
@@ -342,10 +342,7 @@ def saving_product_subscribe(request, fin_prdt_cd):
                 status=status.HTTP_400_BAD_REQUEST,
             )
     except Exception as e:
-        return Response(
-            {"error": str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # 가입한 상품 목록 조회 API (FBV)도 여기에 추가될 예정
@@ -375,18 +372,21 @@ def subscribed_saving_products_list(request):
 
 class StandardResultsSetPagination(PageNumberPagination):
     page_size = 50
-    page_size_query_param = 'page_size'
+    page_size_query_param = "page_size"
     max_page_size = 100
-    
+
     def get_paginated_response(self, data):
-        return Response({
-            'count': self.page.paginator.count,
-            'next': self.get_next_link(),
-            'previous': self.get_previous_link(),
-            'results': data,
-            'total_pages': self.page.paginator.num_pages,
-            'current_page': self.page.number
-        })
+        return Response(
+            {
+                "count": self.page.paginator.count,
+                "next": self.get_next_link(),
+                "previous": self.get_previous_link(),
+                "results": data,
+                "total_pages": self.page.paginator.num_pages,
+                "current_page": self.page.number,
+            }
+        )
+
 
 # 예금 상품 목록 및 상세 조회
 class DepositProductListAPIView(generics.ListAPIView):
@@ -394,56 +394,51 @@ class DepositProductListAPIView(generics.ListAPIView):
     permission_classes = [AllowAny]  # 인증 제외
     pagination_class = StandardResultsSetPagination
     filter_backends = [OrderingFilter]
-    ordering_fields = ['fin_prdt_nm', 'options__intr_rate']
+    ordering_fields = ["fin_prdt_nm", "options__intr_rate"]
 
     def get_serializer_context(self):
         # 시리얼라이저에 request 객체를 context로 전달
-        return {'request': self.request}
+        return {"request": self.request}
 
     def get_queryset(self):
         queryset = DepositProduct.objects.all()
-        
+
         # 은행 필터링
-        bank_id = self.request.query_params.get('bank_id')
+        bank_id = self.request.query_params.get("bank_id")
         if bank_id:
             bank_map = {
-                '2': '국민은행',
-                '3': '신한은행',
-                '4': '우리은행',
-                '5': '하나은행',
-                '6': '농협은행'
+                "2": "국민은행",
+                "3": "신한은행",
+                "4": "우리은행",
+                "5": "하나은행",
+                "6": "농협은행",
             }
             bank_name = bank_map.get(bank_id)
             if bank_name:
-                queryset = queryset.filter(kor_co_nm__icontains=bank_name)  # 부분 일치로 변경
-        
+                queryset = queryset.filter(
+                    kor_co_nm__icontains=bank_name
+                )  # 부분 일치로 변경
+
         # 기간 필터링 (period가 'all'이거나 없을 때는 모든 기간의 상품을 보여줌)
-        period = self.request.query_params.get('period')
-        if period and period != 'all':
-            period_map = {
-                '6': '6',
-                '12': '12',
-                '24': '24',
-                '36': '36'
-            }
+        period = self.request.query_params.get("period")
+        if period and period != "all":
+            period_map = {"6": "6", "12": "12", "24": "24", "36": "36"}
             period_value = period_map.get(period)
             if period_value:
                 queryset = queryset.filter(options__save_trm=period_value)
-        
+
         # 정렬
-        sort_by = self.request.query_params.get('sort_by')
-        if sort_by == 'rate':
+        sort_by = self.request.query_params.get("sort_by")
+        if sort_by == "rate":
             # 금리를 숫자로 변환하여 정렬
             from django.db.models import F, ExpressionWrapper, FloatField
+
             queryset = queryset.annotate(
-                rate_value=Cast('options__intr_rate', FloatField())
-            ).order_by(
-                F('rate_value').desc(nulls_last=True),
-                'kor_co_nm'
-            )
+                rate_value=Cast("options__intr_rate", FloatField())
+            ).order_by(F("rate_value").desc(nulls_last=True), "kor_co_nm")
         else:
-            queryset = queryset.order_by('kor_co_nm')
-        
+            queryset = queryset.order_by("kor_co_nm")
+
         # SQLite에서 작동하는 방식으로 중복 제거
         return queryset.distinct()
 
@@ -461,55 +456,48 @@ class SavingProductListAPIView(generics.ListAPIView):
     permission_classes = [AllowAny]  # 인증 제외
     pagination_class = StandardResultsSetPagination
     filter_backends = [OrderingFilter]
-    ordering_fields = ['fin_prdt_nm', 'options__intr_rate']
+    ordering_fields = ["fin_prdt_nm", "options__intr_rate"]
 
     def get_serializer_context(self):
         # 시리얼라이저에 request 객체를 context로 전달
-        return {'request': self.request}
+        return {"request": self.request}
 
     def get_queryset(self):
         queryset = SavingProduct.objects.all()
-        
+
         # 은행 필터링 (예금과 동일한 로직 사용)
-        bank_id = self.request.query_params.get('bank_id')
+        bank_id = self.request.query_params.get("bank_id")
         if bank_id:
             bank_map = {
-                '2': '국민은행',
-                '3': '신한은행',
-                '4': '우리은행',
-                '5': '하나은행',
-                '6': '농협은행'
+                "2": "국민은행",
+                "3": "신한은행",
+                "4": "우리은행",
+                "5": "하나은행",
+                "6": "농협은행",
             }
             bank_name = bank_map.get(bank_id)
             if bank_name:
                 queryset = queryset.filter(kor_co_nm__icontains=bank_name)
-        
+
         # 기간 필터링 (예금과 동일한 로직 사용)
-        period = self.request.query_params.get('period')
-        if period and period != 'all':
-            period_map = {
-                '6': '6',
-                '12': '12',
-                '24': '24',
-                '36': '36'
-            }
+        period = self.request.query_params.get("period")
+        if period and period != "all":
+            period_map = {"6": "6", "12": "12", "24": "24", "36": "36"}
             period_value = period_map.get(period)
             if period_value:
                 queryset = queryset.filter(options__save_trm=period_value)
-        
+
         # 정렬 (예금과 동일한 로직 사용)
-        sort_by = self.request.query_params.get('sort_by')
-        if sort_by == 'rate':
+        sort_by = self.request.query_params.get("sort_by")
+        if sort_by == "rate":
             from django.db.models import F, ExpressionWrapper, FloatField
+
             queryset = queryset.annotate(
-                rate_value=Cast('options__intr_rate', FloatField())
-            ).order_by(
-                F('rate_value').desc(nulls_last=True),
-                'kor_co_nm'
-            )
+                rate_value=Cast("options__intr_rate", FloatField())
+            ).order_by(F("rate_value").desc(nulls_last=True), "kor_co_nm")
         else:
-            queryset = queryset.order_by('kor_co_nm')
-            
+            queryset = queryset.order_by("kor_co_nm")
+
         return queryset.distinct()
 
 
@@ -520,25 +508,25 @@ class SavingProductDetailAPIView(generics.RetrieveAPIView):
     permission_classes = [AllowAny]  # 모든 유저에게 조회 기능 제공
 
 
-@api_view(['POST'])
+@api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def subscribe_deposit(request, product_id, option_id):
     try:
         product = DepositProduct.objects.get(fin_prdt_cd=product_id)
         option = DepositOption.objects.get(id=option_id, product=product)
-        amount = request.data.get('amount', 0)
+        amount = request.data.get("amount", 0)
 
         subscription, created = DepositSubscription.objects.get_or_create(
             user=request.user,
             product=product,
             option=option,
-            defaults={'amount': amount}
+            defaults={"amount": amount},
         )
 
         if not created:
             return Response(
-                {'message': '이미 가입한 상품입니다.'},
-                status=status.HTTP_400_BAD_REQUEST
+                {"message": "이미 가입한 상품입니다."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         serializer = DepositSubscriptionSerializer(subscription)
@@ -546,34 +534,33 @@ def subscribe_deposit(request, product_id, option_id):
 
     except DepositProduct.DoesNotExist:
         return Response(
-            {'error': '상품을 찾을 수 없습니다.'},
-            status=status.HTTP_404_NOT_FOUND
+            {"error": "상품을 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND
         )
     except DepositOption.DoesNotExist:
         return Response(
-            {'error': '상품 옵션을 찾을 수 없습니다.'},
-            status=status.HTTP_404_NOT_FOUND
+            {"error": "상품 옵션을 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND
         )
 
-@api_view(['POST'])
+
+@api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def subscribe_saving(request, product_id, option_id):
     try:
         product = SavingProduct.objects.get(fin_prdt_cd=product_id)
         option = SavingOption.objects.get(id=option_id, product=product)
-        amount = request.data.get('amount', 0)
+        amount = request.data.get("amount", 0)
 
         subscription, created = SavingSubscription.objects.get_or_create(
             user=request.user,
             product=product,
             option=option,
-            defaults={'amount': amount}
+            defaults={"amount": amount},
         )
 
         if not created:
             return Response(
-                {'message': '이미 가입한 상품입니다.'},
-                status=status.HTTP_400_BAD_REQUEST
+                {"message": "이미 가입한 상품입니다."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         serializer = SavingSubscriptionSerializer(subscription)
@@ -581,16 +568,15 @@ def subscribe_saving(request, product_id, option_id):
 
     except SavingProduct.DoesNotExist:
         return Response(
-            {'error': '상품을 찾을 수 없습니다.'},
-            status=status.HTTP_404_NOT_FOUND
+            {"error": "상품을 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND
         )
     except SavingOption.DoesNotExist:
         return Response(
-            {'error': '상품 옵션을 찾을 수 없습니다.'},
-            status=status.HTTP_404_NOT_FOUND
+            {"error": "상품 옵션을 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND
         )
 
-@api_view(['GET'])
+
+@api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def user_subscriptions(request):
     deposit_subscriptions = DepositSubscription.objects.filter(user=request.user)
@@ -599,51 +585,61 @@ def user_subscriptions(request):
     deposit_serializer = DepositSubscriptionSerializer(deposit_subscriptions, many=True)
     saving_serializer = SavingSubscriptionSerializer(saving_subscriptions, many=True)
 
-    return Response({
-        'deposit_subscriptions': deposit_serializer.data,
-        'saving_subscriptions': saving_serializer.data
-    })
+    return Response(
+        {
+            "deposit_subscriptions": deposit_serializer.data,
+            "saving_subscriptions": saving_serializer.data,
+        }
+    )
 
-@api_view(['GET'])
+
+@api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def get_user_subscriptions(request):
     try:
         user = request.user
-        
+
         # 예금 상품 구독 조회
-        deposit_subscriptions = DepositSubscription.objects.filter(user=user).select_related(
-            'product', 'option'
-        ).values(
-            'id',
-            'subscribed_at',
-            product_name=F('product__fin_prdt_nm'),
-            bank_name=F('product__kor_co_nm'),
-            interest_rate=F('option__intr_rate'),
-            period=F('option__save_trm')
+        deposit_subscriptions = (
+            DepositSubscription.objects.filter(user=user)
+            .select_related("product", "option")
+            .values(
+                "id",
+                "subscribed_at",
+                product_name=F("product__fin_prdt_nm"),
+                bank_name=F("product__kor_co_nm"),
+                interest_rate=F("option__intr_rate"),
+                period=F("option__save_trm"),
+            )
         )
-        
+
         # 적금 상품 구독 조회
-        saving_subscriptions = SavingSubscription.objects.filter(user=user).select_related(
-            'product', 'option'
-        ).values(
-            'id',
-            'subscribed_at',
-            product_name=F('product__fin_prdt_nm'),
-            bank_name=F('product__kor_co_nm'),
-            interest_rate=F('option__intr_rate'),
-            period=F('option__save_trm')
+        saving_subscriptions = (
+            SavingSubscription.objects.filter(user=user)
+            .select_related("product", "option")
+            .values(
+                "id",
+                "subscribed_at",
+                product_name=F("product__fin_prdt_nm"),
+                bank_name=F("product__kor_co_nm"),
+                interest_rate=F("option__intr_rate"),
+                period=F("option__save_trm"),
+            )
         )
-        
-        return Response({
-            'deposit_subscriptions': list(deposit_subscriptions),
-            'saving_subscriptions': list(saving_subscriptions)
-        })
+
+        return Response(
+            {
+                "deposit_subscriptions": list(deposit_subscriptions),
+                "saving_subscriptions": list(saving_subscriptions),
+            }
+        )
     except Exception as e:
         print(f"Error in get_user_subscriptions: {str(e)}")
         return Response(
-            {'error': '구독 정보를 가져오는 중 오류가 발생했습니다.'},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            {"error": "구독 정보를 가져오는 중 오류가 발생했습니다."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -657,10 +653,14 @@ def check_deposit_subscription_status(request, product_id):
         # 여기서는 product_id가 DepositProduct의 fin_prdt_cd라고 가정하고 진행합니다.
         product = get_object_or_404(DepositProduct, fin_prdt_cd=product_id)
         # 해당 상품의 어떤 옵션이든 하나라도 가입했으면 True
-        subscribed = DepositSubscription.objects.filter(user=user, option__product=product).exists()
+        subscribed = DepositSubscription.objects.filter(
+            user=user, option__product=product
+        ).exists()
         return Response({"is_subscribed": subscribed}, status=status.HTTP_200_OK)
     except DepositProduct.DoesNotExist:
-        return Response({"error": "Deposit product not found"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {"error": "Deposit product not found"}, status=status.HTTP_404_NOT_FOUND
+        )
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -672,11 +672,13 @@ def check_saving_subscription_status(request, product_id):
     try:
         product = get_object_or_404(SavingProduct, fin_prdt_cd=product_id)
         # 해당 상품의 어떤 옵션이든 하나라도 가입했으면 True
-        subscribed = SavingSubscription.objects.filter(user=user, option__product=product).exists()
+        subscribed = SavingSubscription.objects.filter(
+            user=user, option__product=product
+        ).exists()
         return Response({"is_subscribed": subscribed}, status=status.HTTP_200_OK)
     except SavingProduct.DoesNotExist:
-        return Response({"error": "Saving product not found"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {"error": "Saving product not found"}, status=status.HTTP_404_NOT_FOUND
+        )
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
