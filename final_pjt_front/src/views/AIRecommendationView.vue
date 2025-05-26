@@ -75,14 +75,20 @@
       <!-- 시뮬레이션 결과: 프로필이 있으면 항상 이 섹션의 골격은 그림 -->
       <div class="simulation-results" v-if="hasProfile">
         
-        <!-- 미래 시나리오 섹션: GPT가 생성한 future_scenario 데이터가 있으면 표시 -->
-        <div class="future-scenario" v-if="simulationData.future_scenario">
-          <h3>미래 시나리오</h3>
-          <div class="scenario-content">
-            <div class="scenario-text">
+        <h3>미래 시나리오</h3>
+
+        <div class="main-scenario-content-wrapper">
+          <!-- GPT 응답 텍스트 + gpt_load.png 배경 -->
+          <div class="scenario-text-container" v-if="simulationData.future_scenario">
+            <div class="scenario-text-background"></div>
+            <div class="scenario-text-content">
               <p>{{ simulationData.future_scenario.description }}</p>
             </div>
-            <div class="scenario-visualization" v-if="simulationData.future_scenario.visualization">
+          </div>
+
+          <!-- DALL-E 생성 이미지 및 관련 정보 (기존 .future-scenario div 활용) -->
+          <div class="future-scenario" v-if="simulationData.future_scenario?.visualization">
+            <div class="scenario-visualization">
               <div class="visualization-info">
                 <span class="object-type">{{ simulationData.future_scenario.visualization.object }}</span>
                 <span class="style-info">{{ simulationData.future_scenario.visualization.style }}</span>
@@ -94,12 +100,10 @@
                      :alt="simulationData.future_scenario.visualization.object"
                      class="cute-3d-image"
                      @error="handleImageError">
-                <!-- 이미지 URL이 없고, 이미지 생성 단계(currentStep 4)이며, 로딩 중일 때 -->
                 <div v-else-if="isLoading && currentStep === 4 && !simulationData.future_scenario.visualization.image_url" class="loading-image">
                   <i class="fas fa-palette fa-spin"></i> 
                   {{ simulationData.future_scenario.visualization.object ? simulationData.future_scenario.visualization.object + ' 관련' : '' }} 미래를 그려보는 중...
                 </div>
-                 <!-- 이미지 URL이 없고, (이미지 생성 전이거나 실패했을 경우) -->
                 <div v-else-if="!simulationData.future_scenario.visualization.image_url" class="loading-image">
                   {{ simulationData.future_scenario.visualization.object ? simulationData.future_scenario.visualization.object + ' 관련' : '' }} 시각화 준비 중입니다.
                 </div>
@@ -111,12 +115,15 @@
         <!-- 나머지 시뮬레이션 상세 정보 및 추천 상품 목록 -->
         <!-- 이 부분들은 관련 데이터(simulationData.expectedReturn 등)가 있을 때만 표시 -->
         <div v-if="simulationData.expectedReturn || (recommendations && recommendations.length > 0)">
-          <div class="simulation-details" v-if="simulationData.expectedReturn">
+          <div class="simulation-details" v-if="simulationData.expectedReturn || simulationData.initialInvestmentAmount">
             <div class="detail-item">
               <i class="fas fa-coins"></i>
               <div class="detail-content">
                 <h4>예상 수익금</h4>
-                <p>{{ formatCurrency(simulationData.expectedReturn) }}원</p>
+                <p>
+                  <span v-if="simulationData.initialInvestmentAmount">초기 투자금 {{ formatCurrency(simulationData.initialInvestmentAmount) }}원 기준 / </span>
+                  {{ formatCurrency(simulationData.expectedReturn) }}원
+                </p>
               </div>
             </div>
             <div class="detail-item">
@@ -219,7 +226,8 @@ const simulationData = ref({
   risk_analysis: '',
   diversification: '',
   future_scenario: null,
-  visualization: null
+  visualization: null,
+  initialInvestmentAmount: null
 })
 
 let chart = null
@@ -376,6 +384,9 @@ const fetchRecommendations = async () => {
       headers: { Authorization: `Token ${token}` }
     })
     const profile = profileResponse.data
+    
+    // simulationData에 초기 투자금 저장
+    simulationData.value.initialInvestmentAmount = profile.amount_available;
 
     if (!profile.investment_tendency) {
       addMessage('ai', '프로필 정보가 충분하지 않아 추천을 드릴 수 없습니다. 프로필을 완성해주세요.')
@@ -394,7 +405,7 @@ const fetchRecommendations = async () => {
     - 투자 목적: ${profile.investment_purpose || '미정'} (예: '집 마련', '세계 여행', '조기 은퇴')
     - 투자 성향: ${profile.investment_tendency} (예: '안정 추구형', '공격 투자형')
     - 투자 기간: ${profile.investment_term}개월
-    - 투자 가능 금액: ${profile.amount_available}원
+    - 매월 투자 가능 금액: ${profile.amount_available}원 (이 금액은 사용자가 한 달에 투자할 수 있는 금액으로 간주합니다.)
 
     요청 사항:
     위 사용자 프로필을 바탕으로, 3가지의 다양한 투자 상품을 추천해주세요.
@@ -406,17 +417,11 @@ const fetchRecommendations = async () => {
     3.  "risk_analysis": 전체 포트폴리오의 위험도에 대한 분석.
     4.  "diversification": 자산 분산 전략에 대한 설명.
     5.  "future_scenario": 여기가 핵심입니다!
-        *   "description": 사용자의 '투자 목적', '투자 기간', '투자 가능 금액'을 바탕으로, **카카오뱅크 저금통 문구처럼 간결하지만 임팩트 있고, 현실적이면서도 희망찬 메시지를 전달하는** 미래 시나리오를 작성해주세요. 사용자가 무엇을 경험하고 어떤 긍정적인 감정을 느낄 수 있는지에 초점을 맞춰주세요.
-            예를 들어, 사용자의 투자 가능 금액과 기간을 바탕으로 월별 또는 총 저축액을 추산하고, 이를 통해 달성 가능한 목표를 현실적이면서도 매력적으로 묘사해야 합니다.
+        *   "description": 사용자의 '투자 목적', '투자 기간', '매월 투자 가능 금액'을 바탕으로, **카카오뱅크 저금통 문구처럼 간결하지만 임팩트 있고, 현실적이면서도 희망찬 메시지를 전달하는** 미래 시나리오를 작성해주세요. 사용자가 무엇을 경험하고 어떤 긍정적인 감정을 느낄 수 있는지에 초점을 맞춰주세요.
+            사용자가 매월 제시된 금액을 ${profile.investment_term}개월 동안 꾸준히 투자했을 때 달성 가능한 구체적인 목표와 총 누적 투자액을 언급하며, 그로 인해 펼쳐질 긍정적 미래를 현실적이면서도 매력적으로 묘사해야 합니다.
 
-            예시 (투자 목적: '여행 자금', 투자 기간: 12개월, 투자 가능 금액: 120만원 가정 -> 월 10만원):
-            "매월 10만원, 1년 뒤엔 세부 해변에서 망고 주스! 짜릿한 자유를 향해 차곡차곡 모아봐요."
-            "지금 당장 목표를 이루기엔 부족해 보여도 괜찮아요. 이 작은 시작이 꿈을 향한 든든한 첫걸음이 될 거예요! 더 큰 미래를 위한 디딤돌로 만들어가요."
-            예시 (투자 목적: '여행 자금', 투자 기간: 24개월, 투자 가능 금액: 480만원 가정 -> 월 20만원):
-            "월 20만원, 2년 후엔 호주 배낭여행! 오페라 하우스 야경, 상상만 해도 설레죠?"
-
-            예시 (투자 목적: '여행 자금', 투자 기간: 36개월, 투자 가능 금액: 1080만원 가정 -> 월 30만원):
-            "월 30만원, 3년 뒤엔 꿈에 그리던 유럽 일주! 로마와 파리, 현실이 될 거예요."
+            예시 (투자 목적: '유럽 여행 자금', 투자 기간: 12개월, 매월 투자 가능 금액: 50만원 가정):
+            "매월 50만원씩, 1년 뒤 총 600만원으로 떠나는 꿈의 유럽 여행! 로맨틱한 파리의 밤, 상상만으로도 설레지 않나요?"
 
             사용자의 투자 목적이 '집 마련'이라면 아늑한 보금자리를, '차량 구매'라면 도로를 달리는 자유를, '노후 자금'이라면 여유로운 황혼을 그려주세요. 현실적이면서도 가슴 뛰는 이야기로 만들어주세요.
 
@@ -505,12 +510,12 @@ const fetchRecommendations = async () => {
     }));
 
     simulationData.value = {
+      initialInvestmentAmount: profile.amount_available,
       expectedReturn: parseCurrencyString(parsedData.simulation.expectedReturn),
       returnRate: parseFloat(String(parsedData.simulation.returnRate).replace('%','')) || 0,
       risk_analysis: parsedData.simulation.risk_analysis,
       diversification: parsedData.simulation.diversification,
       future_scenario: parsedData.simulation.future_scenario,
-      visualization: parsedData.simulation.visualization
     };
 
     addMessage('ai', '다음은 맞춤형 투자 추천입니다.')
@@ -575,9 +580,7 @@ const viewProductDetail = (recommendation) => {
 }
 
 onMounted(async () => {
-  console.log("[AIRecommendationView] onMounted: 시작");
   await checkProfile();
-  console.log("[AIRecommendationView] onMounted: 종료");
 });
 
 onUnmounted(() => {
@@ -730,63 +733,102 @@ onUnmounted(() => {
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-.future-scenario {
-  background: #fff;
-  padding: 2rem;
-  border-radius: 1rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+.main-scenario-content-wrapper {
+  display: flex;
+  flex-direction: row;
+  gap: 2rem;
+  align-items: flex-start;
   margin-bottom: 2rem;
 }
 
-.future-scenario h3 {
-  color: #1f2937;
-  margin-bottom: 1.5rem;
-  font-size: 1.5rem;
-  text-align: center;
+.scenario-text-container {
+  position: relative;
+  width: 65%;
+  min-width: 450px;
+  max-width: 800px;
+  aspect-ratio: 740 / 700;
 }
 
-.scenario-content {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2rem;
-  align-items: center;
+.scenario-text-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url('@/assets/gpt_load.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  z-index: 1;
 }
 
-.scenario-text {
-  padding: 1.5rem;
-  background: #f9fafb;
-  border-radius: 0.5rem;
-}
-
-.scenario-text p {
-  color: #4b5563;
-  font-size: 1.2rem;
+.scenario-text-content {
+  position: absolute;
+  top: 68%; 
+  left: 55%;
+  transform: translate(-50%, -50%); 
+  width: 68%; 
+  max-height: 38%;
+  padding: 12px 18px;
+  text-align: left; 
+  color: #212529;
+  font-size: 0.8rem; 
+  font-weight: bold;
   line-height: 1.6;
+  overflow-y: auto; 
+  z-index: 2; 
+  background-color: #e7f3fe;
+  border-radius: 8px;
+  box-sizing: border-box; 
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.scenario-text-content p {
   margin: 0;
 }
 
+.future-scenario {
+  width: 35%;
+  min-width: 300px;
+  background: #fff;
+  padding: 0;
+  border-radius: 1rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+}
+
 .scenario-visualization {
+  flex-grow: 1;
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  padding: 1rem;
+  width: 100%;
 }
 
 .visualization-info {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+  background-color: rgba(243, 244, 246, 0.8);
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  width: 100%;
 }
 
 .visualization-info span {
   padding: 0.5rem 1rem;
   border-radius: 2rem;
-  font-size: 0.875rem;
-  background: #f3f4f6;
-  color: #6b7280;
+  font-size: 0.8rem;
+  background: #e9ecef;
+  color: #495057;
+  font-weight: 500;
 }
 
 .cute-3d-container {
-  height: 300px;
+  width: 100%;
+  height: 380px;
   background: #f9fafb;
   border-radius: 1rem;
   display: flex;
@@ -807,62 +849,6 @@ onUnmounted(() => {
   color: #666;
   font-size: 1.2rem;
   text-align: center;
-}
-
-.visualization-container {
-  background: #fff;
-  padding: 2rem;
-  border-radius: 1rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  margin-bottom: 2rem;
-}
-
-.visualization-section {
-  width: 100%;
-}
-
-.visualization-title {
-  color: #1f2937;
-  margin-bottom: 1.5rem;
-  font-size: 1.5rem;
-}
-
-.visualization-content {
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: 2rem;
-  align-items: center;
-}
-
-.visualization-description {
-  padding: 1.5rem;
-  background: #f9fafb;
-  border-radius: 0.5rem;
-}
-
-.visualization-description p {
-  color: #4b5563;
-  margin-bottom: 1rem;
-  line-height: 1.6;
-}
-
-.color-scheme {
-  padding: 0.5rem;
-  background: #f3f4f6;
-  border-radius: 0.25rem;
-  font-size: 0.875rem;
-  color: #6b7280;
-}
-
-.model-container {
-  height: 400px;
-  background: #f3f4f6;
-  border-radius: 0.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
 }
 
 .simulation-details {
@@ -1089,10 +1075,6 @@ onUnmounted(() => {
     grid-template-columns: 1fr;
   }
 
-  .visualization-content {
-    grid-template-columns: 1fr;
-  }
-  
   .model-container {
     height: 300px;
   }
@@ -1104,5 +1086,14 @@ onUnmounted(() => {
   .cute-3d-container {
     height: 250px;
   }
+}
+
+.simulation-results > h3 {
+  color: #1f2937;
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  font-size: 2rem;
+  font-weight: 700;
+  text-align: center;
 }
 </style> 
