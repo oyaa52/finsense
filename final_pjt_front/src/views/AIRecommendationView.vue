@@ -57,63 +57,97 @@
 
     <!-- 프로필이 있는 경우 -->
     <div v-else class="simulation-interface">
-      <!-- 로딩 애니메이션: 초기 단계(GPT 호출 전까지)에만 전체 차단형으로 표시 -->
-      <div v-if="isLoading && currentStep < 3" class="loading-container">
-        <div class="loading-steps">
-          <div class="step" :class="{ active: currentStep >= 1 }">
-            <i class="fas fa-chart-line"></i>
+      <!-- 
+        초기 전체 로딩 화면 (GPT 추천 생성 전까지)
+      -->
+      <div v-if="isLoading && currentStep < 3" class="loading-overlay">
+        <div class="loading-steps initial-icon-steps"> 
+          <div class="step" :class="{ active: currentStep === 0, completed: currentStep > 0, inactive: currentStep < 0 }">
+            <i class="fas fa-user-cog"></i>
             <span>프로필 분석</span>
           </div>
-          <div class="step" :class="{ active: currentStep >= 2 }">
-            <i class="fas fa-brain"></i>
-            <span>GPT 추천 생성 중</span>
+          <div class="step" :class="{ active: currentStep === 1, completed: currentStep > 1, inactive: currentStep < 1 }">
+            <i class="fas fa-comments-dollar"></i>
+            <span>추천 생성 중</span>
           </div>
-          <!-- 수익률 계산 및 이미지 생성 단계는 아래 결과 섹션과 함께 표시될 수 있음 -->
+          <div class="step" :class="{ active: currentStep === 2, completed: currentStep > 2, inactive: currentStep < 2 }">
+            <i class="fas fa-chart-pie"></i>
+            <span>수익률 계산</span>
+          </div>
+          <div class="step" :class="{ inactive: true }"> <!-- 초기 오버레이에서는 항상 비활성 -->
+            <i class="fas fa-magic"></i>
+            <span>미래 시각화</span>
+          </div>
         </div>
+
+        <div class="loading-spinner-fancy"></div>
+        <p class="loading-message-main">이용자님을 위한 맞춤형 상품을 찾고 있어요 !</p>
       </div>
 
       <!-- 시뮬레이션 결과: 프로필이 있으면 항상 이 섹션의 골격은 그림 -->
       <div class="simulation-results" v-if="hasProfile">
         
-        <h3>미래 시나리오</h3>
-
-        <div class="main-scenario-content-wrapper">
-          <!-- GPT 응답 텍스트 + gpt_load.png 배경 -->
-          <div class="scenario-text-container" v-if="simulationData.future_scenario">
-            <div class="scenario-text-background"></div>
-            <div class="scenario-text-content">
-              <p>{{ simulationData.future_scenario.description }}</p>
+        <!-- 로딩 스텝 (GPT 호출 시작 후 ~ 이미지 생성 전/중 표시 가능) -->
+        <div v-if="isLoading && currentStep >= 1 && currentStep <= 4 && !(currentStep < 3)" class="loading-steps-container">
+          <div class="loading-steps">
+            <div class="step" :class="{ active: currentStep >= 1 }">
+              <i class="fas fa-user-cog"></i>
+              <span>프로필 분석</span>
             </div>
-          </div>
-
-          <!-- DALL-E 생성 이미지 및 관련 정보 (기존 .future-scenario div 활용) -->
-          <div class="future-scenario" v-if="simulationData.future_scenario?.visualization">
-            <div class="scenario-visualization">
-              <div class="visualization-info">
-                <span class="object-type">{{ simulationData.future_scenario.visualization.object }}</span>
-                <span class="style-info">{{ simulationData.future_scenario.visualization.style }}</span>
-                <span class="emotion-info">{{ simulationData.future_scenario.visualization.emotion }}</span>
-              </div>
-              <div class="cute-3d-container">
-                <img v-if="simulationData.future_scenario.visualization.image_url"
-                     :src="simulationData.future_scenario.visualization.image_url" 
-                     :alt="simulationData.future_scenario.visualization.object"
-                     class="cute-3d-image"
-                     @error="handleImageError">
-                <div v-else-if="isLoading && currentStep === 4 && !simulationData.future_scenario.visualization.image_url" class="loading-image">
-                  <i class="fas fa-palette fa-spin"></i> 
-                  {{ simulationData.future_scenario.visualization.object ? simulationData.future_scenario.visualization.object + ' 관련' : '' }} 미래를 그려보는 중...
-                </div>
-                <div v-else-if="!simulationData.future_scenario.visualization.image_url" class="loading-image">
-                  {{ simulationData.future_scenario.visualization.object ? simulationData.future_scenario.visualization.object + ' 관련' : '' }} 시각화 준비 중입니다.
-                </div>
-              </div>
+            <div class="step" :class="{ active: currentStep >= 2 }">
+              <i class="fas fa-comments-dollar"></i>
+              <span>추천 생성 중</span>
+            </div>
+            <div class="step" :class="{ active: currentStep >= 3 }">
+              <i class="fas fa-chart-pie"></i>
+              <span>수익률 계산</span>
+            </div>
+            <div class="step" :class="{ active: currentStep >= 4 }">
+              <i class="fas fa-magic"></i>
+              <span>미래 시각화</span>
             </div>
           </div>
         </div>
+        
+        <!-- 미래 시나리오 제목: 로딩 완료 후, 프로필 및 시나리오 데이터가 있을 때 표시 -->
+        <!-- <h3 v-if="!isLoading && hasProfile && simulationData.future_scenario">미래 시나리오</h3> -->
+
+        <!-- 스마트폰 UI 기반의 미래 시나리오 표시 -->
+        <div class="main-scenario-content-wrapper">
+          <div class="scenario-text-container" v-if="simulationData.future_scenario">
+            
+            <!-- 순서 변경: 텍스트 박스를 이미지 컨테이너 앞으로 이동 -->
+            <div class="scenario-text-content screen-text" 
+                 v-if="simulationData.future_scenario && simulationData.future_scenario.description">
+              <p>{{ simulationData.future_scenario.description }}</p>
+            </div>
+
+            <div class="simulated-screen-content">
+              <div class="visualization-info-tags" v-if="simulationData.future_scenario.visualization && displayHashtags.length > 0">
+                <span v-for="tag in displayHashtags" :key="tag" class="hashtag">{{ tag }}</span>
+              </div>
+              <div class="cute-3d-container" v-if="simulationData.future_scenario.visualization">
+                <img v-if="simulationData.future_scenario.visualization.image_url"
+                     :src="simulationData.future_scenario.visualization.image_url"
+                     :alt="simulationData.future_scenario.visualization.object"
+                     class="cute-3d-image"
+                     @error="handleImageError">
+                <div v-else-if="isLoading && currentStep === 4 && simulationData.future_scenario?.visualization" class="loading-image">
+                  <i class="fas fa-palette fa-spin"></i>
+                  <p>{{ simulationData.future_scenario.visualization.object ? simulationData.future_scenario.visualization.object + ' 관련' : '' }} 미래를 그려보는 중...</p>
+                </div>
+                <div v-else-if="!simulationData.future_scenario?.visualization?.image_url && simulationData.future_scenario?.visualization" class="loading-image">
+                  <i class="fas fa-image"></i>
+                  <p>{{ simulationData.future_scenario.visualization.object ? simulationData.future_scenario.visualization.object + ' 관련' : '' }} 시각화 준비 중입니다.</p>
+                </div>
+              </div>
+              <!-- 스마트폰 UI 내부의 텍스트 박스는 제거되었으므로, 해당 부분은 없음 -->
+            </div> 
+
+          </div> 
+        </div>
 
         <!-- 나머지 시뮬레이션 상세 정보 및 추천 상품 목록 -->
-        <!-- 이 부분들은 관련 데이터(simulationData.expectedReturn 등)가 있을 때만 표시 -->
         <div v-if="simulationData.expectedReturn || (recommendations && recommendations.length > 0)">
           <div class="simulation-details" v-if="simulationData.expectedReturn || simulationData.initialInvestmentAmount">
             <div class="detail-item">
@@ -191,8 +225,8 @@
           </div>
         </div>
         
-        <!-- 모든 데이터가 아직 준비되지 않았지만, GPT 호출(currentStep 2 이상)은 시작되었고 전체 로딩중일 때 간단한 메시지 -->
-        <div v-else-if="isLoading && currentStep >= 2 && currentStep < 4" class="initial-loading-message">
+        <!-- 기존 initial-loading-message 위치 및 조건 유지 -->
+        <div v-else-if="isLoading && currentStep === 3" class="initial-loading-message">
           <p><i class="fas fa-spinner fa-spin"></i> AI가 맞춤 추천을 생성하고 있습니다. 잠시만 기다려주세요...</p>
         </div>
 
@@ -202,17 +236,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
-import Chart from 'chart.js/auto'
 
 const router = useRouter()
 const messages = ref([])
 const recommendations = ref([])
 const isLoading = ref(false)
 const currentStep = ref(0)
-const simulationChart = ref(null)
 const hasProfile = ref(false)
 const profileData = ref({
   investment_purpose: '',
@@ -226,11 +258,61 @@ const simulationData = ref({
   risk_analysis: '',
   diversification: '',
   future_scenario: null,
-  visualization: null,
   initialInvestmentAmount: null
 })
 
-let chart = null
+const displayHashtags = computed(() => {
+  const viz = simulationData.value.future_scenario?.visualization;
+  if (!viz) return [];
+
+  const tags = new Set(); // 중복 방지를 위해 Set 사용
+
+  // 1. Emotion에서 첫 번째 태그
+  if (viz.emotion) {
+    const emotionTag = viz.emotion.split(',')[0].trim();
+    if (emotionTag) tags.add(`#${emotionTag}`);
+  }
+
+  // 2. Object에서 핵심 태그 시도
+  if (viz.object) {
+    if (tags.size < 3) {
+      let objectKeyword = viz.object.split(' ')[0].replace(/의$/, ''); // 예: '방콕의' -> '방콕'
+      // 특정 키워드 우선 처리
+      if (viz.object.includes('여행') || viz.object.includes('휴가')) objectKeyword = '여행';
+      else if (viz.object.includes('해변') || viz.object.includes('바다')) objectKeyword = '해변';
+      else if (viz.object.includes('야경')) objectKeyword = '야경';
+      else if (viz.object.includes('집') || viz.object.includes('주택')) objectKeyword = '내집마련';
+      
+      if (objectKeyword) tags.add(`#${objectKeyword}`);
+    }
+  }
+  
+  // 3. Style에서 태그 시도
+  if (viz.style) {
+    if (tags.size < 3) {
+      let styleTag = '';
+      if (viz.style.includes('3D')) styleTag = '3D월드';
+      else if (viz.style.includes('따뜻한')) styleTag = '따뜻함';
+      else if (viz.style.includes('감성')) styleTag = '감성적';
+      else if (viz.style.includes('현실적')) styleTag = '리얼리티';
+      if (styleTag) tags.add(`#${styleTag}`);
+    }
+  }
+  
+  // 만약 태그가 너무 적으면, object나 emotion에서 추가 확보 시도 (이미 위에서 일부 처리됨)
+  if (tags.size < 2 && viz.object) {
+     const fallbackObject = viz.object.split(' ').pop(); // 마지막 단어
+     if(fallbackObject) tags.add(`#${fallbackObject}`);
+  }
+  if (tags.size < 3 && viz.emotion) {
+    const emotionParts = viz.emotion.split(',');
+    if (emotionParts.length > 1 && emotionParts[1].trim()) {
+        tags.add(`#${emotionParts[1].trim()}`);
+    }
+  }
+
+  return Array.from(tags).slice(0, 3); // Set을 배열로 변환 후 최대 3개 반환
+});
 
 // 프로필 정보 확인
 const checkProfile = async () => {
@@ -301,54 +383,6 @@ const startLoading = () => {
   }, 1500)
 }
 
-// 차트 생성
-const createSimulationChart = (data) => {
-  if (!simulationChart.value) {
-    console.log('Chart container not found')
-    return
-  }
-
-  if (chart) {
-    chart.destroy()
-  }
-
-  const ctx = simulationChart.value.getContext('2d')
-  chart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: ['현재', '1년 후', '2년 후', '3년 후'],
-      datasets: [{
-        label: '예상 자산',
-        data: data,
-        borderColor: '#4f46e5',
-        backgroundColor: 'rgba(79, 70, 229, 0.1)',
-        tension: 0.4,
-        fill: true
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: {
-          display: false
-        }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: {
-            callback: (value) => `${(value / 10000).toFixed(0)}만원`
-          }
-        }
-      },
-      animation: {
-        duration: 2000,
-        easing: 'easeInOutQuart'
-      }
-    }
-  })
-}
-
 // 이미지 에러 핸들러 추가
 const handleImageError = (e) => {
   console.warn('이미지 로드 실패, 대체 이미지 사용 또는 메시지 표시', e.target.src);
@@ -389,7 +423,7 @@ const fetchRecommendations = async () => {
     simulationData.value.initialInvestmentAmount = profile.amount_available;
 
     if (!profile.investment_tendency) {
-      addMessage('ai', '프로필 정보가 충분하지 않아 추천을 드릴 수 없습니다. 프로필을 완성해주세요.')
+      addMessage('ai', '프로필 정보가 충분하지 않아 추천을 드릴 수 없습니다. 프로필을 완성해주세요.');
       isLoading.value = false
       return
     }
@@ -582,13 +616,6 @@ const viewProductDetail = (recommendation) => {
 onMounted(async () => {
   await checkProfile();
 });
-
-onUnmounted(() => {
-  if (chart) {
-    chart.destroy()
-    chart = null;
-  }
-})
 </script>
 
 <style scoped>
@@ -693,37 +720,209 @@ onUnmounted(() => {
   gap: 2rem;
 }
 
-.loading-container {
-  background: #fff;
-  padding: 2rem;
-  border-radius: 1rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.loading-steps {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1rem;
-}
-
-.step {
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.9); 
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
   text-align: center;
-  padding: 1rem;
-  border-radius: 0.5rem;
-  background: #f5f5f5;
-  opacity: 0.5;
-  transition: all 0.3s;
+  padding: 20px; 
+  box-sizing: border-box; 
 }
 
-.step.active {
-  background: #e3f2fd;
+.loading-overlay .brand-logo {
+  width: 180px; 
+  margin-bottom: 2.5rem; 
+  opacity: 0.85;
+}
+
+.loading-overlay .loading-spinner-fancy {
+  border: 5px solid #e0e0e0; 
+  border-top: 5px solid #1976d2; 
+  border-radius: 50%;
+  width: 70px; 
+  height: 70px;
+  animation: spin 1.2s linear infinite; 
+  margin-top: 2rem; 
+  margin-bottom: 1.5rem; 
+}
+
+.loading-overlay .loading-message-main {
+  font-size: 1.4rem; 
+  color: #000000; 
+  font-weight: bold; 
+  margin-bottom: 1rem;
+}
+
+.loading-overlay .loading-steps.initial-icon-steps {
+  display: flex;
+  justify-content: center; 
+  gap: 1rem;
+  width: auto; 
+  max-width: 90%; 
+  margin-bottom: 2.5rem; 
+  padding: 0; 
+  background-color: transparent; 
+  box-shadow: none; 
+}
+
+.loading-overlay .initial-icon-steps .step {
+  background: #ffffff;
+  border: 1px solid #e0e0e0; 
+  border-radius: 12px; 
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08); 
+  padding: 1.2rem 1rem; 
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center; 
+  text-align: center;
+  flex: 0 1 180px; 
+  min-height: auto; 
+}
+
+.loading-overlay .initial-icon-steps .step i {
+  font-size: 2rem; 
+  color: #cccccc; 
+  margin-bottom: 0.8rem;
+  transition: color 0.3s ease-in-out;
+}
+
+.loading-overlay .initial-icon-steps .step span {
+  font-size: 0.85rem; 
+  color: black; 
+  font-weight: 500;
+  transition: color 0.3s ease-in-out;
+}
+
+.loading-overlay .initial-icon-steps .step.active {
+  border-bottom-color: #1976d2;
+  background-color: #f8f9fa; 
+  transform: translateY(-4px);
+  box-shadow: 0 6px 15px rgba(25, 118, 210, 0.15);
   opacity: 1;
 }
 
-.step i {
-  font-size: 1.5rem;
-  margin-bottom: 0.5rem;
+.loading-overlay .initial-icon-steps .step.active i,
+.loading-overlay .initial-icon-steps .step.active span {
+  color: #1976d2; 
+}
+.loading-overlay .initial-icon-steps .step.active span {
+    font-weight: 600;
+}
+
+.loading-overlay .initial-icon-steps .step.completed {
+  border-bottom-color: #1976d2; 
+  opacity: 1;
+}
+
+.loading-overlay .initial-icon-steps .step.completed i {
+  color: #1976d2; 
+}
+
+.loading-overlay .initial-icon-steps .step.completed span {
+  color: #1976d2; 
+  font-weight: 500;
+}
+
+.loading-overlay .initial-icon-steps .step.inactive {
+  /* 기본 스타일이 비활성 상태 */
+}
+
+.loading-steps-container { 
+  width: 100%;
+  padding: 1rem 0; 
+  margin-bottom: 2rem; 
+  background-color: #f9f9f9; 
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.loading-steps { /* 페이지 내 로딩 스텝 */
+  display: flex;
+  justify-content: space-around;
+  gap: 1rem; 
+  width: 100%;
+  max-width: 900px; 
+  margin: 0 auto;
+}
+
+.loading-steps .step { /* 페이지 내 로딩 스텝의 각 항목 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 1.2rem 0.8rem; 
+  border-radius: 10px; 
+  background: #e9ecef; 
+  opacity: 0.7;
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); 
+  flex: 1;
+  border-bottom: 5px solid transparent; 
+  position: relative; 
+}
+
+.loading-steps .step.active {
+  background: #ffffff; 
+  opacity: 1;
+  transform: translateY(-8px) scale(1.03); 
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.12);
+  border-bottom-color: #1976d2;
+}
+
+.loading-steps .step i {
+  font-size: 2.2rem; 
+  margin-bottom: 0.8rem;
   color: #1976d2;
+  transition: transform 0.4s ease;
+}
+
+.loading-steps .step span {
+  font-size: 0.95rem; 
+  font-weight: 500;
+  color: #34495e; 
+}
+.loading-steps .step.active span {
+  color: #1976d2; 
+  font-weight: 600;
+}
+
+.loading-image { /* DALL-E 이미지 로딩 중 플레이스홀더 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #555;
+  font-size: 1rem; /* 사용자 제공 코드 값으로 변경 */
+  text-align: center;
+  height: 100%;
+  background-color: #f0f4f8; /* 사용자 제공 코드 값으로 변경 */
+  border-radius: 0.5rem; /* 사용자 제공 코드 값으로 변경 */
+  padding: 20px; /* 사용자 제공 코드 값으로 변경 */
+  box-sizing: border-box; /* 사용자 제공 코드 값으로 변경 */
+}
+
+.loading-image i {
+  font-size: 3rem; 
+  color: #1976d2;
+  margin-bottom: 1rem;
+}
+.loading-image p {
+    margin: 0;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .simulation-results {
@@ -735,120 +934,122 @@ onUnmounted(() => {
 
 .main-scenario-content-wrapper {
   display: flex;
-  flex-direction: row;
-  gap: 2rem;
-  align-items: flex-start;
-  margin-bottom: 2rem;
+  flex-direction: column; /* 항상 수직 정렬 */
+  gap: 25px;
+  margin-bottom: 30px;
 }
 
 .scenario-text-container {
   position: relative;
-  width: 65%;
-  min-width: 450px;
-  max-width: 800px;
-  aspect-ratio: 740 / 700;
-}
-
-.scenario-text-background {
-  position: absolute;
-  top: 0;
-  left: 0;
   width: 100%;
-  height: 100%;
+  min-height: 85vh; 
+  padding: 20px;
   background-image: url('@/assets/gpt_load.png');
-  background-size: contain;
+  background-size: contain; 
+  background-position: center center;
   background-repeat: no-repeat;
-  background-position: center;
-  z-index: 1;
-}
-
-.scenario-text-content {
-  position: absolute;
-  top: 68%; 
-  left: 55%;
-  transform: translate(-50%, -50%); 
-  width: 68%; 
-  max-height: 38%;
-  padding: 12px 18px;
-  text-align: left; 
-  color: #212529;
-  font-size: 0.8rem; 
-  font-weight: bold;
-  line-height: 1.6;
-  overflow-y: auto; 
-  z-index: 2; 
-  background-color: #e7f3fe;
-  border-radius: 8px;
-  box-sizing: border-box; 
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.scenario-text-content p {
-  margin: 0;
-}
-
-.future-scenario {
-  width: 35%;
-  min-width: 300px;
-  background: #fff;
-  padding: 0;
-  border-radius: 1rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  display: flex;
-  flex-direction: column;
-}
-
-.scenario-visualization {
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding: 1rem;
-  width: 100%;
-}
-
-.visualization-info {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  background-color: rgba(243, 244, 246, 0.8);
-  padding: 0.75rem;
-  border-radius: 0.5rem;
-  width: 100%;
-}
-
-.visualization-info span {
-  padding: 0.5rem 1rem;
-  border-radius: 2rem;
-  font-size: 0.8rem;
-  background: #e9ecef;
-  color: #495057;
-  font-weight: 500;
-}
-
-.cute-3d-container {
-  width: 100%;
-  height: 380px;
-  background: #f9fafb;
-  border-radius: 1rem;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: black;
+  overflow: hidden; 
+}
+
+.simulated-screen-content { /* 스마트폰 액정 영역 역할 (이제 투명한 위치 지정용 컨테이너) */
+  /* 🔴 중요: 아래 값들은 실제 배경 이미지의 스마트폰 흰색 액정 크기/위치/곡률에 맞춰야 합니다. */
+  width: 450px;           /* 예시: 실제 액정 너비 */
+  height: 1000px;          /* 예시: 실제 액정 높이 */
+  border-radius: 30px;    /* 예시: 실제 액정 곡률 (콘텐츠가 이 안을 벗어나지 않도록 overflow와 함께 사용) */
+  position: absolute;
+  top: 35%;
+  right: 4%;
+  
+  background-color: transparent; /* 배경을 투명하게 만듦 */
+  box-shadow: none; /* 그림자 제거 */
+  
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start; 
+  padding: 20px 15px; /* 내부 콘텐츠와 (보이지 않는) 액정 경계 사이의 여백 */
+  overflow: hidden; /* 내부 콘텐츠가 border-radius를 벗어나지 않도록 */
+  /* margin-top: 450px; */
+  /* margin-left: 600px; */
+  
+  /* 배경 이미지 내 스마트폰 액정의 정확한 위치에 이 div를 배치해야 합니다. */
+  /* position: absolute; 와 top/left 사용 또는 부모(.scenario-text-container)의 padding/flex 정렬로 미세 조정 */
+  /* 예시: .scenario-text-container가 display:flex, align-items:center, justify-content:center 이면 */
+  /* 이 .simulated-screen-content는 그 중앙에 오게 되므로, 스마트폰이 중앙에 있다면 추가 위치 조정 불필요 */
+  /* 만약 스마트폰이 중앙이 아니라면, margin 또는 position:absolute 등으로 조정 */
+  /* margin-top: 5vh; /* 예시: 스마트폰이 배경 상단에서 약간 아래에 있다면 */
+}
+
+.visualization-info-tags {
+  width: 100%; 
+  text-align: center;
+  padding: 5px 0px; 
+  font-size: 0.7em; 
+  margin-bottom: 10px; 
+  display: flex; 
+  justify-content: center; 
+  flex-wrap: wrap; 
+  gap: 6px; 
+  /* color, background-color 등은 .hashtag에서 관리 */
+}
+
+.hashtag {
+  padding: 3px 8px;
+  border-radius: 12px; 
+  font-weight: 500;
+  background-color: rgba(220, 220, 220, 0.75); /* 약간 더 불투명하게 하여 가독성 확보 */
+  color: #2c3e50; /* 어두운 글자색 */
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  white-space: nowrap; 
+}
+
+.cute-3d-container { 
+  width: 90%; 
+  aspect-ratio: 1 / 1; 
+  background-color: #e0e0e0; /* 이미지 로딩 중 배경 */
+  border-radius: 12px; 
   overflow: hidden;
-  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 15px; 
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* 이미지 자체에 약간의 그림자 유지 가능 */
 }
 
 .cute-3d-image {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-  transition: transform 0.3s ease;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .loading-image {
-  color: #666;
-  font-size: 1.2rem;
-  text-align: center;
+  font-size: 0.8em;
+  color: #555;
+}
+
+.scenario-text-content.screen-text { 
+  position: absolute;
+  bottom: 25%;
+  left: 27%;
+  transform: translateX(-50%);
+  width: 70%; 
+  max-width: 500px; 
+  height: auto;
+  max-height: none; 
+  padding: 15px 20px; 
+  background-color: #e7f3fe;
+  border-radius: 10px; 
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15); 
+  color: black;
+  font-weight: bold;
+  text-align: left; 
+  overflow-y: visible; 
+  z-index: 10; 
 }
 
 .simulation-details {
@@ -1055,37 +1256,13 @@ onUnmounted(() => {
 }
 
 @media (max-width: 768px) {
-  .ai-recommendation {
-    padding: 1rem;
+  .simulated-screen-content {
+    width: 240px; /* 모바일 화면에 맞는 액정 너비 (조정 필요) */
+    height: 450px; /* 모바일 화면에 맞는 액정 높이 (조정 필요) */
+    padding: 15px 10px;
+    border-radius: 25px; /* 모바일 화면에 맞는 액정 곡률 (조정 필요) */
   }
-
-  .loading-steps {
-    grid-template-columns: 1fr;
-  }
-
-  .simulation-details {
-    grid-template-columns: 1fr;
-  }
-
-  .recommendation-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .product-info {
-    grid-template-columns: 1fr;
-  }
-
-  .model-container {
-    height: 300px;
-  }
-
-  .scenario-content {
-    grid-template-columns: 1fr;
-  }
-  
-  .cute-3d-container {
-    height: 250px;
-  }
+  /* 내부 요소들도 비율에 맞게 조정될 수 있도록 % 단위 사용 또는 미디어쿼리 내에서 재조정 */
 }
 
 .simulation-results > h3 {
