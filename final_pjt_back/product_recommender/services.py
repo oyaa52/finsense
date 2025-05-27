@@ -3,9 +3,6 @@ from products.models import DepositProduct, SavingProduct
 import openai
 from django.conf import settings
 import json
-import logging
-
-logger = logging.getLogger(__name__)
 
 class ProductRecommender:
     def __init__(self, user):
@@ -33,12 +30,10 @@ class ProductRecommender:
             다음 형식으로 응답해주세요:
             1. 상품의 주요 장점
             2. 사용자 프로필과의 적합성
-            3. 예상 수익률과 수익금 (가능하다면)
-            4. 투자 시 고려사항 (리스크 포함)
-            5. 간단한 금융 조언
+            3. 예상 수익률과 수익금
+            4. 투자 시 고려사항
             """
             
-            logger.info(f"GPT 추천 이유 생성 요청: 사용자 ID {self.user.id}, 상품명 {product_info.get('name')}")
             response = openai.ChatCompletion.create(
                 model="gpt-4o",
                 messages=[
@@ -59,32 +54,30 @@ class ProductRecommender:
                             "• 투자 목적: [예: 결혼 자금 마련]\n"
                             "• 직업: [예: 공무원]\n"
                             "• 기타 특이사항: [예: 월 50만 원 자동이체 가능]"
+                            "유저에게 제공되는 DALL-E 이미지 생성 프롬프트는 고급지고 초현실적인 3D 이미지로 제공해주세요"
                         )
                     },
                     {
                         "role": "user",
-                        "content": prompt
+                        "content": prompt  # 사용자로부터 받은 실제 입력값
                     }
                 ],
                 temperature=0.7,
-                max_tokens=800
+                max_tokens=500
             )
             
-            recommendation_text = response.choices[0].message.content.strip()
-            logger.info(f"GPT 추천 이유 생성 완료. 사용자 ID {self.user.id}, 상품명 {product_info.get('name')}, 응답 길이: {len(recommendation_text)}")
-            return recommendation_text
+            return response.choices[0].message.content.strip()
             
         except Exception as e:
-            logger.error(f"GPT API 호출 중 오류 발생 (get_gpt_recommendation): {e}", exc_info=True)
-            logger.warning(f"GPT API 실패로 기본 추천 이유 생성. 사용자 ID {self.user.id}, 상품명 {product_info.get('name')}")
-            return self._get_recommendation_reason(product_info, 0, product_info.get('type'))
+            print(f"GPT API 호출 실패: {str(e)}")
+            return self._get_recommendation_reason(product_info, 0, product_info['type'])
         
-    def calculate_deposit_score(self, product: DepositProduct):
+    def calculate_deposit_score(self, product):
         """예금 상품 점수 계산"""
         score = 0
         
         # 금리 점수 (최대 40점)
-        max_rate = float(product.max_rate) if product.max_rate else 0.0
+        max_rate = float(product.max_rate)
         score += min(max_rate * 4, 40)
         
         # 투자 성향 점수 (최대 30점)
@@ -114,12 +107,12 @@ class ProductRecommender:
             
         return score
         
-    def calculate_saving_score(self, product: SavingProduct):
+    def calculate_saving_score(self, product):
         """적금 상품 점수 계산"""
         score = 0
         
         # 금리 점수 (최대 40점)
-        max_rate = float(product.max_rate) if product.max_rate else 0.0
+        max_rate = float(product.max_rate)
         score += min(max_rate * 4, 40)
         
         # 투자 성향 점수 (최대 30점)
@@ -153,11 +146,8 @@ class ProductRecommender:
         """추천 상품 목록 조회"""
         recommendations = []
         
-        logger.info(f"금융 상품 추천 시작: 사용자 ID {self.user.id}, 요청 개수 {limit}")
-
         # 예금 상품 점수 계산
         deposit_products = DepositProduct.objects.all()
-        logger.info(f"총 {deposit_products.count()}개의 예금 상품에 대해 점수 계산 및 추천 이유 생성 중...")
         for product in deposit_products:
             score = self.calculate_deposit_score(product)
             if score > 0:
@@ -188,7 +178,6 @@ class ProductRecommender:
         
         # 적금 상품 점수 계산
         saving_products = SavingProduct.objects.all()
-        logger.info(f"총 {saving_products.count()}개의 적금 상품에 대해 점수 계산 및 추천 이유 생성 중...")
         for product in saving_products:
             score = self.calculate_saving_score(product)
             if score > 0:
@@ -219,40 +208,26 @@ class ProductRecommender:
         
         # 점수 기준으로 정렬하고 상위 N개 반환
         recommendations.sort(key=lambda x: x['score'], reverse=True)
-        logger.info(f"총 {len(recommendations)}개의 추천 생성. 상위 {limit}개 반환.")
         return recommendations[:limit]
         
-    def _get_recommendation_reason(self, product_info, score, product_type):
+    def _get_recommendation_reason(self, product, score, product_type):
         """기본 추천 이유 생성 (GPT API 실패 시 사용)"""
         reasons = []
         
         # 금리 관련 이유
-        max_rate_value = float(product_info.get('max_rate', 0))
-        if max_rate_value >= 4.0:
-            reasons.append("높은 금리를 제공합니다.")
-        elif max_rate_value >= 3.0:
-            reasons.append("비교적 좋은 금리를 제공합니다.")
+        if float(product['max_rate']) >= 4.0:
+            reasons.append("높은 금리")
+        elif float(product['max_rate']) >= 3.0:
+            reasons.append("적정 수준의 금리")
             
         # 투자 성향 관련 이유
-        if product_type == 'deposit':
-            if self.profile.investment_tendency in ['stable', 'stable_seeking']:
-                reasons.append("안정적인 투자를 선호하는 성향에 적합합니다.")
-        elif product_type == 'saving':
-            if self.profile.investment_tendency in ['stable_seeking', 'neutral']:
-                reasons.append("꾸준히 목돈을 마련하려는 성향에 적합합니다.")
+        if self.profile.investment_tendency == 'stable' and product_type == 'deposit':
+            reasons.append("안정적인 수익 추구에 적합")
+        elif self.profile.investment_tendency == 'aggressive' and product_type == 'saving':
+            reasons.append("수익 추구에 적합")
             
         # 기간 관련 이유
-        product_term_str = str(product_info.get('term', ''))
-        user_term_months = int(self.profile.investment_term)
-        
-        if product_term_str.isdigit():
-            product_term_months = int(product_term_str)
-            if user_term_months == product_term_months:
-                reasons.append(f"선호하시는 {user_term_months}개월 투자 기간과 일치합니다.")
-            elif abs(user_term_months - product_term_months) <= 6:
-                reasons.append(f"선호하시는 투자 기간과 유사한 {product_term_months}개월 상품입니다.")
-        
-        if not reasons:
-            return f"{product_info.get('name', '이 상품')}은(는) 관심을 가져볼 만한 상품입니다."
+        if int(self.profile.investment_term) == product['term']:
+            reasons.append("선호하는 투자 기간과 일치")
             
-        return ", ".join(reasons) + " 등의 장점이 있습니다." 
+        return ", ".join(reasons) 

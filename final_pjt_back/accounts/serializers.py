@@ -15,15 +15,17 @@ from community.serializers import UserSerializer as CommunityUserSerializer # Us
 class CustomRegisterSerializer(RegisterSerializer):
 
     def validate_email(self, email):
-        # 이메일 유효성 검사: dj-rest-auth 기본 검사 외 중복 이메일 확인 (대소문자 무관)
-        if email and User.objects.filter(email__iexact=email).exists():
+        # 부모 클래스의 email 유효성 검사를 먼저 수행 (선택 사항, 하지만 일반적으로 좋음)
+        # email 필드가 있는지, 그리고 값이 있는지 먼저 확인 (dj-rest-auth가 처리해주지만 명시적으로)
+        if email and User.objects.filter(email__iexact=email).exists(): # 대소문자 구분 없이 비교
             raise serializers.ValidationError(_("이미 가입한 이메일입니다."))
+ 
         return email
 
     def save(self, request):
-        # 부모 save 호출하여 User 객체 생성 및 반환
+        # super().save(request) = User 객체를 생성하고 반환
         user = super().save(request)
-        # Profile.objects.create(user=user) # Profile 자동 생성 로직은 signals.py로 이동
+
         return user
 
 
@@ -94,48 +96,43 @@ class UserProfileSerializer(serializers.ModelSerializer):
         ]
 
     def get_profile_image(self, obj):
-        # 프로필 이미지가 존재하면 절대 경로 URL 반환, 없으면 None
         if hasattr(obj, 'profile') and obj.profile.profile_image:
             request = self.context.get('request')
             if request:
-                return request.build_absolute_uri(obj.profile.profile_image.url) # 절대 URI 생성
-            return obj.profile.profile_image.url # request 없을 시 상대 경로
+                return request.build_absolute_uri(obj.profile.profile_image.url)
+            return obj.profile.profile_image.url
         return None
 
     def get_followers_count(self, obj):
-        # 팔로워 수 반환
         return obj.followers.count()
 
     def get_following_count(self, obj):
-        # 팔로잉 수 반환
         return obj.following.count()
 
     def get_is_following(self, obj):
-        # 현재 로그인 사용자가 obj 유저를 팔로우하는지 여부
         request = self.context.get('request')
+        # 프로필 페이지의 주인이 현재 로그인한 유저와 같으면 is_following은 의미가 없으므로 False
         if request and request.user.is_authenticated and request.user != obj:
-            from community.models import Follow # 순환 참조 방지를 위해 메소드 내에서 import
+            # Follow 모델을 가져와야 함
+            from community.models import Follow # Follow 모델 임포트 (위치 조정 필요)
             return Follow.objects.filter(follower=request.user, following=obj).exists()
         return False
 
     def get_follow_id_for_current_user(self, obj):
-        # 현재 로그인 사용자와 obj 유저 간의 Follow 인스턴스 ID 반환 (없으면 None)
         request = self.context.get('request')
         if request and request.user.is_authenticated and request.user != obj:
-            from community.models import Follow # 순환 참조 방지를 위해 메소드 내에서 import
+            from community.models import Follow
             follow_instance = Follow.objects.filter(follower=request.user, following=obj).first()
             if follow_instance:
                 return follow_instance.id
         return None
 
-    def get_followers_list(self, obj):
-        # 팔로워 사용자 목록을 CommunityUserSerializer로 직렬화하여 반환
+    def get_followers_list(self, obj): 
         follower_users = [follow.follower for follow in obj.followers.all()]
         request = self.context.get('request')
         return CommunityUserSerializer(follower_users, many=True, context={'request': request}).data
 
-    def get_followings_list(self, obj):
-        # 팔로잉 사용자 목록을 CommunityUserSerializer로 직렬화하여 반환
+    def get_followings_list(self, obj): 
         following_users = [follow.following for follow in obj.following.all()]
         request = self.context.get('request')
         return CommunityUserSerializer(following_users, many=True, context={'request': request}).data

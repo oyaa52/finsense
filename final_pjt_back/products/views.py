@@ -359,6 +359,7 @@ def saving_product_subscribe(request, product_code):
 def subscribed_deposit_products_list(request):
     user = request.user
     subscriptions = DepositSubscription.objects.filter(user=user)
+    print("subscriptions",subscriptions)
     subscribed_products = [sub.product for sub in subscriptions]
     serializer = DepositProductSerializer(subscribed_products, many=True)
     return Response(serializer.data)
@@ -607,7 +608,7 @@ def get_user_subscriptions(request):
         # 예금 상품 구독 조회
         deposit_subscriptions = (
             DepositSubscription.objects.filter(user=user)
-            .select_related("product", "option")
+            .select_related("product","option")
             .values(
                 "id",
                 "subscribed_at",
@@ -617,7 +618,6 @@ def get_user_subscriptions(request):
                 period=F("option__save_trm"),
             )
         )
-
         # 적금 상품 구독 조회
         saving_subscriptions = (
             SavingSubscription.objects.filter(user=user)
