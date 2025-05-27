@@ -11,9 +11,10 @@ urlpatterns = [
     path("api/v1/community/", include("community.urls")),
     path("api/v1/products/", include("products.urls")),
     path("api/v1/recommendations/", include("recommendations.urls")),
-    path("api/v1/product_recommender/", include("product_recommender.urls")),
+    path("api/v1/product-recommender/", include("product_recommender.urls")),
     path("api/v1/assetinfo/", include("assetinfo.urls")),
     path("api/v1/kakaomap/", include("kakaomap.urls")),
+    path("api/v1/market-indices/", include("market_indices.urls")),
 ]
 
 # 개발 환경에서 미디어 파일을 서빙하기 위한 설정 추가
