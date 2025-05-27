@@ -70,6 +70,7 @@ const fetchSubscribedProducts = async () => {
         const response = await axios.get('/api/v1/products/subscriptions/');
 
         const deposits = response.data.deposit_subscriptions || [];
+        console.log(response)
         const savings = response.data.saving_subscriptions || [];
 
         const subscribedDepositProducts = deposits.map(sub => ({
@@ -82,7 +83,7 @@ const fetchSubscribedProducts = async () => {
             period: sub.period,
             subscribed_at: sub.subscribed_at
         }));
-
+        console.log("deposits",deposits)
         const subscribedSavingProducts = savings.map(sub => ({
             id: sub.id,
             fin_prdt_nm: sub.product_name,
@@ -367,4 +368,7 @@ section h2 {
     /* 툴팁 등이 올바르게 표시되도록 */
 }
 
+/* 차트의 텍스트, 축 색상은 chartOptions에서 plugins.legend.labels.color, scales.y.ticks.color 등으로 설정 */
+/* Chart.js는 캔버스에 직접 그리므로, CSS로 색상 변경이 제한적입니다. */
+/* 스크립트 내 chartOptions에서 다크모드에 따른 색상 변경 로직 추가 필요 */
 </style>

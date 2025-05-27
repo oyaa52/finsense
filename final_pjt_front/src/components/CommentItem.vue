@@ -57,7 +57,7 @@ const props = defineProps({
     type: Object,
     required: true
   },
-  post: {
+  post: { // post is needed to associate the reply with the correct post
     type: Object,
     required: true
   },
@@ -93,8 +93,8 @@ const toggleCommentOptionsMenu = (commentId) => {
   }
 };
 
-async function handleDeleteComment() {
-  openCommentOptionsMenu.value = null; // 메뉴 닫기
+async function handleDeleteComment() { // Removed commentId parameter, will use props.comment.id
+  openCommentOptionsMenu.value = null; // Close the menu
   alertStore.openAlert({
     title: '댓글 삭제 확인',
     message: '정말로 이 댓글을 삭제하시겠습니까?',
@@ -106,13 +106,15 @@ async function handleDeleteComment() {
         // 성공 알림은 communityStore.deleteComment 내부에서 처리한다고 가정
       } catch (error) {
         // 실패 알림은 communityStore.deleteComment 내부에서 처리한다고 가정
+        // console.error('Error deleting comment in item:', error); 
+        // alertStore.openAlert({ title: '오류', message: communityStore.error || '댓글 삭제 중 오류가 발생했습니다.', type: 'error' });
       }
     }
   });
 }
 
 async function handleFollowUser(targetUser) {
-  openCommentOptionsMenu.value = null; // 메뉴 닫기
+  openCommentOptionsMenu.value = null; // Close the menu
   if (!authStore.isAuthenticated) {
     alertStore.openAlert({
         title: '로그인 필요',
@@ -127,12 +129,14 @@ async function handleFollowUser(targetUser) {
     // 성공 알림 및 UI 업데이트는 communityStore 또는 부모 컴포넌트에서 처리
     // props.comment.user.is_following = true; // 직접적인 prop 변경은 피하는 것이 좋음
   } catch (error) {
-
+    console.error('Error following user:', error);
+    // 실패 알림은 communityStore.toggleFollowUser 내부에서 처리한다고 가정
+    // alertStore.openAlert({ title: '오류', message: communityStore.error || '팔로우 처리 중 오류가 발생했습니다.', type: 'error' });
   }
 }
 
 async function handleUnfollowUser(targetUser) {
-  openCommentOptionsMenu.value = null; // 메뉴 닫기
+  openCommentOptionsMenu.value = null; // Close the menu
    if (!authStore.isAuthenticated) {
     alertStore.openAlert({
         title: '로그인 필요',
@@ -146,7 +150,9 @@ async function handleUnfollowUser(targetUser) {
     // 성공 알림 및 UI 업데이트는 communityStore 또는 부모 컴포넌트에서 처리
     // props.comment.user.is_following = false; // 직접적인 prop 변경은 피하는 것이 좋음
   } catch (error) {
-    // 모든 주석 처리된 라인 제거
+    console.error('Error unfollowing user:', error);
+    // 실패 알림은 communityStore.toggleFollowUser 내부에서 처리한다고 가정
+    // alertStore.openAlert({ title: '오류', message: communityStore.error || '언팔로우 처리 중 오류가 발생했습니다.', type: 'error' });
   }
 }
 </script>

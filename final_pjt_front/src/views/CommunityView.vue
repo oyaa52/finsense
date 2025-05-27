@@ -31,7 +31,15 @@
               </router-link>
               <span class="timestamp">{{ formatDate(post.created_at) }}</span>
             </div>
-
+            <!-- 팔로우/언팔로우 버튼 제거 -->
+            <!--
+            <button v-if="currentUserId && post.user.id !== currentUserId && !post.user.is_following" 
+                    class="follow-btn" 
+                    @click="toggleFollow(post.user)">팔로우</button>
+            <button v-if="currentUserId && post.user.id !== currentUserId && post.user.is_following" 
+                    class="follow-btn following" 
+                    @click="toggleFollow(post.user)">언팔로우</button>
+            -->
 
             <!-- More Options Menu for Posts -->
             <div v-if="currentUserId && post.user.id === currentUserId" class="post-options-container">
@@ -164,6 +172,9 @@ const handleScroll = async () => {
   }
 }
 
+// toggleFollow 함수는 이제 CommunityView에서 사용되지 않으므로, 필요하다면 삭제하거나 주석 처리할 수 있습니다.
+// const toggleFollow = async (targetUser) => { ... }
+
 onMounted(async () => {
   await nextTick(); 
   let parent = feedContainer.value?.parentElement;
@@ -218,9 +229,10 @@ async function createPost() {
     newPostContent.value = ''
     selectedImage.value = null
     imagePreview.value = null
-
+    // 성공 알림은 store.createPost 내부에서 처리한다고 가정 (필요시 추가)
   } catch (err) {
-
+    // store.createPost에서 이미 알림을 띄운다고 가정, 그렇지 않다면 아래 주석 해제
+    // alertStore.openAlert({ title: '오류', message: store.error || '게시글 작성 중 오류가 발생했습니다.', type: 'error' });
     console.error("Error creating post in view:", err)
   }
 }
@@ -240,9 +252,10 @@ async function likePost(postId) {
   }
   try {
     await store.likePost(postId)
-
+    // 성공/실패 알림은 store.likePost 내부에서 처리한다고 가정
   } catch (err) {
-
+    // store.likePost에서 이미 알림을 띄운다고 가정, 그렇지 않다면 아래 주석 해제
+    // alertStore.openAlert({ title: '오류', message: '좋아요 처리 중 오류가 발생했습니다.', type: 'error' });
     console.error("Error liking post in view:", err)
   }
 }
@@ -284,11 +297,12 @@ function cancelReply() {
 }
 
 function handleCommentSubmit(postId) {
-
+  // This function is called by the form's submit event.
+  // By this time, v-model should have updated newComments.value[postId].
   createComment(postId);
 }
 
-async function createComment(postId) {
+async function createComment(postId) { // Removed keyUpEvent parameter
   if (!authStore.isAuthenticated) {
     alertStore.openAlert({ title: '로그인 필요', message: '로그인이 필요한 기능입니다.', type: 'info' });
     router.push({ name: 'login' });
@@ -311,7 +325,7 @@ async function createComment(postId) {
         newComments.value[postId] = ''; 
     }
     
-    cancelReply();
+    cancelReply(); // Clear reply state after successfully submitting
 
   } catch (err) {
     const errorMessage = store.error || '댓글 작성 중 오류가 발생했습니다.';
@@ -432,7 +446,7 @@ textarea {
   display: flex;
   align-items: center;
   padding-bottom: 0.75rem;
-  position: relative;
+  position: relative; /* For absolute positioning of options menu */
 }
 
 .avatar {
@@ -552,10 +566,15 @@ textarea {
 }
 
 .comments-list { 
-
+  /* display: flex; */ /* No longer directly styling flex here, CommentItem handles its layout */
+  /* flex-direction: column; */
+  /* gap: 15px; */ /* Gap is now between CommentItem instances if desired, or handled by CommentItem's own margin */
 }
 
-
+/* Removed .comment-item, .comment, .comment-avatar, .comment-body, */
+/* .comment-header, .comment-text, .reply-btn, .replies-list, .reply-item, */
+/* .nested-replies as these are now encapsulated or handled by CommentItem.vue */
+/* Styles for .reply-target might be needed in CommentItem.vue if not already there */
 
 .replying-to-info { 
   font-size: 0.85rem; 
@@ -649,34 +668,34 @@ textarea {
 
 /* Styles for More Options Menu */
 .post-options-container {
-  margin-left: auto;
-  position: relative;
+  margin-left: auto; /* Pushes the button to the right */
+  position: relative; /* Context for the dropdown */
 }
 
 .more-options-btn {
   background: none;
   border: none;
-  color: #657786;
+  color: #657786; /* Icon color */
   cursor: pointer;
-  padding: 8px;
-  font-size: 1.2em;
-  line-height: 1;
+  padding: 8px; /* Adjust for better click area */
+  font-size: 1.2em; /* Icon size */
+  line-height: 1; /* Align icon nicely */
 }
 
 .more-options-btn:hover {
-  color: #1da1f2;
+  color: #1da1f2; /* Highlight on hover */
 }
 
 .options-menu {
   position: absolute;
-  top: 100%;
-  right: 0;
+  top: 100%; /* Position below the button */
+  right: 0; /* Align to the right of the container */
   background-color: white;
   border: 1px solid #dbdbdb;
   border-radius: 6px;
   box-shadow: 0 2px 10px rgba(0,0,0,0.1);
   z-index: 10;
-  min-width: 120px; 
+  min-width: 120px; /* Minimum width for the menu */
   padding: 5px 0;
 }
 

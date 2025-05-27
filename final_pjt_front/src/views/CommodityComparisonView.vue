@@ -164,6 +164,27 @@ const fetchAssetPrices = async () => {
     queryToDate = formatDate(today);
   }
 
+  // 기존 UI의 startDate, endDate는 사용하지 않지만, 사용자가 날짜를 선택했을 경우에 대한 처리는 일단 보류
+  // (현재는 무조건 최근 한달 조회)
+  // 사용자가 입력한 날짜를 사용하려면, 아래 params 설정 부분을 조건부로 수정해야 함
+  //   let queryFromDate = dateFromParam;
+  //   let queryToDate = dateToParam;
+  //   if (startDate.value && endDate.value) {
+  //       if (startDate.value > endDate.value) {
+  //           errorMessage.value = '시작일은 종료일보다 이전 날짜여야 합니다.';
+  //           isLoading.value = false;
+  //           clearChartDataAndSetDefault();
+  //           return;
+  //       }
+  //       queryFromDate = startDate.value;
+  //       queryToDate = endDate.value;
+  //   } else if (startDate.value || endDate.value) {
+  //       // 하나만 입력된 경우에 대한 처리 (예: 둘 다 입력하도록 유도)
+  //       errorMessage.value = '시작일과 종료일을 모두 입력하거나, 최근 한달 조회를 사용하세요.';
+  //       isLoading.value = false;
+  //       clearChartDataAndSetDefault();
+  //       return;
+  //   }
 
   try {
     const params = {
@@ -206,9 +227,9 @@ const fetchAssetPrices = async () => {
 
   await nextTick();
   if (lineChart.value && lineChart.value.chart) {
-
+    // console.log("Chart Instance Data (after fetch from new API):", lineChart.value.chart.data);
   } else {
-
+    // console.log("Chart instance not found for update (new API)", lineChart.value);
   }
 };
 

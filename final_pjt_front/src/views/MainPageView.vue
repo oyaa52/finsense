@@ -325,7 +325,8 @@ const chartOptions = ref({
 
 onMounted(() => {
   AOS.init()
-
+  // console.log('[MainPageView] onMounted: 시작'); // 디버깅용 로그 제거
+  // console.log('[MainPageView] onMounted: currentUser:', currentUser.value); // 디버깅용 로그 제거
   // 로그인 상태이고, 스토어에 프로필 정보가 아직 없다면 가져오기
   if (isLoggedIn.value && !userProfile.value) {
     authStore.fetchProfile();
@@ -1059,14 +1060,14 @@ html {
   width: 100%;
   margin-top: auto; /* 이 부분이 중요: 다른 요소들 아래, 사이드바 하단에 위치하도록 함 */
   padding-top: 1rem; /* 상단 구분선과의 간격 */
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid #e2e8f0; /* 구분선 (Tailwind: border-gray-300) */
 }
 
 .market-indices-sidebar-section .nav-title {
   font-size: 0.9rem; /* 기존 nav-title과 유사하게 */
   font-weight: 500;
-  color: #4a5568;
-  margin-bottom: 0.75rem;
+  color: #4a5568; /* Tailwind: text-gray-600 */
+  margin-bottom: 0.75rem; /* Tailwind: mb-3 */
   text-align: left;
   padding-left: 5px;
 }
@@ -1074,9 +1075,9 @@ html {
 /* 시장 지수 텍스트 아이템 스타일 */
 .market-index-item {
   padding: 12px;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  background-color: #ffffff; 
+  border: 1px solid #e2e8f0; /* Tailwind: border-gray-300 */
+  border-radius: 8px; /* Tailwind: rounded-lg */
+  background-color: #ffffff; /* Tailwind: bg-white */
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); /* Tailwind: shadow-sm */
   transition: box-shadow 0.2s ease-in-out;
   margin-bottom: 10px; /* 아이템 간 간격 */
@@ -1124,15 +1125,15 @@ html {
 
 /* 등락률 색상 클래스 (getChangeClass와 연동) */
 .text-red-600 { /* props에서 정의된 클래스를 직접 사용 */
-  color: #dc2626; 
+  color: #dc2626; /* Tailwind red-600 */
 }
 
 .text-blue-600 { /* props에서 정의된 클래스를 직접 사용 */
-  color: #2563eb; 
+  color: #2563eb; /* Tailwind blue-600 */
 }
 
 .text-gray-700 {
-  color: #374151; 
+  color: #374151; /* Tailwind gray-700 */
 }
 
 </style>

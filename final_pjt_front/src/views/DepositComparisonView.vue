@@ -383,6 +383,7 @@ const selectBank = (bankId) => {
 }
 
 const showProductDetail = async (product) => {
+  console.log("product",product)
   selectedProduct.value = product;
   if (product && product.id) {
     await checkSubscriptionStatus(product.id);
@@ -459,10 +460,10 @@ const handleSubscribe = async () => {
     openAlert('Finance Sense', '상품 정보가 올바르지 않습니다.', 'error');
     return
   }
-
   try {
     const endpointPath = productType.value === 'deposit' ? 'deposits' : 'savings';
-    const subscribeEndpoint = `http://127.0.0.1:8000/api/v1/products/${endpointPath}/${selectedProduct.value.id}/subscribe/`
+    const subscribeEndpoint = 
+    `http://127.0.0.1:8000/api/v1/products/${endpointPath}/${selectedProduct.value.id}/${selectedProduct.value.options[0].id}/subscribe/`
 
     const response = await axios.post(
       subscribeEndpoint,

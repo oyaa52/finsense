@@ -81,7 +81,7 @@ export const useAuthStore = defineStore('auth', () => {
         axios.defaults.headers.common['Authorization'] = `Token ${tokenData}`
         return true
       } else {
-        loginError.value = '로그인 성공했으나, 인증 토큰을 받지 못함.'
+        loginError.value = '로그인에 성공했으나, 인증 토큰을 받지 못했습니다.'
         return false
       }
     } catch (error) {
@@ -118,9 +118,9 @@ export const useAuthStore = defineStore('auth', () => {
           loginError.value = '아이디 또는 비밀번호가 올바르지 않습니다.';
         }
       } else if (error.request) {
-        loginError.value = '서버 연결 불가. 네트워크 확인 필요.' // 메시지 간결화
+        loginError.value = '서버에 연결할 수 없습니다. 네트워크 상태를 확인해주세요.'
       } else {
-        loginError.value = '로그인 요청 중 오류 발생.' // 메시지 간결화
+        loginError.value = '로그인 요청 중 오류가 발생했습니다.'
       }
       return false
     }
@@ -140,6 +140,10 @@ export const useAuthStore = defineStore('auth', () => {
       // 여기서는 성공 여부만 반환하고, UI 단에서 후속 처리
       return true 
     } catch (error) {
+      if (error.response) {
+        console.error('Backend validation error details:', error.response.data);
+      }
+
       if (error.response && error.response.data) {
         const errors = error.response.data;
         if (typeof errors === 'object' && errors !== null) {
@@ -164,18 +168,18 @@ export const useAuthStore = defineStore('auth', () => {
             if (hasFieldErrors) {
               signupError.value = fieldMessages; // 객체 형태로 저장
             } else {
-              signupError.value = '회원가입 오류. 입력 정보 확인 필요.'; // 메시지 간결화
+              signupError.value = '회원가입 중 오류가 발생했습니다. 입력 정보를 확인해주세요.';
             }
           }
         } else if (typeof errors === 'string') {
           signupError.value = errors;
         } else {
-          signupError.value = '회원가입 오류. 입력 정보 확인 필요.'; // 메시지 간결화
+          signupError.value = '회원가입 중 오류가 발생했습니다. 입력 정보를 확인해주세요.';
         }
       } else if (error.request) {
-        signupError.value = '서버 연결 불가. 네트워크 확인 필요.' // 메시지 간결화
+        signupError.value = '서버에 연결할 수 없습니다. 네트워크 상태를 확인해주세요.'
       } else {
-        signupError.value = '회원가입 요청 중 알 수 없는 오류 발생.' // 메시지 간결화
+        signupError.value = '회원가입 요청 중 알 수 없는 오류가 발생했습니다.'
       }
       return false
     }
@@ -226,7 +230,7 @@ export const useAuthStore = defineStore('auth', () => {
   
   const fetchProfile = async () => {
     if (!accessToken.value) {
-      profileError.value = '프로필 정보 로드 시 로그인 필요.' // 메시지 간결화
+      profileError.value = '프로필 정보를 가져오려면 로그인이 필요합니다.'
       return false
     }
     profileError.value = null // 이전 에러 초기화
@@ -245,18 +249,19 @@ export const useAuthStore = defineStore('auth', () => {
     } catch (error) {
       if (error.response) {
         if (error.response.status === 404) {
-          profileError.value = '프로필 정보 미등록 상태.' // 메시지 간결화
+          profileError.value = '프로필 정보가 아직 등록되지 않았습니다.' 
+          // 404의 경우, userProfile.value를 null 또는 빈 객체로 유지하여 UI에서 새 프로필 작성을 유도
         } else if (error.response.status === 403) {
-          profileError.value = '프로필 접근 권한 없음. 재로그인 필요.' // 메시지 간결화
+          profileError.value = '프로필 정보에 접근할 권한이 없습니다. 세션이 만료되었거나 유효하지 않은 접근일 수 있습니다. 다시 로그인 해주세요.' // 403 메시지 구체화
         } else if (error.response.data && (error.response.data.detail || error.response.data.error || typeof error.response.data === 'string')) {
           profileError.value = error.response.data.detail || error.response.data.error || error.response.data;
         } else {
-          profileError.value = '프로필 정보 로드 중 알 수 없는 오류 발생.' // 메시지 간결화
+          profileError.value = '프로필 정보를 불러오는 중 알 수 없는 오류가 발생했습니다.'
         }
       } else if (error.request) {
-        profileError.value = '서버 연결 불가. 네트워크 확인 필요.'; // 메시지 간결화
+        profileError.value = '서버에 연결할 수 없습니다. 네트워크 상태를 확인해주세요.';
       } else {
-        profileError.value = '프로필 정보 로드 중 알 수 없는 오류 발생.'; // 메시지 간결화
+        profileError.value = '프로필 정보를 불러오는 중 알 수 없는 오류가 발생했습니다.';
       }
       return false
     }
@@ -264,7 +269,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const updateProfile = async (profileDataToUpdate) => {
     if (!accessToken.value) {
-      profileError.value = '프로필 수정 시 로그인 필요.'; // 메시지 간결화
+      profileError.value = '프로필을 수정하려면 로그인이 필요합니다.';
       return false;
     }
     profileError.value = null;
@@ -318,18 +323,18 @@ export const useAuthStore = defineStore('auth', () => {
             if (hasFieldErrors) {
               profileError.value = fieldMessages;
             } else {
-              profileError.value = '프로필 업데이트 오류. 입력 정보 확인 필요.'; // 메시지 간결화
+              profileError.value = '프로필 업데이트 중 오류가 발생했습니다. 입력 정보를 확인해주세요.';
             }
           }
         } else if (typeof errors === 'string') {
           profileError.value = errors;
         } else {
-          profileError.value = '프로필 업데이트 오류. 입력 정보 확인 필요.'; // 메시지 간결화
+          profileError.value = '프로필 업데이트 중 오류가 발생했습니다. 입력 정보를 확인해주세요.';
         }
       } else if (error.request) {
-        profileError.value = '서버 연결 불가. 네트워크 확인 필요.'; // 메시지 간결화
+        profileError.value = '서버에 연결할 수 없습니다. 네트워크 상태를 확인해주세요.';
       } else {
-        profileError.value = '프로필 업데이트 요청 중 알 수 없는 오류 발생.'; // 메시지 간결화
+        profileError.value = '프로필 업데이트 요청 중 알 수 없는 오류가 발생했습니다.';
       }
       return false;
     }
