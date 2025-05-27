@@ -6,5 +6,5 @@ class AccountsConfig(AppConfig):
     name = "accounts"
 
     def ready(self):
-        # 애플리케이션이 준비되었을 때 시그널을 import.
+        # 앱 준비 시 시그널 임포트 (예: 사용자 생성 시 프로필 자동 생성)
         import accounts.signals

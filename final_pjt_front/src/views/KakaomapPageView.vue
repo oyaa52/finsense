@@ -268,7 +268,7 @@ async function loadAllBankData() {
   }
 }
 
-// 카카오맵을 초기화하고, 시작 지점(삼성전기 부산사업장)에 마커와 인포윈도우를 표시.
+// 카카오맵을 초기화하고, 시작 지점(삼성전기 부산사업장)에 마커와 인포윈도우를 표시, 현재 기술력으로 정확한 GPS 좌표 사용 불가
 async function initMap() {
   if (!window.kakao || !window.kakao.maps || !window.kakao.maps.LatLng) {
     throw new Error('지도 초기화에 필요한 카카오맵 SDK가 준비되지 않았습니다.')

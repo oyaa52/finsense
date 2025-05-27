@@ -40,7 +40,13 @@ class UserProfileDetailAPIView(generics.RetrieveAPIView):
     특정 사용자의 프로필 정보와 작성한 게시글 목록을 조회하는 API 뷰
     GET: /api/accounts/profile/<username>/
     """
-    queryset = User.objects.prefetch_related('profile', 'posts__comments', 'posts__likes', 'followers', 'following').all()
+    queryset = User.objects.prefetch_related(
+        'profile', 
+        'posts__comments', 
+        'posts__likes', 
+        'followers', 
+        'following'
+    ).all() # 관련된 모델 데이터 미리 로드 (N+1 문제 방지)
     serializer_class = UserProfileSerializer
     lookup_field = 'username'
     permission_classes = [AllowAny] # AllowAny 사용
@@ -67,7 +73,7 @@ class FavoriteChannelViewSet(viewsets.ModelViewSet):
     def is_favorite(self, request):
         channel_id = request.query_params.get('channel_id', None)
         if not channel_id:
-            return Response({"error": "channel_id가 필요합니다."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "channel_id 파라미터 필요"}, status=status.HTTP_400_BAD_REQUEST) # 오류 메시지 간결화
         
         favorite_channel = FavoriteChannel.objects.filter(user=request.user, channel_id=channel_id).first()
         if favorite_channel:
@@ -91,7 +97,7 @@ class FavoriteVideoViewSet(viewsets.ModelViewSet):
     def is_favorite(self, request):
         video_id = request.query_params.get('video_id', None)
         if not video_id:
-            return Response({"error": "video_id가 필요합니다."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "video_id 파라미터 필요"}, status=status.HTTP_400_BAD_REQUEST) # 오류 메시지 간결화
         
         favorite_video = FavoriteVideo.objects.filter(user=request.user, video_id=video_id).first()
         if favorite_video:

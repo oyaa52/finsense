@@ -155,7 +155,7 @@
               <div class="detail-content">
                 <h4>예상 수익금</h4>
                 <p>
-                  <span v-if="simulationData.initialInvestmentAmount">초기 투자금 {{ formatCurrency(simulationData.initialInvestmentAmount) }}원 기준 / </span>
+                  <span v-if="simulationData.initialInvestmentAmount">매월 투자금 {{ formatCurrency(simulationData.initialInvestmentAmount) }}원 기준 / </span>
                   {{ formatCurrency(simulationData.expectedReturn) }}원
                 </p>
               </div>
@@ -333,7 +333,6 @@ const checkProfile = async () => {
       addMessage('ai', '안녕하세요! 맞춤형 금융상품을 추천해드리기 위해 프로필 정보가 필요합니다.')
     }
   } catch (error) {
-    console.error('프로필 정보 조회 실패:', error)
     hasProfile.value = false
     addMessage('ai', '프로필 정보를 불러오는 데 실패했습니다. 먼저 로그인하거나 프로필을 완성해주세요.')
   }
@@ -350,11 +349,7 @@ const submitProfile = async () => {
     messages.value = []
     fetchRecommendations()
   } catch (error) {
-    console.error('프로필 업데이트 실패:', error)
     addMessage('ai', '프로필 업데이트에 실패했습니다. 다시 시도해주세요.')
-    if (error.response) {
-      console.error("Error response data:", error.response.data)
-    }
   }
 }
 
@@ -369,23 +364,8 @@ const addMessage = (type, content) => {
   }, 100)
 }
 
-// 로딩 애니메이션 시작
-const startLoading = () => {
-  isLoading.value = true
-  currentStep.value = 0
-  
-  const interval = setInterval(() => {
-    currentStep.value++
-    if (currentStep.value >= 4) {
-      clearInterval(interval)
-      isLoading.value = false
-    }
-  }, 1500)
-}
-
 // 이미지 에러 핸들러 추가
 const handleImageError = (e) => {
-  console.warn('이미지 로드 실패, 대체 이미지 사용 또는 메시지 표시', e.target.src);
   if (simulationData.value.future_scenario?.visualization) {
     simulationData.value.future_scenario.visualization.image_url = null;
   }
@@ -402,24 +382,22 @@ const parseCurrencyString = (currencyString) => {
   // "원" 글자 및 쉼표 제거, 공백 제거
   const cleanedString = currencyString.replace(/원|,/g, '').trim();
   const number = parseFloat(cleanedString);
-  return isNaN(number) ? 0 : number; // NaN이면 0으로 처리 (또는 다른 기본값)
+  return isNaN(number) ? 0 : number; // NaN이면 0으로 처리
 };
 
 // 추천 상품 조회
 const fetchRecommendations = async () => {
   isLoading.value = true
-  currentStep.value = 1
+  currentStep.value = 1 // 프로필 분석 완료, 추천 생성 시작 단계
 
   try {
     const token = localStorage.getItem('accessToken')
 
-    // API를 통해 최신 프로필 정보 가져오기
     const profileResponse = await axios.get('http://127.0.0.1:8000/api/v1/accounts/profile/', {
       headers: { Authorization: `Token ${token}` }
     })
     const profile = profileResponse.data
     
-    // simulationData에 초기 투자금 저장
     simulationData.value.initialInvestmentAmount = profile.amount_available;
 
     if (!profile.investment_tendency) {
@@ -503,15 +481,13 @@ const fetchRecommendations = async () => {
       }
     }
     `;
-    console.log("Sending prompt to GPT:", prompt)
-    currentStep.value = 2
+    currentStep.value = 2 // GPT 호출 시작 단계
 
     const gptApiResponse = await axios.post('http://127.0.0.1:8000/api/v1/product-recommender/gpt/', 
       { prompt }, 
       { headers: { Authorization: `Token ${token}` } }
     )
     
-    console.log("GPT Response raw object:", gptApiResponse.data)
     let gptResponseText = gptApiResponse.data.response;
 
     if (typeof gptResponseText === 'string') {
@@ -526,14 +502,12 @@ const fetchRecommendations = async () => {
     try {
       parsedData = JSON.parse(gptResponseText);
     } catch (e) {
-      console.error("GPT 응답 파싱 실패:", e);
-      console.error("파싱 시도한 텍스트:", gptResponseText); 
       addMessage('ai', '추천 데이터를 이해하는 데 실패했습니다. 응답 형식을 확인해주세요.');
       isLoading.value = false;
+      currentStep.value = 0; // 오류 시 초기 단계로 복귀 또는 에러 단계 설정
       return;
     }
-    console.log("Parsed GPT Data:", parsedData)
-    currentStep.value = 3
+    currentStep.value = 3 // GPT 응답 파싱 완료, 수익률 계산 및 이미지 생성 준비 단계
 
     recommendations.value = parsedData.products.map(p => ({
       ...p,
@@ -552,10 +526,10 @@ const fetchRecommendations = async () => {
       future_scenario: parsedData.simulation.future_scenario,
     };
 
-    addMessage('ai', '다음은 맞춤형 투자 추천입니다.')
+    addMessage('ai', '다음은 맞춤형 투자 추천입니다.') // 이 메시지는 현재 UI에 표시되지 않음 (프로필 있을 시 채팅창 없음)
 
     if (simulationData.value.future_scenario?.visualization?.image_prompt) {
-      currentStep.value = 4;
+      currentStep.value = 4; // 이미지 생성 시작 단계
       try {
         const imagePrompt = simulationData.value.future_scenario.visualization.image_prompt;
         const imageType = simulationData.value.future_scenario.visualization.object || simulationData.value.future_scenario.visualization.type || 'goal';
@@ -568,32 +542,29 @@ const fetchRecommendations = async () => {
         if (imageResponse.data && imageResponse.data.status === 'success' && imageResponse.data.image_url) {
           simulationData.value.future_scenario.visualization.image_url = `http://127.0.0.1:8000${imageResponse.data.image_url}`; 
         } else {
-          console.error('이미지 생성 실패:', imageResponse.data.message || '응답 없음');
           if (simulationData.value.future_scenario?.visualization) {
-            simulationData.value.future_scenario.visualization.image_url = null;
+            simulationData.value.future_scenario.visualization.image_url = null; // 이미지 URL 초기화
           }
         }
       } catch (imageError) {
-        console.error('이미지 생성 API 호출 오류:', imageError);
         if (simulationData.value.future_scenario?.visualization) {
-            simulationData.value.future_scenario.visualization.image_url = null;
+            simulationData.value.future_scenario.visualization.image_url = null; // 이미지 URL 초기화
           }
       }
+    } else {
+      // 시각화 정보나 이미지 프롬프트가 없는 경우, 4단계(미래 시각화)는 건너뛰거나 완료 처리
+      // currentStep.value = 4; // 또는 다른 값으로 설정하여 로딩 완료 표시
     }
 
   } catch (error) {
-    console.error('추천 정보 조회 또는 처리 중 오류:', error)
     let errorMessage = '추천 정보를 가져오는 데 실패했습니다.';
-    if (error.response) {
-      console.error("오류 응답 데이터:", error.response.data);
+    if (error.response && error.response.data) {
       errorMessage = error.response.data.message || error.response.data.error || errorMessage;
-    } else {
-      console.error("오류 메시지:", error.message)
     }
-    addMessage('ai', errorMessage)
+    addMessage('ai', errorMessage) // 이 메시지는 현재 UI에 표시되지 않음
   } finally {
     isLoading.value = false
-    currentStep.value = 0;
+
   }
 }
 
@@ -601,17 +572,12 @@ const fetchRecommendations = async () => {
 const formatCurrency = (value) => {
   const numValue = parseCurrencyString(String(value));
   if (isNaN(numValue)) {
-    return '0';
+    return '0'; // 숫자가 아니면 0원 대신 '0' 반환 (UI 일관성)
   }
   return numValue.toLocaleString('ko-KR');
 }
 
-// 상품 상세보기
-const viewProductDetail = (recommendation) => {
-  const productId = recommendation.deposit_product?.id || recommendation.saving_product?.id
-  const productType = recommendation.deposit_product ? 'deposit' : 'saving'
-  router.push(`/products/${productType}/${productId}`)
-}
+
 
 onMounted(async () => {
   await checkProfile();
@@ -900,13 +866,13 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   color: #555;
-  font-size: 1rem; /* 사용자 제공 코드 값으로 변경 */
+  font-size: 1rem;
   text-align: center;
   height: 100%;
-  background-color: #f0f4f8; /* 사용자 제공 코드 값으로 변경 */
-  border-radius: 0.5rem; /* 사용자 제공 코드 값으로 변경 */
-  padding: 20px; /* 사용자 제공 코드 값으로 변경 */
-  box-sizing: border-box; /* 사용자 제공 코드 값으로 변경 */
+  background-color: #f0f4f8;
+  border-radius: 0.5rem;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
 .loading-image i {
@@ -957,32 +923,25 @@ onMounted(async () => {
 }
 
 .simulated-screen-content { /* 스마트폰 액정 영역 역할 (이제 투명한 위치 지정용 컨테이너) */
-  /* 🔴 중요: 아래 값들은 실제 배경 이미지의 스마트폰 흰색 액정 크기/위치/곡률에 맞춰야 합니다. */
-  width: 450px;           /* 예시: 실제 액정 너비 */
-  height: 1000px;          /* 예시: 실제 액정 높이 */
-  border-radius: 30px;    /* 예시: 실제 액정 곡률 (콘텐츠가 이 안을 벗어나지 않도록 overflow와 함께 사용) */
+  /* 중요: 아래 값들은 실제 배경 이미지의 스마트폰 흰색 액정 크기/위치/곡률에 맞춰야 함. */
+  width: 450px;           
+  height: 1000px;          
+  border-radius: 30px;    
   position: absolute;
   top: 35%;
   right: 4%;
   
-  background-color: transparent; /* 배경을 투명하게 만듦 */
+  background-color: transparent;
   box-shadow: none; /* 그림자 제거 */
   
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start; 
-  padding: 20px 15px; /* 내부 콘텐츠와 (보이지 않는) 액정 경계 사이의 여백 */
-  overflow: hidden; /* 내부 콘텐츠가 border-radius를 벗어나지 않도록 */
-  /* margin-top: 450px; */
-  /* margin-left: 600px; */
-  
-  /* 배경 이미지 내 스마트폰 액정의 정확한 위치에 이 div를 배치해야 합니다. */
-  /* position: absolute; 와 top/left 사용 또는 부모(.scenario-text-container)의 padding/flex 정렬로 미세 조정 */
-  /* 예시: .scenario-text-container가 display:flex, align-items:center, justify-content:center 이면 */
-  /* 이 .simulated-screen-content는 그 중앙에 오게 되므로, 스마트폰이 중앙에 있다면 추가 위치 조정 불필요 */
-  /* 만약 스마트폰이 중앙이 아니라면, margin 또는 position:absolute 등으로 조정 */
-  /* margin-top: 5vh; /* 예시: 스마트폰이 배경 상단에서 약간 아래에 있다면 */
+  padding: 20px 15px;
+  overflow: hidden;
+
+
 }
 
 .visualization-info-tags {
@@ -1257,12 +1216,11 @@ onMounted(async () => {
 
 @media (max-width: 768px) {
   .simulated-screen-content {
-    width: 240px; /* 모바일 화면에 맞는 액정 너비 (조정 필요) */
-    height: 450px; /* 모바일 화면에 맞는 액정 높이 (조정 필요) */
+    width: 240px; 
+    height: 450px; 
     padding: 15px 10px;
-    border-radius: 25px; /* 모바일 화면에 맞는 액정 곡률 (조정 필요) */
+    border-radius: 25px; 
   }
-  /* 내부 요소들도 비율에 맞게 조정될 수 있도록 % 단위 사용 또는 미디어쿼리 내에서 재조정 */
 }
 
 .simulation-results > h3 {

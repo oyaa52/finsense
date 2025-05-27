@@ -38,9 +38,8 @@ export const addFavoriteChannel = async (channelData) => {
     alertStore.openAlert({ title: '성공', message: '채널이 즐겨찾기에 추가되었습니다.', type: 'success' });
     return response; // API 응답 반환
   } catch (error) {
-    console.error('Error adding favorite channel:', error.response?.data || error.message);
-    alertStore.openAlert({ title: '오류', message: error.response?.data?.detail || '채널 즐겨찾기 추가에 실패했습니다.', type: 'error' });
-    throw error; // 에러를 다시 throw하여 호출한 쪽에서 처리할 수 있도록 함
+    alertStore.openAlert({ title: '오류', message: error.response?.data?.detail || '채널 즐겨찾기 추가 실패', type: 'error' });
+    throw error; // 에러를 다시 throw하여 호출한 쪽에서 처리
   }
 };
 
@@ -51,8 +50,7 @@ export const removeFavoriteChannel = async (favoriteChannelId) => {
     alertStore.openAlert({ title: '성공', message: '채널이 즐겨찾기에서 삭제되었습니다.', type: 'info' });
     return response;
   } catch (error) {
-    console.error('Error removing favorite channel:', error.response?.data || error.message);
-    alertStore.openAlert({ title: '오류', message: error.response?.data?.detail || '채널 즐겨찾기 해제에 실패했습니다.', type: 'error' });
+    alertStore.openAlert({ title: '오류', message: error.response?.data?.detail || '채널 즐겨찾기 해제 실패', type: 'error' });
     throw error;
   }
 };
@@ -73,8 +71,7 @@ export const addFavoriteVideo = async (videoData) => {
     alertStore.openAlert({ title: '성공', message: '영상이 즐겨찾기에 추가되었습니다.', type: 'success' });
     return response;
   } catch (error) {
-    console.error('Error adding favorite video:', error.response?.data || error.message);
-    alertStore.openAlert({ title: '오류', message: error.response?.data?.detail || '영상 즐겨찾기 추가에 실패했습니다.', type: 'error' });
+    alertStore.openAlert({ title: '오류', message: error.response?.data?.detail || '영상 즐겨찾기 추가 실패', type: 'error' });
     throw error;
   }
 };
@@ -86,8 +83,7 @@ export const removeFavoriteVideo = async (favoriteVideoId) => {
     alertStore.openAlert({ title: '성공', message: '영상이 즐겨찾기에서 삭제되었습니다.', type: 'info' });
     return response;
   } catch (error) {
-    console.error('Error removing favorite video:', error.response?.data || error.message);
-    alertStore.openAlert({ title: '오류', message: error.response?.data?.detail || '영상 즐겨찾기 해제에 실패했습니다.', type: 'error' });
+    alertStore.openAlert({ title: '오류', message: error.response?.data?.detail || '영상 즐겨찾기 해제 실패', type: 'error' });
     throw error;
   }
 };

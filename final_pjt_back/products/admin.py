@@ -8,7 +8,7 @@ from .models import (
     SavingSubscription,
 )
 
-# Register your models here.
+# Django 관리자 페이지에 모델 등록
 admin.site.register(DepositProduct)
 admin.site.register(DepositOption)
 admin.site.register(SavingProduct)

@@ -92,9 +92,6 @@ const fetchYoutubeVideos = async () => {
     if (response.data && response.data.videos) {
       youtubeVideos.value = response.data.videos
       if (response.data.videos.length === 0) {
-        // 백엔드에서 에러 없이 빈 배열을 반환할 수 있으므로, 이 경우를 위한 메시지 처리
-        // videosError.value = '현재 추천할 만한 인기 금융 영상이 없습니다.'; // 또는 다른 적절한 메시지
-        // 이 부분은 UI/UX 정책에 따라 다르게 처리 가능 (예: .no-videos-message 표시)
       }
     } else if (response.data && response.data.error) {
       videosError.value = response.data.error;

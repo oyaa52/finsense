@@ -2,74 +2,93 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .utils import search_youtube_financial_videos, get_youtube_videos, get_popular_financial_videos # get_youtube_videos 임포트 확인
+from .utils import search_youtube_financial_videos, get_youtube_videos, get_popular_financial_videos # utils 함수 임포트
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated # 필요에 따라 사용
+from rest_framework.permissions import IsAuthenticated # 필요시 인증에 사용
+import logging # 로깅 모듈 임포트
+
+logger = logging.getLogger(__name__) # 로거 인스턴스 생성
 
 # Create your views here.
 
+# (사용주의) GET /api/recommendations/youtube-search/ - YouTube 금융 동영상 검색 (페이지네이션 미지원, 사용처 불분명)
 class YoutubeVideoSearchAPIView(APIView):
-    # 이 APIView는 더 이상 MainPageDefaultView에서 직접 사용되지 않습니다.
-    # (MainPageDefaultView는 이제 PopularFinancialVideosAPIView를 사용)
-    # 하지만 다른 곳에서 사용될 가능성을 위해 남겨두거나, 사용처가 없다면 삭제 가능합니다.
-    # 현재는 경제 뉴스 검색 페이지에서 일반 검색과 유사한 형태로 사용될 수 있으나,
-    # 해당 페이지는 search_youtube_videos_paginated 를 사용하고 있습니다.
-    # 따라서 이 APIView의 현재 직접적인 사용처는 없어 보입니다.
-    # 다만, 이전 버전과의 호환성 또는 잠재적 사용을 위해 유지할 수 있습니다.
+    # 이 API는 현재 명확한 사용처가 없거나 search_youtube_videos_paginated로 대체되었을 수 있습니다.
+    # 호출 전 확인 필요. utils.search_youtube_financial_videos 사용.
     def get(self, request):
-        query = request.query_params.get('query', None)
+        query = request.query_params.get('query', None) # 검색어
         if not query:
+            logger.warning("YoutubeVideoSearchAPIView: 'query' 파라미터 누락")
             return Response({"error": "검색어('query' 파라미터)가 필요합니다."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            max_results_str = request.query_params.get('max_results', '2') # 기본값 2
+            # 반환할 최대 결과 수 (기본값: 2, 범위: 1-50)
+            max_results_str = request.query_params.get('max_results', '2') 
             max_results = int(max_results_str)
             if not (1 <= max_results <= 50): 
+                logger.warning(f"YoutubeVideoSearchAPIView: max_results({max_results}) 범위 초과. 기본값 2로 설정.")
                 max_results = 2 
         except ValueError:
+            logger.warning(f"YoutubeVideoSearchAPIView: max_results 파라미터('{max_results_str}')가 유효하지 않은 정수. 기본값 2로 설정.")
             max_results = 2 
 
+        logger.info(f"YoutubeVideoSearchAPIView: 검색 실행 - query: '{query}', max_results: {max_results}")
         videos = search_youtube_financial_videos(query, max_results=max_results)
 
+        # utils.search_youtube_financial_videos 함수는 오류 시 문자열 반환 가능
         if isinstance(videos, str): 
+            logger.error(f"YoutubeVideoSearchAPIView: utils.search_youtube_financial_videos 함수 오류 반환 - {videos}")
+            # YouTube API 할당량 초과 또는 주요 API 오류 시 503 반환
             if "할당량을 초과했거나" in videos or "API에서 오류가 발생했습니다." in videos or "오류가 발생했습니다." in videos:
-                return Response({"error": videos}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-            return Response({"error": videos}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response({"error": f"YouTube API 서비스에 문제가 발생했습니다: {videos}"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            # 기타 내부 오류 시 500 반환
+            return Response({"error": f"동영상 검색 중 내부 서버 오류가 발생했습니다: {videos}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
-        if not videos:
-            return Response({"message": "요청하신 검색어에 대한 금융 관련 영상을 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
+        if not videos: # 검색 결과 없는 경우
+            logger.info(f"YoutubeVideoSearchAPIView: 검색 결과 없음 - query: '{query}'")
+            return Response({"message": f"'{query}'에 대한 금융 관련 영상을 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
 
+        logger.info(f"YoutubeVideoSearchAPIView: 검색 성공 - {len(videos)}개 결과 반환.")
         return Response(videos, status=status.HTTP_200_OK)
 
-@api_view(['GET'])
-# @permission_classes([IsAuthenticated]) # 경제 뉴스 검색은 인증이 필요하지 않음
-def search_youtube_videos_paginated(request): # EconomicNewsView에서 사용
-    query = request.GET.get('query', '경제 뉴스') 
-    page_token = request.GET.get('pageToken', None)
+# GET /api/recommendations/youtube-videos-paginated/ - YouTube 금융 동영상 검색 (페이지네이션 지원, 경제 뉴스 검색용)
+@api_view(['GET']) # 이 뷰는 GET 요청만 허용
+# @permission_classes([IsAuthenticated]) # 현재는 인증 불필요 (주석 처리 유지)
+def search_youtube_videos_paginated(request):
+    query = request.GET.get('query', '경제 뉴스') # 검색어 (기본값: '경제 뉴스')
+    page_token = request.GET.get('pageToken', None) # 다음/이전 페이지 토큰
     
     try:
+        # 반환할 최대 결과 수 (기본값: 6, 범위: 1-50)
         max_results_str = request.GET.get('max_results', '6') 
         try:
             max_results = int(max_results_str)
-            if not (1 <= max_results <= 50): # YouTube API maxResults는 1-50 사이 (0도 가능하지만 일반적으로 1 이상)
-                max_results = 6 
+            if not (1 <= max_results <= 50): 
+                logger.warning(f"search_youtube_videos_paginated: max_results({max_results}) 범위 초과. 기본값 6으로 설정.")
+                max_results = 6
         except ValueError:
+            logger.warning(f"search_youtube_videos_paginated: max_results 파라미터('{max_results_str}')가 유효하지 않은 정수. 기본값 6으로 설정.")
             max_results = 6
 
-        # 수정된 get_youtube_videos 함수 호출
+        logger.info(f"search_youtube_videos_paginated: 검색 실행 - query: '{query}', max_results: {max_results}, page_token: {page_token}")
+        # utils.get_youtube_videos 호출 (페이지네이션 결과 반환)
         result_data = get_youtube_videos(query, max_results=max_results, page_token=page_token)
         
-        # utils 함수에서 에러를 dict 형태로 반환하므로, 해당 'error' 키로 확인
+        # utils.get_youtube_videos 함수는 오류 발생 시 'error' 키를 포함한 dict 반환
         if result_data.get('error'):
-            status_code = status.HTTP_503_SERVICE_UNAVAILABLE if "할당량" in result_data['error'] else status.HTTP_500_INTERNAL_SERVER_ERROR
-            return Response(result_data, status=status_code) # 에러 메시지 포함된 전체 dict 반환
+            error_message = result_data['error']
+            logger.error(f"search_youtube_videos_paginated: utils.get_youtube_videos 함수 오류 반환 - {error_message}")
+            status_code = status.HTTP_503_SERVICE_UNAVAILABLE if "할당량" in error_message else status.HTTP_500_INTERNAL_SERVER_ERROR
+            return Response(result_data, status=status_code) # 에러 메시지가 포함된 전체 result_data 반환
 
+        logger.info(f"search_youtube_videos_paginated: 검색 성공 - {len(result_data.get('videos',[]))}개 결과 반환.")
         return Response(result_data, status=status.HTTP_200_OK)
         
-    except Exception as e: # 혹시 모를 다른 예외 처리
-        # 일반적인 500 에러 메시지 (이 경우는 utils에서 처리되지 않은 예외)
+    except Exception as e: # utils.get_youtube_videos 내부에서 처리되지 않은 예외 발생 시
+        logger.error(f"search_youtube_videos_paginated: 예기치 않은 오류 발생 - {e}", exc_info=True)
+        # 클라이언트에게 반환할 표준 오류 응답 구조
         return Response({
-            'error': f'서버 내부 오류가 발생했습니다: {str(e)}',
+            'error': f'동영상 검색 중 예기치 않은 서버 내부 오류가 발생했습니다: {str(e)}',
             'videos': [], 
             'nextPageToken': None, 
             'prevPageToken': None,
@@ -77,24 +96,27 @@ def search_youtube_videos_paginated(request): # EconomicNewsView에서 사용
             'resultsPerPage': 0
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-# 기존 search_youtube_videos 함수는 혹시 다른 곳에서 사용될 수 있으므로, 
-# 새 함수 search_youtube_videos_paginated를 만들었습니다.
-# 만약 기존 함수를 대체하는 것이라면, urls.py에서 연결을 새 함수로 변경해야 합니다.
-
-class PopularFinancialVideosAPIView(APIView): # MainPageDefaultView에서 사용
+# GET /api/recommendations/popular-financial-videos/ - 인기 금융 YouTube 동영상 조회 (메인 페이지용)
+class PopularFinancialVideosAPIView(APIView):
+    # utils.get_popular_financial_videos 사용.
     def get(self, request):
+        logger.info("PopularFinancialVideosAPIView: 인기 금융 동영상 조회 요청 수신")
         try:
-            result_data = get_popular_financial_videos() # max_results는 utils 함수 기본값(2) 사용
+            result_data = get_popular_financial_videos() # max_results는 utils 함수 내부 기본값 사용
 
+            # utils.get_popular_financial_videos 함수는 오류 발생 시 'error' 키를 포함한 dict 반환
             if result_data.get('error'):
-                status_code = status.HTTP_503_SERVICE_UNAVAILABLE if "할당량" in result_data['error'] else status.HTTP_500_INTERNAL_SERVER_ERROR
+                error_message = result_data['error']
+                logger.error(f"PopularFinancialVideosAPIView: utils.get_popular_financial_videos 함수 오류 반환 - {error_message}")
+                status_code = status.HTTP_503_SERVICE_UNAVAILABLE if "할당량" in error_message else status.HTTP_500_INTERNAL_SERVER_ERROR
                 return Response(result_data, status=status_code)
             
+            logger.info(f"PopularFinancialVideosAPIView: 인기 금융 동영상 조회 성공 - {len(result_data.get('videos',[]))}개 결과 반환.")
             return Response(result_data, status=status.HTTP_200_OK)
 
-        except Exception as e:
-            # utils에서 처리되지 않은 예외
+        except Exception as e: # utils.get_popular_financial_videos 내부에서 처리되지 않은 예외 발생 시
+            logger.error(f"PopularFinancialVideosAPIView: 예기치 않은 오류 발생 - {e}", exc_info=True)
             return Response({
-                'error': f'인기 금융 영상 조회 중 서버 내부 오류: {str(e)}',
-                'videos': []
+                'error': f'인기 금융 영상 조회 중 예기치 않은 서버 내부 오류가 발생했습니다: {str(e)}',
+                'videos': [] # 오류 시 빈 비디오 리스트 반환
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

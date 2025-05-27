@@ -74,12 +74,9 @@ export default {
 <script setup>
 import { ref, computed, onMounted, onActivated, nextTick, watch } from 'vue'
 import axios from 'axios'
-// import { useAuthStore } from '@/stores/authStore'
-// import AOS from 'aos'
-// import 'aos/dist/aos.css'
+
 import { useRouter } from 'vue-router'
 
-// const authStore = useAuthStore()
 const resultsPerPage = ref(6)
 const searchQuery = ref('')
 const displayedSearchQuery = ref('')
