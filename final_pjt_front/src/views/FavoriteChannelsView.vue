@@ -31,12 +31,14 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import favoriteStore from '@/stores/favoriteStore';
+import { useAlertStore } from '@/stores/alertStore';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 
 const favoriteChannels = ref([]);
 const loading = ref(true);
 const error = ref(null);
+const alertStore = useAlertStore();
 
 const fetchFavoriteChannels = async () => {
   loading.value = true;
@@ -47,29 +49,34 @@ const fetchFavoriteChannels = async () => {
   } catch (err) {
     console.error('즐겨찾는 채널 로딩 중 오류:', err);
     error.value = '즐겨찾는 채널을 불러오는 데 실패했습니다. 잠시 후 다시 시도해주세요.';
+    alertStore.openAlert({ 
+      title: '오류',
+      message: error.value,
+      type: 'error' 
+    });
   } finally {
     loading.value = false;
   }
 };
 
 const removeFavorite = async (favoriteChannelDbId) => {
-  if (!confirm('정말로 이 채널을 즐겨찾기에서 삭제하시겠습니까?')) {
-    return;
-  }
-  try {
-    await favoriteStore.removeFavoriteChannel(favoriteChannelDbId);
-    // 목록에서 즉시 제거
-    favoriteChannels.value = favoriteChannels.value.filter(channel => channel.id !== favoriteChannelDbId);
-    alert('채널이 즐겨찾기에서 삭제되었습니다.');
-  } catch (err) {
-    console.error('즐겨찾는 채널 삭제 중 오류:', err);
-    alert('즐겨찾기 삭제 중 오류가 발생했습니다.');
-  }
+  alertStore.openAlert({
+    title: '확인',
+    message: '정말로 이 채널을 즐겨찾기에서 삭제하시겠습니까?',
+    type: 'warning',
+    showConfirmButton: true,
+    onConfirm: async () => {
+      try {
+        await favoriteStore.removeFavoriteChannel(favoriteChannelDbId);
+        favoriteChannels.value = favoriteChannels.value.filter(channel => channel.id !== favoriteChannelDbId);
+      } catch (err) {
+        console.error('[View] 즐겨찾는 채널 삭제 중 최종 오류:', err);
+      }
+    },
+  });
 };
 
 const goToChannel = (channelId) => {
-  // YouTube 채널 페이지로 이동 (새 탭에서 열기)
-  // 실제 YouTube 채널 URL은 https://www.youtube.com/channel/[channelId] 형식입니다.
   window.open(`https://www.youtube.com/channel/${channelId}`, '_blank');
 };
 

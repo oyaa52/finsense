@@ -50,6 +50,7 @@
 import { defineProps, defineEmits, computed, ref } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useCommunityStore } from '@/stores/community'
+import { useAlertStore } from '@/stores/alertStore'
 
 const props = defineProps({
   comment: {
@@ -77,19 +78,8 @@ const props = defineProps({
 const emit = defineEmits(['initiate-reply'])
 const authStore = useAuthStore()
 const communityStore = useCommunityStore()
+const alertStore = useAlertStore()
 const openCommentOptionsMenu = ref(null); // New state for comment options menu
-
-// --- DEBUG LOGGING START ---
-console.log(`[CommentItem ${props.comment.id}] Setup: authStore.isAuthenticated:`, authStore.isAuthenticated);
-console.log(`[CommentItem ${props.comment.id}] Setup: authStore.user:`, JSON.parse(JSON.stringify(authStore.user)));
-// UserSerializer가 'id' 필드를 사용하므로 comment.user.id를 사용합니다.
-const commentAuthorId = props.comment.user?.id;
-console.log(`[CommentItem ${props.comment.id}] Setup: Comment author ID (now .id):`, commentAuthorId);
-if (authStore.user) {
-  const authUserIdToCompare = authStore.user?.pk; // authStore.user.pk는 현재 사용자 ID로 옳습니다.
-  console.log(`[CommentItem ${props.comment.id}] Setup: Comparison for delete button: authStore.user.pk (${authUserIdToCompare}) === comment.user.id (${commentAuthorId}) is ${commentAuthorId === authUserIdToCompare}`);
-}
-// --- DEBUG LOGGING END ---
 
 const initiateReply = () => {
   emit('initiate-reply', { comment: props.comment, post: props.post });
@@ -105,46 +95,64 @@ const toggleCommentOptionsMenu = (commentId) => {
 
 async function handleDeleteComment() { // Removed commentId parameter, will use props.comment.id
   openCommentOptionsMenu.value = null; // Close the menu
-  if (window.confirm('정말로 이 댓글을 삭제하시겠습니까?')) {
-    try {
-      await communityStore.deleteComment(props.post.id, props.comment.id);
-    } catch (error) {
-      alert(communityStore.error || '댓글 삭제 중 오류가 발생했습니다.');
+  alertStore.openAlert({
+    title: '댓글 삭제 확인',
+    message: '정말로 이 댓글을 삭제하시겠습니까?',
+    type: 'warning',
+    showConfirmButton: true,
+    onConfirm: async () => {
+      try {
+        await communityStore.deleteComment(props.post.id, props.comment.id);
+        // 성공 알림은 communityStore.deleteComment 내부에서 처리한다고 가정
+      } catch (error) {
+        // 실패 알림은 communityStore.deleteComment 내부에서 처리한다고 가정
+        // console.error('Error deleting comment in item:', error); 
+        // alertStore.openAlert({ title: '오류', message: communityStore.error || '댓글 삭제 중 오류가 발생했습니다.', type: 'error' });
+      }
     }
-  }
+  });
 }
 
 async function handleFollowUser(targetUser) {
   openCommentOptionsMenu.value = null; // Close the menu
   if (!authStore.isAuthenticated) {
-    alert('로그인이 필요합니다.');
-    // router.push({ name: 'login' }); // CommentItem에서는 router 직접 사용 어려움, 이벤트 emit 고려
+    alertStore.openAlert({
+        title: '로그인 필요',
+        message: '로그인이 필요한 기능입니다.',
+        type: 'info'
+        // router.push는 여기서 직접 사용하기 어려우므로, 필요시 이벤트 emit 또는 다른 방식 고려
+    });
     return;
   }
   try {
     await communityStore.toggleFollowUser(targetUser.id);
-    // 성공 시 UI 업데이트는 communityStore의 상태 변화에 따라 자동으로 이루어지거나,
-    // 부모 컴포넌트에서 props를 통해 전달된 comment 객체의 is_following 값을 직접 변경해야 할 수 있습니다.
-    // 간단하게 하기 위해 여기서는 comment 객체를 직접 수정 (올바른 방법은 아닐 수 있음)
-    props.comment.user.is_following = true; 
+    // 성공 알림 및 UI 업데이트는 communityStore 또는 부모 컴포넌트에서 처리
+    // props.comment.user.is_following = true; // 직접적인 prop 변경은 피하는 것이 좋음
   } catch (error) {
     console.error('Error following user:', error);
-    alert(communityStore.error || '팔로우 처리 중 오류가 발생했습니다.');
+    // 실패 알림은 communityStore.toggleFollowUser 내부에서 처리한다고 가정
+    // alertStore.openAlert({ title: '오류', message: communityStore.error || '팔로우 처리 중 오류가 발생했습니다.', type: 'error' });
   }
 }
 
 async function handleUnfollowUser(targetUser) {
   openCommentOptionsMenu.value = null; // Close the menu
    if (!authStore.isAuthenticated) {
-    alert('로그인이 필요합니다.');
+    alertStore.openAlert({
+        title: '로그인 필요',
+        message: '로그인이 필요한 기능입니다.',
+        type: 'info'
+    });
     return;
   }
   try {
-    await communityStore.toggleFollowUser(targetUser.id);
-    props.comment.user.is_following = false;
+    await communityStore.toggleFollowUser(targetUser.id); // toggleFollowUser가 팔로우/언팔로우 모두 처리
+    // 성공 알림 및 UI 업데이트는 communityStore 또는 부모 컴포넌트에서 처리
+    // props.comment.user.is_following = false; // 직접적인 prop 변경은 피하는 것이 좋음
   } catch (error) {
     console.error('Error unfollowing user:', error);
-    alert(communityStore.error || '언팔로우 처리 중 오류가 발생했습니다.');
+    // 실패 알림은 communityStore.toggleFollowUser 내부에서 처리한다고 가정
+    // alertStore.openAlert({ title: '오류', message: communityStore.error || '언팔로우 처리 중 오류가 발생했습니다.', type: 'error' });
   }
 }
 </script>

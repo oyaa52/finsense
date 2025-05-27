@@ -202,6 +202,17 @@
         </div>
       </div>
     </div>
+
+    <!-- 커스텀 알림창 -->
+    <CustomAlert
+      v-if="showAlert"
+      :visible="showAlert"
+      :title="alertTitle"
+      :message="alertMessage"
+      :type="alertType"
+      @confirm="handleAlertConfirm"
+      @close="closeAlert"
+    />
   </div>
 </template>
 
@@ -209,6 +220,8 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
+import CustomAlert from '@/components/CustomAlert.vue'
+import { useAlertStore } from '@/stores/alertStore'
 
 // 상태 관리
 const selectedBank = ref(null)
@@ -225,6 +238,15 @@ const productType = ref('deposit')  // 'deposit' 또는 'saving'
 const showModal = ref(false)
 const isSubscribed = ref(false)
 const router = useRouter()
+
+// 알림창 상태
+const showAlert = ref(false)
+const alertTitle = ref('')
+const alertMessage = ref('')
+const alertType = ref('info') // 'info', 'success', 'warning', 'error'
+
+// 스토어 사용
+const alertStore = useAlertStore()
 
 // 은행 목록
 const banks = ref([
@@ -409,16 +431,32 @@ const checkSubscriptionStatus = async (productId) => {
   }
 };
 
+// 알림창 제어 함수
+const openAlert = (titleInput, message, type = 'info') => {
+  alertTitle.value = titleInput || 'Finance Sense'; // titleInput이 없으면 기본값으로 Finance Sense 사용
+  alertMessage.value = message;
+  alertType.value = type;
+  showAlert.value = true;
+};
+
+const closeAlert = () => {
+  showAlert.value = false;
+};
+
+const handleAlertConfirm = () => {
+  // 확인 버튼 클릭 시 필요한 로직 추가 (예: 특정 작업 수행)
+  closeAlert();
+};
+
 const handleSubscribe = async () => {
   const token = localStorage.getItem('accessToken')
   if (!token) {
-    alert('로그인이 필요합니다.')
-    router.push({ name: 'login' })
+    openAlert('Finance Sense', '상품을 구독하려면 로그인이 필요합니다.', 'warning');
     return
   }
 
   if (!selectedProduct.value || !selectedProduct.value.id) {
-    alert('상품 정보가 올바르지 않습니다.')
+    openAlert('Finance Sense', '상품 정보가 올바르지 않습니다.', 'error');
     return
   }
 
@@ -440,11 +478,11 @@ const handleSubscribe = async () => {
     if (response.status === 200 || response.status === 201) {
       isSubscribed.value = !isSubscribed.value; 
       
-      if (response.data && response.data.message) {
-        alert(response.data.message);
-      } else {
-        alert(isSubscribed.value ? '상품 가입이 완료되었습니다.' : '상품 가입이 해지되었습니다.');
-      }
+      const message = response.data && response.data.message 
+                      ? response.data.message 
+                      : (isSubscribed.value ? '상품 가입이 완료되었습니다.' : '상품 가입이 해지되었습니다.');
+      const type = isSubscribed.value ? 'success' : 'info';
+      openAlert('Finance Sense', message, type); // 제목 일괄 변경
 
       const productInList = products.value.find(p => p.id === selectedProduct.value.id);
       if (productInList) {
@@ -452,16 +490,14 @@ const handleSubscribe = async () => {
       }
       
     } else {
-      alert(`요청 처리 중 문제가 발생했습니다: ${response.statusText}`)
+      openAlert('Finance Sense', `요청 처리 중 문제가 발생했습니다: ${response.statusText}`, 'error');
     }
   } catch (err) {
     console.error('Error subscribing/unsubscribing product:', err)
-    if (err.response) {
-      console.error('Error response:', err.response.data)
-      alert(`오류가 발생했습니다: ${err.response.data.error || err.response.data.message || err.response.statusText}`)
-    } else {
-      alert('요청 중 오류가 발생했습니다.')
-    }
+    const errorMessage = err.response && err.response.data && (err.response.data.error || err.response.data.message)
+                         ? err.response.data.error || err.response.data.message
+                         : '요청 중 오류가 발생했습니다.';
+    openAlert('Finance Sense', errorMessage, 'error');
   }
 }
 

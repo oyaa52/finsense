@@ -39,6 +39,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import favoriteStore from '@/stores/favoriteStore';
+import { useAlertStore } from '@/stores/alertStore';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 import defaultThumbnailSrc from '@/assets/default_thumbnail.png'; // 기본 썸네일 이미지
@@ -48,6 +49,7 @@ const loading = ref(true);
 const error = ref(null);
 const router = useRouter();
 const defaultThumbnail = defaultThumbnailSrc;
+const alertStore = useAlertStore();
 
 const fetchFavoriteVideos = async () => {
   loading.value = true;
@@ -58,23 +60,31 @@ const fetchFavoriteVideos = async () => {
   } catch (err) {
     console.error('즐겨찾는 영상 로딩 중 오류:', err);
     error.value = '즐겨찾는 영상을 불러오는 데 실패했습니다. 잠시 후 다시 시도해주세요.';
+    alertStore.openAlert({ 
+      title: '오류',
+      message: error.value,
+      type: 'error'
+    });
   } finally {
     loading.value = false;
   }
 };
 
 const removeFavorite = async (favoriteVideoDbId) => {
-  if (!confirm('정말로 이 영상을 즐겨찾기에서 삭제하시겠습니까?')) {
-    return;
-  }
-  try {
-    await favoriteStore.removeFavoriteVideo(favoriteVideoDbId);
-    favoriteVideos.value = favoriteVideos.value.filter(video => video.id !== favoriteVideoDbId);
-    alert('영상이 즐겨찾기에서 삭제되었습니다.');
-  } catch (err) {
-    console.error('즐겨찾는 영상 삭제 중 오류:', err);
-    alert('즐겨찾기 삭제 중 오류가 발생했습니다.');
-  }
+  alertStore.openAlert({
+    title: '확인',
+    message: '정말로 이 영상을 즐겨찾기에서 삭제하시겠습니까?',
+    type: 'warning',
+    showConfirmButton: true,
+    onConfirm: async () => {
+      try {
+        await favoriteStore.removeFavoriteVideo(favoriteVideoDbId);
+        favoriteVideos.value = favoriteVideos.value.filter(video => video.id !== favoriteVideoDbId);
+      } catch (err) {
+        console.error('[View] 즐겨찾는 영상 삭제 중 최종 오류:', err);
+      }
+    },
+  });
 };
 
 const goToVideoDetail = (videoId) => {

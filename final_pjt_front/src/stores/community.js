@@ -24,7 +24,7 @@ export const useCommunityStore = defineStore('community', {
   actions: {
     async fetchPosts(isInitialFetch = false) {
       console.log(`[Store] fetchPosts called. Initial: ${isInitialFetch}, CurrentPage: ${this.currentPage}, HasMore: ${this.hasMorePosts}, IsLoadingMore: ${this.isLoadingMore}`);
-      
+
       if (isInitialFetch) {
         this.currentPage = 1;
         this.posts = [];
@@ -34,64 +34,64 @@ export const useCommunityStore = defineStore('community', {
       } else {
         if (this.isLoadingMore || !this.hasMorePosts) {
           console.log('[Store] fetchPosts skipped. LoadingMore: ' + this.isLoadingMore + ', HasMore: ' + this.hasMorePosts);
-          return; 
+          return;
         }
         this.isLoadingMore = true; // 추가 로딩 시작
       }
-      
+
       try {
         const authStore = useAuthStore();
         if (!authStore.accessToken) {
           // console.warn('[Store] Access token is missing. Proceeding without auth for public posts if applicable.');
         }
-        
+
         console.log(`[Store] Requesting API: /api/v1/community/posts/?page=${this.currentPage}&page_size=${this.postsPerPage}`);
         const response = await axios.get('/api/v1/community/posts/', {
           params: {
             page: this.currentPage,
-            page_size: this.postsPerPage 
+            page_size: this.postsPerPage
           }
         });
 
         console.log('[Store] API Response received:', JSON.parse(JSON.stringify(response.data)));
 
-        if (response.data && response.data.results) { 
-            const fetchedPosts = response.data.results;
-            console.log(`[Store] Fetched ${fetchedPosts.length} posts.`);
-            if (fetchedPosts.length > 0) {
-                this.posts = isInitialFetch ? fetchedPosts : [...this.posts, ...fetchedPosts];
-                this.currentPage++; 
-                console.log(`[Store] Posts updated. New post count: ${this.posts.length}, Next page will be: ${this.currentPage}`);
-            }
-            
-            const willHaveMorePosts = !(!response.data.next || fetchedPosts.length < this.postsPerPage);
-            console.log(`[Store] Checking hasMorePosts. Next URL: ${response.data.next}, Fetched count: ${fetchedPosts.length}, PostsPerPage: ${this.postsPerPage}. Will have more: ${willHaveMorePosts}`);
-            this.hasMorePosts = willHaveMorePosts;
+        if (response.data && response.data.results) {
+          const fetchedPosts = response.data.results;
+          console.log(`[Store] Fetched ${fetchedPosts.length} posts.`);
+          if (fetchedPosts.length > 0) {
+            this.posts = isInitialFetch ? fetchedPosts : [...this.posts, ...fetchedPosts];
+            this.currentPage++;
+            console.log(`[Store] Posts updated. New post count: ${this.posts.length}, Next page will be: ${this.currentPage}`);
+          }
 
-        } else if (response.data && Array.isArray(response.data)) { 
-            const fetchedPosts = response.data;
-            console.log(`[Store] Fetched ${fetchedPosts.length} posts (non-paginated).`);
-            if (isInitialFetch) {
-                this.posts = fetchedPosts;
-            } else {
-                this.posts = [...this.posts, ...fetchedPosts]; 
-            }
-            this.hasMorePosts = false; 
-            console.log('[Store] Non-paginated response. Posts updated, hasMorePosts set to false.');
+          const willHaveMorePosts = !(!response.data.next || fetchedPosts.length < this.postsPerPage);
+          console.log(`[Store] Checking hasMorePosts. Next URL: ${response.data.next}, Fetched count: ${fetchedPosts.length}, PostsPerPage: ${this.postsPerPage}. Will have more: ${willHaveMorePosts}`);
+          this.hasMorePosts = willHaveMorePosts;
+
+        } else if (response.data && Array.isArray(response.data)) {
+          const fetchedPosts = response.data;
+          console.log(`[Store] Fetched ${fetchedPosts.length} posts (non-paginated).`);
+          if (isInitialFetch) {
+            this.posts = fetchedPosts;
+          } else {
+            this.posts = [...this.posts, ...fetchedPosts];
+          }
+          this.hasMorePosts = false;
+          console.log('[Store] Non-paginated response. Posts updated, hasMorePosts set to false.');
         } else {
-            this.hasMorePosts = false;
-            console.warn('[Store] Unexpected API response structure for posts. Setting hasMorePosts to false. Response:', response.data);
+          this.hasMorePosts = false;
+          console.warn('[Store] Unexpected API response structure for posts. Setting hasMorePosts to false. Response:', response.data);
         }
 
       } catch (error) {
         console.error('[Store] Error fetching posts:', error.response?.data || error.message);
         this.error = error.response?.data?.detail || error.message;
-        this.hasMorePosts = false; 
+        this.hasMorePosts = false;
       } finally {
         if (isInitialFetch) {
-          this.loading = false; 
+          this.loading = false;
         }
-        this.isLoadingMore = false; 
+        this.isLoadingMore = false;
         console.log(`[Store] fetchPosts finished. Loading: ${this.loading}, IsLoadingMore: ${this.isLoadingMore}, HasMore: ${this.hasMorePosts}`);
       }
     },
@@ -115,7 +115,7 @@ export const useCommunityStore = defineStore('community', {
             'Authorization': `Token ${authStore.accessToken}`
           }
         })
-        await this.fetchPosts(true); 
+        await this.fetchPosts(true);
         return response.data
       } catch (error) {
         this.error = error.response?.data?.detail || error.message
@@ -148,7 +148,7 @@ export const useCommunityStore = defineStore('community', {
     },
 
     async createComment(postId, content, parentCommentId = null) {
-      const authStore = useAuthStore(); 
+      const authStore = useAuthStore();
       if (!authStore.isAuthenticated || !authStore.accessToken) { // isAuthenticated와 accessToken 모두 확인
         this.error = '로그인이 필요합니다.';
         console.error('[Store] Create comment failed: User not authenticated or no access token.');
@@ -161,20 +161,20 @@ export const useCommunityStore = defineStore('community', {
         }
 
         console.log('[Store] Creating comment/reply. PostID:', postId, 'Payload:', JSON.parse(JSON.stringify(payload)));
-        
+
         const response = await axios.post(
           `/api/v1/community/posts/${postId}/comments/`,
           payload,
           {
-            headers: { 
+            headers: {
               // Django Rest Framework Token Authentication은 보통 'Token <token>' 형식을 사용합니다.
               // JWT를 사용한다면 'Bearer <token>'일 수 있습니다. authStore의 토큰 형식에 맞춰야 합니다.
-              'Authorization': `Token ${authStore.accessToken}` 
+              'Authorization': `Token ${authStore.accessToken}`
             }
           }
         );
 
-        const newCommentData = response.data; 
+        const newCommentData = response.data;
         console.log('[Store] Comment created successfully. Response data:', JSON.parse(JSON.stringify(newCommentData)));
 
         // Ensure the new comment data has a 'replies' array for future nested replies
@@ -194,7 +194,7 @@ export const useCommunityStore = defineStore('community', {
             targetPost.comments = [];
           }
 
-          if (effectiveParentId) { 
+          if (effectiveParentId) {
             let parentFound = false;
             const findAndAddReply = (commentsArray) => {
               for (let i = 0; i < commentsArray.length; i++) {
@@ -204,14 +204,14 @@ export const useCommunityStore = defineStore('community', {
                   }
                   commentsArray[i].replies.push(newCommentData);
                   parentFound = true;
-                  return true; 
+                  return true;
                 }
                 if (commentsArray[i].replies && findAndAddReply(commentsArray[i].replies)) {
                   parentFound = true;
-                  return true; 
+                  return true;
                 }
               }
-              return false; 
+              return false;
             };
 
             findAndAddReply(targetPost.comments);
@@ -220,7 +220,7 @@ export const useCommunityStore = defineStore('community', {
               console.warn(`[Store] Parent comment with id ${effectiveParentId} not found for reply. Appending to top-level comments for post ${postId}.`);
               targetPost.comments.push(newCommentData);
             }
-          } else { 
+          } else {
             targetPost.comments.push(newCommentData);
           }
           this.posts.splice(targetPostIndex, 1, { ...targetPost });
@@ -228,8 +228,8 @@ export const useCommunityStore = defineStore('community', {
         } else {
           console.warn(`[Store] Target post with id ${postId} not found for comment update.`);
         }
-        
-        return newCommentData; 
+
+        return newCommentData;
 
       } catch (error) {
         console.error('[Store] Error creating comment:', error.response?.data || error.message, error.response?.status);
@@ -243,7 +243,12 @@ export const useCommunityStore = defineStore('community', {
       this.loading = true
       this.error = null
       try {
-        const response = await axios.get(`/api/v1/accounts/profile/${username}/`)
+        const authStore = useAuthStore();
+        const headers = {};
+        if (authStore.accessToken) {
+          headers['Authorization'] = `Token ${authStore.accessToken}`;
+        }
+        const response = await axios.get(`/api/v1/accounts/profile/${username}/`, { headers })
         this.userProfileData = response.data
         return response.data
       } catch (error) {
@@ -258,29 +263,28 @@ export const useCommunityStore = defineStore('community', {
     async toggleFollowUser(targetUserId, followIdForCurrentUser) {
       const authStore = useAuthStore()
       if (!authStore.accessToken) {
+        this.error = '로그인이 필요합니다.';
         throw new Error('로그인이 필요합니다.')
       }
-      this.loading = true
-      this.error = null
+      this.error = null;
+      let targetUsername = null;
+      if (this.userProfileData && this.userProfileData.id === targetUserId) {
+        targetUsername = this.userProfileData.username;
+      }
+
       try {
         if (followIdForCurrentUser) {
           await axios.delete(`/api/v1/community/follows/${followIdForCurrentUser}/`, {
-            headers: {
-              'Authorization': `Token ${authStore.accessToken}`
-            }
-          })
-          if (this.userProfileData && this.userProfileData.id === targetUserId) {
-            this.userProfileData.is_following = false
-            this.userProfileData.followers_count -= 1
-            this.userProfileData.follow_id_for_current_user = null
-          }
-           // posts 배열 내 해당 유저의 is_following 상태 업데이트 (모든 포스트에 대해)
-          this.posts.forEach(post => {
-            if (post.user.id === targetUserId) {
-              post.user.is_following = false;
-            }
+            headers: { 'Authorization': `Token ${authStore.accessToken}` }
           });
-          return { followed: false }
+          if (targetUsername) {
+            await this.fetchUserProfileByUsername(targetUsername);
+          } else if (this.userProfileData && this.userProfileData.id === targetUserId) {
+            this.userProfileData.is_following = false;
+            this.userProfileData.followers_count = Math.max(0, (this.userProfileData.followers_count || 0) - 1);
+            this.userProfileData.follow_id_for_current_user = null;
+          }
+          return { followed: false };
         } else {
           const response = await axios.post('/api/v1/community/follows/', {
             following_id: targetUserId
@@ -288,106 +292,68 @@ export const useCommunityStore = defineStore('community', {
             headers: {
               'Authorization': `Token ${authStore.accessToken}`
             }
-          })
-          if (this.userProfileData && this.userProfileData.id === targetUserId) {
-            this.userProfileData.is_following = true
-            this.userProfileData.followers_count += 1
-            this.userProfileData.follow_id_for_current_user = response.data.id
-          }
-          // posts 배열 내 해당 유저의 is_following 상태 업데이트 (모든 포스트에 대해)
-          this.posts.forEach(post => {
-            if (post.user.id === targetUserId) {
-              post.user.is_following = true;
-            }
           });
-          return { followed: true, followData: response.data }
+          if (targetUsername) {
+            await this.fetchUserProfileByUsername(targetUsername);
+          } else if (this.userProfileData && this.userProfileData.id === targetUserId) {
+            this.userProfileData.is_following = true;
+            this.userProfileData.followers_count = (this.userProfileData.followers_count || 0) + 1;
+            this.userProfileData.follow_id_for_current_user = response.data.id;
+          }
+          return { followed: true, followData: response.data };
         }
       } catch (error) {
-        console.error('Error toggling follow status:', error.response?.data || error.message)
-        this.error = error.response?.data?.detail || error.message
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async followUser(userId) {
-      try {
-        const authStore = useAuthStore()
-        if (!authStore.accessToken) {
-          throw new Error('로그인이 필요합니다.')
+        console.error('Error toggling follow status:', error.response?.data || error.message);
+        if (error.response && error.response.data && Array.isArray(error.response.data) && error.response.data.length > 0) {
+          this.error = error.response.data.join(', ');
+        } else if (error.response && error.response.data && error.response.data.detail) {
+          this.error = error.response.data.detail;
+        } else {
+          this.error = error.message || '팔로우 처리 중 오류가 발생했습니다.';
         }
-        await axios.post('/api/v1/community/follows/', {
-          following_id: userId
-        }, {
-          headers: {
-            'Authorization': `Token ${authStore.accessToken}`
-          }
-        })
-        // posts 배열 내 해당 유저의 is_following 상태 업데이트
-        this.posts.forEach(post => {
-          if (post.user.id === userId) {
-            post.user.is_following = true;
-          }
-        });
-      } catch (error) {
-        this.error = error.response?.data?.detail || error.message
-        throw error
-      }
-    },
-
-    async unfollowUser(userId) {
-      try {
-        const authStore = useAuthStore()
-        if (!authStore.accessToken) {
-          throw new Error('로그인이 필요합니다.')
-        }
-        const follow = this.following.find(f => f.following.id === userId) 
-        if (follow) { 
-          await axios.delete(`/api/v1/community/follows/${follow.id}/`, {
-            headers: {
-              'Authorization': `Token ${authStore.accessToken}`
-            }
-          }) 
-        }
-        this.posts.forEach(post => {
-          if (post.user.id === userId) {
-            post.user.is_following = false;
-          }
-        });
-      } catch (error) {
-        this.error = error.response?.data?.detail || error.message
-        throw error
+        throw error;
       }
     },
 
     async fetchUserFollowers(userId) {
+      this.error = null; // 에러 상태 초기화
       try {
-        const authStore = useAuthStore()
+        const authStore = useAuthStore();
         if (!authStore.accessToken) {
-          throw new Error('로그인이 필요합니다.')
+          this.error = '로그인이 필요합니다.';
+          throw new Error('로그인이 필요합니다.');
         }
-        const response = await axios.get(`/api/v1/community/follows/${userId}/user_followers/`)
-        this.followers = response.data
-        return response.data
+        // 수정된 URL: /api/v1/community/follows/user/{userId}/followers/
+        const response = await axios.get(`/api/v1/community/follows/user/${userId}/followers/`, {
+          headers: { 'Authorization': `Token ${authStore.accessToken}` } // 인증 헤더 추가
+        });
+        this.followers = response.data;
+        return response.data;
       } catch (error) {
-        this.error = error.response?.data?.detail || error.message
-        throw error
+        console.error('Error fetching user followers:', error.response?.data || error.message);
+        this.error = error.response?.data?.detail || error.message || '팔로워 목록 로드 실패';
+        throw error;
       }
     },
 
     async fetchUserFollowing(userId) {
+      this.error = null; // 에러 상태 초기화
       try {
-        const authStore = useAuthStore()
+        const authStore = useAuthStore();
         if (!authStore.accessToken) {
-          throw new Error('로그인이 필요합니다.')
+          this.error = '로그인이 필요합니다.';
+          throw new Error('로그인이 필요합니다.');
         }
-        const response = await axios.get(`/api/v1/community/follows/${userId}/user_following/`)
-        this.following = response.data
-        return response.data
+        // 수정된 URL: /api/v1/community/follows/user/{userId}/following/
+        const response = await axios.get(`/api/v1/community/follows/user/${userId}/following/`, {
+          headers: { 'Authorization': `Token ${authStore.accessToken}` } // 인증 헤더 추가
+        });
+        this.following = response.data;
+        return response.data;
       } catch (error) {
-        this.error = error.response?.data?.detail || error.message
-        throw error
+        console.error('Error fetching user following:', error.response?.data || error.message);
+        this.error = error.response?.data?.detail || error.message || '팔로잉 목록 로드 실패';
+        throw error;
       }
     },
 
@@ -431,7 +397,7 @@ export const useCommunityStore = defineStore('community', {
         const postIndex = this.posts.findIndex(p => p.id === postId);
         if (postIndex !== -1) {
           const post = this.posts[postIndex];
-          
+
           const removeCommentRecursively = (comments, targetId) => {
             for (let i = 0; i < comments.length; i++) {
               if (comments[i].id === targetId) {
@@ -448,8 +414,8 @@ export const useCommunityStore = defineStore('community', {
           };
 
           if (removeCommentRecursively(post.comments || [], commentId)) {
-             // To ensure reactivity, especially if just modifying nested array, re-assigning the post or the posts array might be safer.
-             // For simplicity here, we trust Pinia's reactivity on array mutations. If issues, consider this.posts.splice(postIndex, 1, { ...post });
+            // To ensure reactivity, especially if just modifying nested array, re-assigning the post or the posts array might be safer.
+            // For simplicity here, we trust Pinia's reactivity on array mutations. If issues, consider this.posts.splice(postIndex, 1, { ...post });
             console.log(`[Store] Comment ${commentId} from post ${postId} deleted successfully from local state.`);
           } else {
             console.warn(`[Store] Comment ${commentId} not found in post ${postId} for local removal after deletion.`);
@@ -462,7 +428,7 @@ export const useCommunityStore = defineStore('community', {
         console.error('[Store] Error deleting comment:', error.response?.data || error.message);
         this.error = error.response?.data?.detail || '댓글 삭제 중 오류가 발생했습니다.';
         // Potentially re-throw or handle more gracefully
-        throw error; 
+        throw error;
       } finally {
         // this.loading = false;
       }
