@@ -82,10 +82,11 @@ def start_scheduler():
         scheduler.add_job(
             update_market_indices_job,
             trigger="interval",
-            hours=1,  # 매 1시간마다 실행
+            minutes=1,
+            # hours=1,  # 매 1시간마다 실행
             id="update_market_indices_job",
             replace_existing=True,
-            misfire_grace_time=3600,  # 작업이 지연되었을 때 1시간 내에는 실행
+            misfire_grace_time=60,  # 작업이 지연되었을 때 1시간 내에는 실행
         )
         logger.info(
             "시장 지수 업데이트 작업이 스케줄러에 등록되었습니다 (매 시간 실행)."
