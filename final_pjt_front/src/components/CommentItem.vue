@@ -113,6 +113,40 @@ async function handleDeleteComment() { // Removed commentId parameter, will use 
     }
   }
 }
+
+async function handleFollowUser(targetUser) {
+  openCommentOptionsMenu.value = null; // Close the menu
+  if (!authStore.isAuthenticated) {
+    alert('로그인이 필요합니다.');
+    // router.push({ name: 'login' }); // CommentItem에서는 router 직접 사용 어려움, 이벤트 emit 고려
+    return;
+  }
+  try {
+    await communityStore.toggleFollowUser(targetUser.id);
+    // 성공 시 UI 업데이트는 communityStore의 상태 변화에 따라 자동으로 이루어지거나,
+    // 부모 컴포넌트에서 props를 통해 전달된 comment 객체의 is_following 값을 직접 변경해야 할 수 있습니다.
+    // 간단하게 하기 위해 여기서는 comment 객체를 직접 수정 (올바른 방법은 아닐 수 있음)
+    props.comment.user.is_following = true; 
+  } catch (error) {
+    console.error('Error following user:', error);
+    alert(communityStore.error || '팔로우 처리 중 오류가 발생했습니다.');
+  }
+}
+
+async function handleUnfollowUser(targetUser) {
+  openCommentOptionsMenu.value = null; // Close the menu
+   if (!authStore.isAuthenticated) {
+    alert('로그인이 필요합니다.');
+    return;
+  }
+  try {
+    await communityStore.toggleFollowUser(targetUser.id);
+    props.comment.user.is_following = false;
+  } catch (error) {
+    console.error('Error unfollowing user:', error);
+    alert(communityStore.error || '언팔로우 처리 중 오류가 발생했습니다.');
+  }
+}
 </script>
 
 <script>

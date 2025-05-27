@@ -44,7 +44,8 @@
                 <i class="fas fa-ellipsis-h"></i>
               </button>
               <div v-if="openPostOptionsMenu === post.id" class="options-menu post-options-menu">
-                <button @click="handleDeletePost(post.id)" class="menu-item delete-item">
+                <button v-if="currentUserId && post.user.id === currentUserId"
+                        @click="handleDeletePost(post.id)" class="menu-item delete-item">
                   <i class="fas fa-trash-alt"></i> 삭제
                 </button>
               </div>
@@ -80,7 +81,12 @@
               <input v-model="newComments[post.id]" 
                      :placeholder="commentPlaceholder(post.id)" 
                      :ref="el => commentInputRefs[`post-${post.id}`] = el" />
-              <button type="submit">{{ replyingToCommentId && activePostForReply && activePostForReply.id === post.id ? '답글 게시' : '댓글 게시' }}</button>
+              <button type="submit" 
+                      class="submit-comment-btn" 
+                      :aria-label="replyingToCommentId && activePostForReply && activePostForReply.id === post.id ? '답글 게시' : '댓글 게시'"
+                      :title="replyingToCommentId && activePostForReply && activePostForReply.id === post.id ? '답글 게시' : '댓글 게시'">
+                <i class="far fa-note-sticky"></i>
+              </button>
             </form>
             <div class="comments-list">
               <comment-item 
@@ -544,12 +550,16 @@ textarea {
 
 .comment-input button { 
   padding: 6px 12px !important; 
-  background-color: #5cb85c; 
-  color: white; 
+  background-color: transparent;
+  color: #1da1f2;
   border: none; 
   border-radius: 20px; 
   cursor: pointer;
-  font-size: 0.9rem; 
+  font-size: 1.2rem;
+}
+
+.comment-input button:hover {
+  color: #0c85d0;
 }
 
 .comments-list { 

@@ -444,11 +444,11 @@ const checkSubscriptionStatus = async (productId) => {
   }
 
   try {
-    const endpointType = productType.value === 'deposit' ? 'deposit' : 'saving';
+    const endpointPath = productType.value === 'deposit' ? 'deposits' : 'savings';
     // 실제 API 엔드포인트는 백엔드 구현에 따라 달라질 수 있습니다.
     // 여기서는 예시 엔드포인트를 사용합니다.
     const response = await axios.get(
-      `http://127.0.0.1:8000/api/v1/products/${endpointType}/${productId}/is_subscribed/`,
+      `http://127.0.0.1:8000/api/v1/products/${endpointPath}/${productId}/is_subscribed/`,
       {
         headers: {
           Authorization: `Token ${token}`
@@ -497,40 +497,40 @@ const handleSubscribe = async () => {
     }
 
     // 상품 타입에 따라 다른 엔드포인트 사용
-    const endpointType = productType.value === 'deposit' ? 'deposit' : 'saving'
-    
-    console.log('Subscribing to product:', {
-      productId: selectedProduct.value.id,
-      optionId: firstOption.id,
-      productType: endpointType
-    })
+    const endpointPath = productType.value === 'deposit' ? 'deposits' : 'savings';
+    const subscribeEndpoint = `http://127.0.0.1:8000/api/v1/products/${endpointPath}/${selectedProduct.value.id}/subscribe/`
 
     const response = await axios.post(
-      `http://127.0.0.1:8000/api/v1/products/${endpointType}/${selectedProduct.value.id}/${firstOption.id}/subscribe/`,
-      { amount: 0 },
+      subscribeEndpoint,
+      { option_id: firstOption.id }, // 옵션 ID를 요청 본문에 포함
       {
         headers: {
-          Authorization: `Token ${token}`
+          Authorization: `Token ${token}`,
+          'Content-Type': 'application/json'
         }
       }
     )
-    console.log('Subscription response:', response.data)  // 응답 데이터 확인
-    isSubscribed.value = true
-    alert('상품 가입이 완료되었습니다.')
-  } catch (err) {
-    console.error('Subscription error details:', {
-      status: err.response?.status,
-      data: err.response?.data,
-      headers: err.response?.headers,
-      error: err
-    })
-    
-    if (err.response?.status === 400) {
-      alert('이미 가입한 상품입니다.')
+
+    if (response.status === 200 || response.status === 201) {
       isSubscribed.value = true
+      alert('상품 가입이 완료되었습니다.')
+
+      // 부모 컴포넌트의 products 배열 업데이트
+      const productInList = products.value.find(p => p.id === selectedProduct.value.id);
+      if (productInList) {
+        productInList.isSubscribed = true;
+      }
+      // closeModal(); // 선택 사항: 가입 후 모달 자동 닫기
     } else {
-      console.error('Subscription error:', err)
-      alert('가입 처리 중 오류가 발생했습니다.')
+      alert('상품 가입에 실패했습니다.')
+    }
+  } catch (err) {
+    console.error('Error subscribing to product:', err)
+    if (err.response) {
+      console.error('Error response:', err.response.data) // 오류 응답 로깅
+      alert(`상품 가입 중 오류가 발생했습니다: ${err.response.data.detail || err.response.statusText}`)
+    } else {
+      alert('상품 가입 중 오류가 발생했습니다.')
     }
   }
 }
