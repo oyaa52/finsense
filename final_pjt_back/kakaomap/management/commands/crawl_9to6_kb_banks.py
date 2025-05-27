@@ -68,58 +68,26 @@ def _crawl_bank_data_by_region(url: str, region_tag_name: str = 'h3', region_cla
         found_valid_region = True
         print(f"INFO: 유효한 지역명 발견: '{region_name}'")
         
-        # ul 태그 탐색 로직 개선
-        # 1. h3 태그의 바로 다음 형제 요소가 ul.n_branch_ulist인지 확인
         ul_tag = title_tag.find_next_sibling('ul', class_='n_branch_ulist')
         
-        # 2. 만약 못찾았고, h3의 부모가 div 라면, 그 div 바로 밑에서 ul.n_branch_ulist 찾아보기
-        #    (예: <div id="seoul"><h3/><ul/></div> 구조)
-        if not ul_tag and title_tag.parent and title_tag.parent.name == 'div':
-            # print(f"DEBUG: {region_name} - h3의 다음 형제에 ul 없음. 부모 div에서 ul 탐색 시도...")
-            ul_tag = title_tag.parent.find('ul', class_='n_branch_ulist')
-        
-        # 3. 그래도 못찾았으면, h3의 부모의 다음 형제 요소들 중에서 ul.n_branch_ulist 찾아보기
-        #    (예: <div class="region_header"><h3/></div> <ul class="n_branch_ulist"/> 구조)
-        if not ul_tag and title_tag.parent:
-            # print(f"DEBUG: {region_name} - 부모 div에서도 ul 없음. 부모의 다음 형제에서 ul 탐색 시도...")
-            for sibling in title_tag.parent.find_next_siblings():
-                if sibling.name == 'ul' and 'n_branch_ulist' in sibling.get('class', []):
-                    ul_tag = sibling
-                    break
-                # 간혹 ul이 다른 div로 한 번 더 감싸여 있을 수 있음
-                potential_ul = sibling.find('ul', class_='n_branch_ulist')
-                if potential_ul:
-                    ul_tag = potential_ul
-                    break
-        
-        # 4. 최후의 시도: 페이지 전체에서 id가 지역명(영문) + "List" 형태인 ul 찾아보기 (예: seoulList)
-        #    이 방법은 견고하지 않으므로 주의해서 사용. 우선 주석 처리.
-        # if not ul_tag and region_name.lower().replace('·', '') + "list" :
-        #     ul_id_candidate = region_name.lower().replace('·', '').replace(' ','') + "list" 
-        #     # print(f"DEBUG: {region_name} - ID '{ul_id_candidate}'로 ul 직접 탐색 시도...")
-        #     ul_tag = soup.find('ul', id=ul_id_candidate, class_='n_branch_ulist')
+        if not ul_tag: # 직접적인 형제가 아닐 경우, 부모 레벨에서 다시 찾아보기 (div id="seoul" 같은 구조 고려)
+            parent_div = title_tag.parent
+            if parent_div:
+                 # print(f"DEBUG: '{region_name}'의 부모({parent_div.name})에서 ul.n_branch_ulist 탐색...")
+                 ul_tag = parent_div.find('ul', class_='n_branch_ulist')
 
         if not ul_tag:
             print(f"WARNING: '{url}'의 '{region_name}' 지역에서 지점 목록(ul.n_branch_ulist)을 찾지 못했습니다. 건너뜁니다.")
-            # Debug: 해당 지역의 title_tag 주변 HTML을 출력하여 구조 확인
-            # print(f"DEBUG: title_tag 주변 HTML ({region_name}):\n{title_tag.parent.prettify() if title_tag.parent else title_tag.prettify()}")
             continue
         
-        # Debug: 찾은 ul_tag의 내부 HTML을 출력하여 실제 구조 확인
-        print(f"DEBUG: '{url}'의 '{region_name}' 지역에서 찾은 ul_tag 내용:\n{ul_tag.prettify()[:500]}...") # 너무 길면 잘라서 출력
-
-        # 지점명 추출 (li > a > span)
-        branch_name_elements = ul_tag.select('li > a > span')
-        if not branch_name_elements: # span이 없는 경우, li > a 의 텍스트를 직접 가져오기 시도
-            print(f"INFO: '{url}'의 '{region_name}' 지역에서 'li > a > span' 구조의 지점명을 찾지 못했습니다. 'li > a'로 재시도합니다.")
-            branch_name_elements = ul_tag.select('li > a')
-            if not branch_name_elements:
-                 print(f"WARNING: '{url}'의 '{region_name}' 지역에서 'li > a' 구조의 지점명도 찾지 못했습니다.")
-                 continue
+        branch_name_spans = ul_tag.select('li a span')
+        if not branch_name_spans:
+            print(f"WARNING: '{url}'의 '{region_name}' 지역에서 지점명(li a span)을 찾지 못했습니다.")
+            continue
 
         current_region_branches = []
-        for el in branch_name_elements:
-            branch_name = el.text.strip()
+        for span_tag in branch_name_spans:
+            branch_name = span_tag.text.strip()
             if branch_name:
                 current_region_branches.append(branch_name)
         
@@ -127,8 +95,7 @@ def _crawl_bank_data_by_region(url: str, region_tag_name: str = 'h3', region_cla
             print(f"INFO: '{region_name}' 지역에서 {len(current_region_branches)}개의 지점 추출.")
             banks_by_region[region_name].extend(sorted(list(set(current_region_branches))))
         else:
-            # 이 경우는 branch_name_elements는 찾았으나, .text.strip() 결과가 모두 비어있는 경우
-            print(f"INFO: '{region_name}' 지역에서 지점명을 찾았으나, 텍스트 내용이 비어있습니다 (ul 내부 요소 개수: {len(branch_name_elements)}).")
+            print(f"INFO: '{region_name}' 지역에서 추출된 지점명이 없습니다.")
 
     if not found_valid_region:
         print(f"ERROR: '{url}'에서 '{VALID_REGION_NAMES}' 목록에 포함된 유효한 지역명을 하나도 찾지 못했습니다.")
@@ -182,4 +149,4 @@ class Command(BaseCommand):
         lunch_focus_banks = _crawl_bank_data_by_region(URL_LUNCH_FOCUS, region_tag_name='h3', region_class='tit_dep3 s4')
         self._save_data_to_json(lunch_focus_banks, OUTPUT_FILE_LUNCH_FOCUS, "점심시간 집중 상담 지점")
         
-        self.stdout.write(self.style.SUCCESS('모든 특화지점 정보 크롤링 시도가 완료되었습니다.'))
+        self.stdout.write(self.style.SUCCESS('모든 특화지점 정보 크롤링 시도가 완료되었습니다.')) 
