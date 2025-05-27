@@ -190,10 +190,13 @@
           <div class="subscribe-section">
             <button 
               @click="handleSubscribe"
-              :class="{ 'subscribed': isSubscribed }"
-              class="subscribe-btn"
+              :class="{ 
+                'subscribe-btn': true,
+                'subscribed': isSubscribed, 
+                'unsubscribe-btn': isSubscribed 
+              }"
             >
-              {{ isSubscribed ? '가입완료' : '가입하기' }}
+              {{ isSubscribed ? '가입 해지' : '가입하기' }}
             </button>
           </div>
         </div>
@@ -237,25 +240,13 @@ const fetchProducts = async (page = 1) => {
   loading.value = true
   error.value = null
   try {
-    // 먼저 금융위원회 API에서 데이터를 가져와서 저장 (주석 처리)
-    /*
-    const saveEndpoint = productType.value === 'deposit' 
-      ? 'http://127.0.0.1:8000/api/v1/products/save-deposit-products/'
-      : 'http://127.0.0.1:8000/api/v1/products/save-saving-products/'
-    
-    try {
-      await axios.get(saveEndpoint)
-    } catch (saveError) {
-      console.warn('Failed to fetch latest data from API:', saveError)
-      // 저장 실패해도 계속 진행
-    }
-    */
-    
-    // 그 다음 저장된 상품 목록을 가져옴
     const listEndpoint = productType.value === 'deposit'
       ? 'http://127.0.0.1:8000/api/v1/products/deposit-products/'
       : 'http://127.0.0.1:8000/api/v1/products/saving-products/'
     
+    const token = localStorage.getItem('accessToken')
+    const headers = token ? { Authorization: `Token ${token}` } : {}
+
     const response = await axios.get(listEndpoint, {
       params: {
         page: page,
@@ -263,24 +254,21 @@ const fetchProducts = async (page = 1) => {
         bank_id: selectedBank.value,
         period: selectedPeriod.value === 'all' ? undefined : selectedPeriod.value,
         sort_by: sortBy.value
-      }
+      },
+      headers: headers
     })
     
     if (response.data.results && response.data.results.length > 0) {
-      // 데이터 매핑
       const mappedProducts = response.data.results.map(product => {
-        // 옵션 중에서 선택된 기간에 해당하는 옵션 찾기
         let selectedOption = null
         if (product.options && product.options.length > 0) {
           if (selectedPeriod.value === 'all') {
-            // 전체 기간일 경우 가장 높은 금리의 옵션 선택
             selectedOption = product.options.reduce((max, option) => {
               const currentRate = parseFloat(option.intr_rate) || 0
               const maxRate = parseFloat(max.intr_rate) || 0
               return currentRate > maxRate ? option : max
             }, product.options[0])
           } else {
-            // 특정 기간이 선택된 경우 해당 기간의 옵션 선택
             selectedOption = product.options.find(option => 
               option.save_trm === selectedPeriod.value
             ) || product.options[0]
@@ -302,12 +290,11 @@ const fetchProducts = async (page = 1) => {
             product.join_member,
             product.etc_note
           ].filter(Boolean),
-          options: product.options || [], // 옵션 정보 저장
-          isSubscribed: product.is_subscribed || false // 구독 정보 추가
+          options: product.options || [],
+          isSubscribed: product.is_subscribed || false 
         }
       })
 
-      // 중복 제거 (fin_prdt_cd 기준)
       const uniqueProducts = new Map()
       mappedProducts.forEach(product => {
         if (!uniqueProducts.has(product.id)) {
@@ -317,7 +304,6 @@ const fetchProducts = async (page = 1) => {
 
       products.value = Array.from(uniqueProducts.values())
 
-      // 금리순 정렬이 선택된 경우 금리 기준으로 정렬
       if (sortBy.value === 'rate') {
         products.value.sort((a, b) => b.baseRate - a.baseRate)
       }
@@ -325,9 +311,11 @@ const fetchProducts = async (page = 1) => {
       totalPages.value = response.data.total_pages
       currentPage.value = response.data.current_page
     } else {
+      products.value = []
       error.value = '상품 정보가 없습니다.'
     }
   } catch (err) {
+    products.value = []
     error.value = '상품 정보를 가져오는데 실패했습니다.'
     console.error('Error fetching products:', err)
   } finally {
@@ -337,17 +325,20 @@ const fetchProducts = async (page = 1) => {
 
 // 필터링된 상품 목록
 const filteredProducts = computed(() => {
-  let filtered = products.value
+  if (!Array.isArray(products.value) || products.value.length === 0) {
+    return [];
+  }
+  
+  let filtered = [...products.value]
 
-  // 은행 필터링
   if (selectedBank.value) {
-    const bankName = banks.value.find(bank => bank.id === selectedBank.value)?.name
-    if (bankName) {
-      filtered = filtered.filter(product => product.bankName === bankName)
+    const bankObj = banks.value.find(bank => bank.id === selectedBank.value)
+    if (bankObj) {
+      const bankName = bankObj.name
+      filtered = filtered.filter(product => product.bankName && product.bankName.includes(bankName))
     }
   }
 
-  // 기간 필터링
   if (selectedPeriod.value !== 'all') {
     filtered = filtered.filter(product => {
       if (!product.options || product.options.length === 0) return false
@@ -355,50 +346,28 @@ const filteredProducts = computed(() => {
     })
   }
 
-  // 중복 제거 (fin_prdt_cd 기준)
-  const uniqueProducts = new Map()
-  filtered.forEach(product => {
-    if (!uniqueProducts.has(product.id)) {
-      uniqueProducts.set(product.id, product)
-    }
-  })
-
-  return Array.from(uniqueProducts.values())
+  return filtered;
 })
-
-// 은행 ID 매핑 함수
-const getBankId = (bankName) => {
-  const bankMap = {
-    '국민은행': 2,
-    '신한은행': 3,
-    '우리은행': 4,
-    '하나은행': 5,
-    '농협은행': 6
-  }
-  return bankMap[bankName] || 1
-}
 
 // 필터 변경 시 데이터 다시 가져오기
 watch([selectedBank, selectedPeriod, sortBy, productType], () => {
-  currentPage.value = 1 // 필터 변경 시 첫 페이지로 이동
+  currentPage.value = 1 
   fetchProducts(1)
 })
 
 // 메서드
 const selectBank = (bankId) => {
-  // 같은 은행을 다시 클릭하면 선택 해제
   selectedBank.value = selectedBank.value === bankId ? null : bankId
 }
 
 const showProductDetail = async (product) => {
   selectedProduct.value = product;
-  // 목록에서 가져온 isSubscribed 값으로 초기화
-  isSubscribed.value = product.isSubscribed || false; 
-  showModal.value = true;
-  // 모달이 열린 후, 최신 구독 상태를 다시 한번 확인 (선택 사항이지만, 더 정확한 상태를 위해 유지 가능)
   if (product && product.id) {
-    await checkSubscriptionStatus(product.id); 
+    await checkSubscriptionStatus(product.id);
+  } else {
+    isSubscribed.value = false;
   }
+  showModal.value = true;
 };
 
 const closeModal = () => {
@@ -406,136 +375,96 @@ const closeModal = () => {
   selectedProduct.value = null
 }
 
-// 페이지 변경 핸들러
 const handlePageChange = (page) => {
   currentPage.value = page
   fetchProducts(page)
 }
 
-// 상품 타입 변경 시 데이터 다시 가져오기
 const changeProductType = (type) => {
   productType.value = type
-  selectedBank.value = null // 은행 선택 초기화
-  selectedPeriod.value = 'all' // 기간 선택 초기화
+  selectedBank.value = null 
+  selectedPeriod.value = 'all' 
   currentPage.value = 1
   fetchProducts(1)
 }
 
-// 데이터 새로고침 함수
-const refreshData = async () => {
-  try {
-    loading.value = true
-    await axios.get('http://127.0.0.1:8000/api/v1/products/save-deposit-products/')
-    await fetchProducts(currentPage.value)
-  } catch (err) {
-    error.value = '데이터 새로고침에 실패했습니다.'
-    console.error('Error refreshing data:', err)
-  } finally {
-    loading.value = false
-  }
-}
-
-// 새로운 함수: 상품 가입 상태 확인
 const checkSubscriptionStatus = async (productId) => {
   const token = localStorage.getItem('accessToken');
   if (!token || !productId) {
-    isSubscribed.value = false; // 토큰이나 상품 ID가 없으면 미가입으로 처리
+    isSubscribed.value = false; 
     return;
   }
-
   try {
     const endpointPath = productType.value === 'deposit' ? 'deposits' : 'savings';
-    // 실제 API 엔드포인트는 백엔드 구현에 따라 달라질 수 있습니다.
-    // 여기서는 예시 엔드포인트를 사용합니다.
     const response = await axios.get(
       `http://127.0.0.1:8000/api/v1/products/${endpointPath}/${productId}/is_subscribed/`,
       {
-        headers: {
-          Authorization: `Token ${token}`
-        }
+        headers: { Authorization: `Token ${token}` }
       }
     );
-    // API 응답에서 가입 여부를 나타내는 필드를 사용합니다. (예: response.data.is_subscribed)
     isSubscribed.value = response.data.is_subscribed || false;
   } catch (err) {
     console.error('Error checking subscription status:', err);
-    // 에러 발생 시 기본적으로 미가입 상태로 둘 수 있습니다.
-    // 혹은 사용자가 이미 로그인하지 않았거나 다른 문제로 인해 상태를 알 수 없는 경우를 고려하여 처리할 수 있습니다.
     isSubscribed.value = false;
-    if (err.response?.status === 401) { // Unauthorized
-        // 로그인이 필요하다는 것을 사용자에게 알릴 수 있습니다.
-        // alert('가입 상태를 확인하려면 로그인이 필요합니다.');
-    }
   }
 };
 
 const handleSubscribe = async () => {
-  if (isSubscribed.value) return
-
-  // 토큰 확인 및 로깅
   const token = localStorage.getItem('accessToken')
-  console.log('Current token:', token)  // 토큰 값 확인
-
   if (!token) {
     alert('로그인이 필요합니다.')
+    router.push({ name: 'login' })
+    return
+  }
+
+  if (!selectedProduct.value || !selectedProduct.value.id) {
+    alert('상품 정보가 올바르지 않습니다.')
     return
   }
 
   try {
-    // 상품의 첫 번째 옵션을 사용
-    const firstOption = selectedProduct.value.options[0]
-    if (!firstOption) {
-      alert('상품 옵션을 찾을 수 없습니다.')
-      return
-    }
-
-    // 상품 ID 확인
-    if (!selectedProduct.value.id) {
-      console.error('Product ID is missing:', selectedProduct.value)
-      alert('상품 정보가 올바르지 않습니다.')
-      return
-    }
-
-    // 상품 타입에 따라 다른 엔드포인트 사용
     const endpointPath = productType.value === 'deposit' ? 'deposits' : 'savings';
     const subscribeEndpoint = `http://127.0.0.1:8000/api/v1/products/${endpointPath}/${selectedProduct.value.id}/subscribe/`
 
     const response = await axios.post(
       subscribeEndpoint,
-      { option_id: firstOption.id }, // 옵션 ID를 요청 본문에 포함
+      {},
       {
         headers: {
           Authorization: `Token ${token}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json' 
         }
       }
     )
 
     if (response.status === 200 || response.status === 201) {
-      isSubscribed.value = true
-      alert('상품 가입이 완료되었습니다.')
+      isSubscribed.value = !isSubscribed.value; 
+      
+      if (response.data && response.data.message) {
+        alert(response.data.message);
+      } else {
+        alert(isSubscribed.value ? '상품 가입이 완료되었습니다.' : '상품 가입이 해지되었습니다.');
+      }
 
-      // 부모 컴포넌트의 products 배열 업데이트
       const productInList = products.value.find(p => p.id === selectedProduct.value.id);
       if (productInList) {
-        productInList.isSubscribed = true;
+        productInList.isSubscribed = isSubscribed.value;
       }
-      // closeModal(); // 선택 사항: 가입 후 모달 자동 닫기
+      
     } else {
-      alert('상품 가입에 실패했습니다.')
+      alert(`요청 처리 중 문제가 발생했습니다: ${response.statusText}`)
     }
   } catch (err) {
-    console.error('Error subscribing to product:', err)
+    console.error('Error subscribing/unsubscribing product:', err)
     if (err.response) {
-      console.error('Error response:', err.response.data) // 오류 응답 로깅
-      alert(`상품 가입 중 오류가 발생했습니다: ${err.response.data.detail || err.response.statusText}`)
+      console.error('Error response:', err.response.data)
+      alert(`오류가 발생했습니다: ${err.response.data.error || err.response.data.message || err.response.statusText}`)
     } else {
-      alert('상품 가입 중 오류가 발생했습니다.')
+      alert('요청 중 오류가 발생했습니다.')
     }
   }
 }
 
-// 컴포넌트 마운트 시 데이터 가져오기
 onMounted(() => {
   fetchProducts()
 })
@@ -859,14 +788,18 @@ onMounted(() => {
   transition: all 0.3s ease;
 }
 
-.subscribe-btn:hover {
+.subscribe-btn:hover:not(.subscribed) {
   background-color: #357abd;
   transform: translateY(-2px);
 }
 
 .subscribe-btn.subscribed {
-  background-color: #28a745;
-  cursor: default;
+  background-color: #dc3545;
+}
+
+.subscribe-btn.subscribed:hover {
+  background-color: #c82333;
+  transform: translateY(-2px);
 }
 
 /* 로딩 및 에러 상태 스타일 추가 */
@@ -1062,7 +995,7 @@ onMounted(() => {
 /* 가입 완료 태그 스타일 */
 .subscribed-tag {
   display: inline-block;
-  background-color: #28a745; /* 초록색 배경 */
+  background-color: #28a745;
   color: white;
   padding: 0.2em 0.6em;
   font-size: 0.8rem;

@@ -285,64 +285,69 @@ def save_saving_data(base_list, option_list):
 # 사용자가 특정 예금 상품에 가입
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
-def deposit_product_subscribe(request, fin_prdt_cd):
+def deposit_product_subscribe(request, product_code):
     try:
-        product = get_object_or_404(DepositProduct, fin_prdt_cd=fin_prdt_cd)
-        user = request.user
-        amount = request.data.get("amount", 0)
-
-        # 상품의 첫 번째 옵션을 가져옴
-        first_option = product.options.first()
-        if not first_option:
-            return Response(
-                {"error": "상품 옵션을 찾을 수 없습니다."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        subscription, created = DepositSubscription.objects.get_or_create(
-            user=user, product=product, option=first_option, defaults={"amount": amount}
+        product_obj = get_object_or_404(DepositProduct, fin_prdt_cd=product_code)
+    except DepositProduct.DoesNotExist:
+        return Response(
+            {"error": "존재하지 않는 예금 상품입니다."},
+            status=status.HTTP_404_NOT_FOUND,
         )
 
-        if created:
-            return Response(
-                {"message": f"'{product.fin_prdt_nm}' 상품에 가입되었습니다."},
-                status=status.HTTP_201_CREATED,
-            )
-        else:
-            return Response(
-                {"message": f"이미 '{product.fin_prdt_nm}' 상품에 가입되어 있습니다."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+    try:
+        subscription = DepositSubscription.objects.get(
+            user=request.user, product=product_obj
+        )
+        subscription.delete()
+        return Response(
+            {"message": f"'{product_obj.fin_prdt_nm}' 상품 구독이 해지되었습니다."},
+            status=status.HTTP_200_OK,
+        )
+    except DepositSubscription.DoesNotExist:
+        DepositSubscription.objects.create(user=request.user, product=product_obj)
+        return Response(
+            {"message": f"'{product_obj.fin_prdt_nm}' 상품 구독에 성공했습니다."},
+            status=status.HTTP_201_CREATED,
+        )
     except Exception as e:
-        print(f"Subscription error: {str(e)}")  # 서버 로그에 에러 출력
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(
+            {"error": f"상품 구독/해지 중 오류 발생: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
 
 # 사용자가 특정 적금 상품에 가입
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
-def saving_product_subscribe(request, fin_prdt_cd):
+def saving_product_subscribe(request, product_code):
     try:
-        product = get_object_or_404(SavingProduct, fin_prdt_cd=fin_prdt_cd)
-        user = request.user
-        amount = request.data.get("amount", 0)
-
-        subscription, created = SavingSubscription.objects.get_or_create(
-            user=user, product=product, defaults={"amount": amount}
+        product_obj = get_object_or_404(SavingProduct, fin_prdt_cd=product_code)
+    except SavingProduct.DoesNotExist:
+        return Response(
+            {"error": "존재하지 않는 적금 상품입니다."},
+            status=status.HTTP_404_NOT_FOUND,
         )
 
-        if created:
-            return Response(
-                {"message": f"'{product.fin_prdt_nm}' 상품에 가입되었습니다."},
-                status=status.HTTP_201_CREATED,
-            )
-        else:
-            return Response(
-                {"message": f"이미 '{product.fin_prdt_nm}' 상품에 가입되어 있습니다."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+    try:
+        subscription = SavingSubscription.objects.get(
+            user=request.user, product=product_obj
+        )
+        subscription.delete()
+        return Response(
+            {"message": f"'{product_obj.fin_prdt_nm}' 상품 구독이 해지되었습니다."},
+            status=status.HTTP_200_OK,
+        )
+    except SavingSubscription.DoesNotExist:
+        SavingSubscription.objects.create(user=request.user, product=product_obj)
+        return Response(
+            {"message": f"'{product_obj.fin_prdt_nm}' 상품 구독에 성공했습니다."},
+            status=status.HTTP_201_CREATED,
+        )
     except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(
+            {"error": f"상품 구독/해지 중 오류 발생: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
 
 # 가입한 상품 목록 조회 API (FBV)도 여기에 추가될 예정
@@ -354,7 +359,7 @@ def saving_product_subscribe(request, fin_prdt_cd):
 def subscribed_deposit_products_list(request):
     user = request.user
     subscriptions = DepositSubscription.objects.filter(user=user)
-    subscribed_products = [sub.deposit_product for sub in subscriptions]
+    subscribed_products = [sub.product for sub in subscriptions]
     serializer = DepositProductSerializer(subscribed_products, many=True)
     return Response(serializer.data)
 
@@ -365,7 +370,7 @@ def subscribed_deposit_products_list(request):
 def subscribed_saving_products_list(request):
     user = request.user
     subscriptions = SavingSubscription.objects.filter(user=user)
-    subscribed_products = [sub.saving_product for sub in subscriptions]
+    subscribed_products = [sub.product for sub in subscriptions]
     serializer = SavingProductSerializer(subscribed_products, many=True)
     return Response(serializer.data)
 
@@ -643,42 +648,35 @@ def get_user_subscriptions(request):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def check_deposit_subscription_status(request, product_id):
+def check_deposit_subscription_status(request, product_code):
     user = request.user
     try:
-        # DepositProduct 대신 DepositOption의 product를 통해 DepositProduct에 접근하거나,
-        # 혹은 DepositSubscription 모델에 직접 product_id (fin_prdt_cd)를 저장하는 경우를 고려해야 합니다.
-        # 현재 모델 구조상 DepositSubscription은 DepositOption을 참조하고, DepositOption은 DepositProduct를 참조합니다.
-        # 따라서 product_id (fin_prdt_cd)로 직접 조회하려면 약간의 조정이 필요할 수 있습니다.
-        # 여기서는 product_id가 DepositProduct의 fin_prdt_cd라고 가정하고 진행합니다.
-        product = get_object_or_404(DepositProduct, fin_prdt_cd=product_id)
-        # 해당 상품의 어떤 옵션이든 하나라도 가입했으면 True
-        subscribed = DepositSubscription.objects.filter(
-            user=user, option__product=product
-        ).exists()
-        return Response({"is_subscribed": subscribed}, status=status.HTTP_200_OK)
+        product_obj = get_object_or_404(DepositProduct, fin_prdt_cd=product_code)
     except DepositProduct.DoesNotExist:
         return Response(
-            {"error": "Deposit product not found"}, status=status.HTTP_404_NOT_FOUND
+            {"is_subscribed": False, "error": "Product not found"},
+            status=status.HTTP_404_NOT_FOUND,
         )
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    is_subscribed = DepositSubscription.objects.filter(
+        user=user, product=product_obj
+    ).exists()
+    return Response({"is_subscribed": is_subscribed}, status=status.HTTP_200_OK)
 
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def check_saving_subscription_status(request, product_id):
+def check_saving_subscription_status(request, product_code):
     user = request.user
     try:
-        product = get_object_or_404(SavingProduct, fin_prdt_cd=product_id)
-        # 해당 상품의 어떤 옵션이든 하나라도 가입했으면 True
-        subscribed = SavingSubscription.objects.filter(
-            user=user, option__product=product
-        ).exists()
-        return Response({"is_subscribed": subscribed}, status=status.HTTP_200_OK)
+        product_obj = get_object_or_404(SavingProduct, fin_prdt_cd=product_code)
     except SavingProduct.DoesNotExist:
         return Response(
-            {"error": "Saving product not found"}, status=status.HTTP_404_NOT_FOUND
+            {"is_subscribed": False, "error": "Product not found"},
+            status=status.HTTP_404_NOT_FOUND,
         )
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    is_subscribed = SavingSubscription.objects.filter(
+        user=user, product=product_obj
+    ).exists()
+    return Response({"is_subscribed": is_subscribed}, status=status.HTTP_200_OK)
