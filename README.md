@@ -39,7 +39,7 @@
   <img src="assets/readme_images/community_main.png" alt="커뮤니티 피드 화면" width="600"/>
 </p>
 
-1. 📰 금융 연관 동영상 콘텐츠
+4. 📰 금융 연관 동영상 콘텐츠
 > YouTube API를 활용하여 관련 금융 및 경제 동영상 콘텐츠를 제공합니다. 캐싱 전략을 통해 빠르고 효율적으로 정보를 전달하고 한정된 API 할당량을 적절하게 사용하도록 하였습니다.
 <p align="center">
   <img src="assets/readme_images/video_top.png" alt="경제 뉴스 및 유튜브 동영상 상단" width="400"/>
@@ -47,7 +47,7 @@
   <img src="assets/readme_images/video_favorites.png" alt="즐겨찾는 영상 추가" width="400"/>
 </p>
 
-1. 🗺️ 주변 금융기관 찾기 (카카오맵 연동)
+5. 🗺️ 주변 금융기관 찾기 (카카오맵 연동)
 > 카카오맵 API를 연동하여 드롭다운으로 선택한 은행과 지역에 따른 은행들의 위치를 제공하고, 은행의 특화점포 정보와 길찾기 등의 편의 기능을 지원합니다.
 <p align="center">
   <img src="assets/readme_images/map_main.png" alt="카카오맵 연동 화면" width="400"/>
@@ -55,12 +55,12 @@
   <img src="assets/readme_images/map_navi.png" alt="카카오맵 정보창" width="400"/>
 </p>
 
-1. 현물 상품 가격 변동 확인
+6. 현물 상품 가격 변동 확인
 <p align="center">
   <img src="assets/readme_images/asset_main.png" alt="마이페이지 자산 현황" width="400"/>
 </p>
 
-1. 👤 사용자 인증 및 프로필 관리
+7. 👤 사용자 인증 및 프로필 관리
 > 안전한 회원가입 및 로그인 기능을 제공하며, 사용자는 자신의 프로필 정보 관리, 관심 상품 저장, 팔로우/팔로워 관리 등을 할 수 있습니다.
 <p align="center">
   <img src="assets/readme_images/profile_main.png" alt="내 프로필" width="400"/>
