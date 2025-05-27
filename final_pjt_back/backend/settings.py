@@ -45,8 +45,8 @@ INSTALLED_APPS = [
     "kakaomap",
     "product_recommender",
     # 크롤링 앱
-    'market_indices',
-    'django_apscheduler', # 스케줄러 앱 추가
+    "market_indices",
+    "django_apscheduler",  # 스케줄러 앱 추가
     # 서드파티 앱
     "rest_framework",
     "rest_framework.authtoken",
@@ -239,57 +239,68 @@ CACHES = {
 
 # 로깅 설정
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
-            'style': '{',
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{asctime} [{levelname}] {name}: {message}",
+            "style": "{",
         },
-        'simple': {
-            'format': '{levelname} {message}',
-            'style': '{',
-        },
-    },
-    'handlers': {
-        'console': {
-            'level': 'INFO', 
-            'class': 'logging.StreamHandler',
-            'formatter': 'simple',
-        },
-        'file': { 
-            'level': 'INFO',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': BASE_DIR / 'logs/django_scheduler.log', 
-            'maxBytes': 1024*1024*5,  # 5 MB
-            'backupCount': 5,
-            'formatter': 'verbose',
+        "simple": {
+            "format": "{levelname} {message}",
+            "style": "{",
         },
     },
-    'loggers': {
-        'django': {
-            'handlers': ['console', 'file'], 
-            'level': 'INFO',
-            'propagate': True,
+    "handlers": {
+        "console": {
+            "level": "INFO",
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
         },
-        'django_apscheduler': { 
-            'handlers': ['console', 'file'],
-            'level': 'INFO',
-            'propagate': False, 
+        "scheduler_file": {
+            "level": "INFO",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": BASE_DIR / "logs" / "django_scheduler.log",
+            "maxBytes": 1024 * 1024 * 5,
+            "backupCount": 5,
+            "formatter": "verbose",
         },
-        'market_indices': { 
-            'handlers': ['console', 'file'],
-            'level': 'INFO',
-            'propagate': False,
+        "django_file": {
+            "level": "INFO",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": BASE_DIR / "logs" / "django.log",
+            "maxBytes": 1024 * 1024 * 5,
+            "backupCount": 5,
+            "formatter": "verbose",
+        },
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console", "django_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "market_indices": {
+            "handlers": ["console", "scheduler_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "apscheduler": {
+            "handlers": ["console", "scheduler_file"],
+            "level": "INFO",
+            "propagate": False,
         },
     },
 }
 
 # 로그 디렉토리 생성
-LOGS_DIR = BASE_DIR / 'logs'
+LOGS_DIR = BASE_DIR / "logs"
 if not LOGS_DIR.exists():
-    LOGS_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        LOGS_DIR.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        print(f"로그 디렉토리 생성 오류 {LOGS_DIR}: {e}")
 
 # APPSCHEDULER 설정 (선택적)
-# APPSCHEDULER_DATETIME_FORMAT = "N j, Y, f:s a"  
+# APPSCHEDULER_DATETIME_FORMAT = "N j, Y, f:s a"
 # APPSCHEDULER_RUN_NOW_TIMEOUT = 25

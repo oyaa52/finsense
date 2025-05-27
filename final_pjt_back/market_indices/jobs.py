@@ -3,10 +3,12 @@ from .models import MarketIndex
 from .utils import get_market_indices
 import logging
 from django_apscheduler.jobstores import DjangoJobStore
+
 # from django_apscheduler.models import DjangoJobExecution # DjangoJobExecution은 직접 사용하지 않으므로 주석 처리 가능
 from apscheduler.schedulers.background import BackgroundScheduler
 
 logger = logging.getLogger(__name__)
+
 
 def update_market_indices_job():
     """
@@ -20,20 +22,20 @@ def update_market_indices_job():
         return
 
     for index_info in indices_data:
-        index_name = index_info['name']
-        current_value = index_info['value']
-        change_val = index_info['change'] 
-        rate_val = index_info['rate']     
+        index_name = index_info["name"]
+        current_value = index_info["value"]
+        change_val = index_info["change"]
+        rate_val = index_info["rate"]
 
         try:
             index, created = MarketIndex.objects.get_or_create(
                 name=index_name,
                 defaults={
-                    'value': current_value,
-                    'change': change_val,
-                    'rate': rate_val,
-                    'last_updated': timezone.now()
-                }
+                    "value": current_value,
+                    "change": change_val,
+                    "rate": rate_val,
+                    "last_updated": timezone.now(),
+                },
             )
 
             if not created:
@@ -42,20 +44,24 @@ def update_market_indices_job():
                 index.rate = rate_val
                 index.last_updated = timezone.now()
                 index.save()
-            
+
             if created:
-                logger.info(f"새로운 시장 지수 [{index_name}]가 데이터베이스에 추가되었습니다.")
+                logger.info(
+                    f"새로운 시장 지수 [{index_name}]가 데이터베이스에 추가되었습니다."
+                )
             else:
                 logger.info(f"시장 지수 [{index_name}]가 업데이트되었습니다.")
 
         except Exception as e:
             logger.error(f"[{index_name}] 시장 지수 DB 업데이트 중 오류 발생: {e}")
             continue
-    
+
     logger.info("시장 지수 업데이트 작업이 완료되었습니다.")
+
 
 scheduler = BackgroundScheduler()
 scheduler.add_jobstore(DjangoJobStore(), "default")
+
 
 def start_scheduler():
     """
@@ -75,23 +81,25 @@ def start_scheduler():
         # else:
         scheduler.add_job(
             update_market_indices_job,
-            trigger='interval',
-            hours=1,  # 다시 1시간으로 복원
-            # seconds=30, # 테스트용 설정 주석 처리
-            id='update_market_indices_job',
+            trigger="interval",
+            hours=1,  # 매 1시간마다 실행
+            id="update_market_indices_job",
             replace_existing=True,
-            misfire_grace_time=3600 # 원래대로 복원 (1시간)
+            misfire_grace_time=3600,  # 작업이 지연되었을 때 1시간 내에는 실행
         )
-        logger.info("시장 지수 업데이트 작업이 스케줄러에 등록되었습니다 (매 시간 실행).") # 로그 메시지 복원
-        
+        logger.info(
+            "시장 지수 업데이트 작업이 스케줄러에 등록되었습니다 (매 시간 실행)."
+        )
+
         if not scheduler.running:
             scheduler.start()
             logger.info("스케줄러를 시작합니다.")
         # else:
-            # logger.info("스케줄러가 이미 실행 중입니다.") # 이미 실행중이면 시작하지 않음
-            
+        # logger.info("스케줄러가 이미 실행 중입니다.") # 이미 실행중이면 시작하지 않음
+
     except Exception as e:
         logger.error(f"스케줄러 시작 또는 작업 등록 중 오류 발생: {e}")
+
 
 def schedule_market_indices_update():
     """

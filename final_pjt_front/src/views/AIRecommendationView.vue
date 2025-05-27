@@ -472,7 +472,7 @@ const fetchRecommendations = async () => {
     console.log("Sending prompt to GPT:", prompt)
     currentStep.value = 2
 
-    const gptApiResponse = await axios.post('http://127.0.0.1:8000/api/v1/product_recommender/gpt/', 
+    const gptApiResponse = await axios.post('http://127.0.0.1:8000/api/v1/product-recommender/gpt/', 
       { prompt }, 
       { headers: { Authorization: `Token ${token}` } }
     )
@@ -526,7 +526,7 @@ const fetchRecommendations = async () => {
         const imagePrompt = simulationData.value.future_scenario.visualization.image_prompt;
         const imageType = simulationData.value.future_scenario.visualization.object || simulationData.value.future_scenario.visualization.type || 'goal';
         
-        const imageResponse = await axios.post('http://127.0.0.1:8000/api/v1/product_recommender/generate-image/', 
+        const imageResponse = await axios.post('http://127.0.0.1:8000/api/v1/product-recommender/generate-image/', 
           { prompt: imagePrompt, type: imageType }, 
           { headers: { Authorization: `Token ${token}` } }
         );
