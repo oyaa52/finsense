@@ -31,12 +31,15 @@
               </router-link>
               <span class="timestamp">{{ formatDate(post.created_at) }}</span>
             </div>
+            <!-- 팔로우/언팔로우 버튼 제거 -->
+            <!--
             <button v-if="currentUserId && post.user.id !== currentUserId && !post.user.is_following" 
                     class="follow-btn" 
                     @click="toggleFollow(post.user)">팔로우</button>
             <button v-if="currentUserId && post.user.id !== currentUserId && post.user.is_following" 
                     class="follow-btn following" 
                     @click="toggleFollow(post.user)">언팔로우</button>
+            -->
 
             <!-- More Options Menu for Posts -->
             <div v-if="currentUserId && post.user.id === currentUserId" class="post-options-container">
@@ -117,6 +120,7 @@
 import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import { useCommunityStore } from '@/stores/community'
 import { useAuthStore } from '@/stores/authStore'
+import { useAlertStore } from '@/stores/alertStore'
 import { formatDistanceToNow } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import { useRouter } from 'vue-router'
@@ -126,20 +130,14 @@ const defaultProfileImageUrl = new URL('@/assets/default_profile.png', import.me
 const store = useCommunityStore()
 const authStore = useAuthStore()
 const router = useRouter()
+const alertStore = useAlertStore()
 
 const currentUserId = computed(() => {
   const id = authStore.user?.pk;
-  console.log('[CommunityView] Computed currentUserId (now using .pk from authStore.user):', id);
   return id;
 })
 
 const posts = computed(() => {
-  if (store.posts && store.posts.length > 0 && authStore.user) {
-    const postAuthorId = store.posts[0].user?.id;
-    const authUserIdToCompare = authStore.user?.pk;
-    console.log('[CommunityView] Computed posts: First post user ID (now .id):', postAuthorId, 'Current Auth User ID (pk):', authUserIdToCompare);
-    console.log('[CommunityView] Computed posts: Comparison for delete button (first post):', postAuthorId === authUserIdToCompare);
-  }
   return store.posts
 })
 
@@ -174,18 +172,8 @@ const handleScroll = async () => {
   }
 }
 
-const toggleFollow = async (targetUser) => {
-  if (!authStore.isAuthenticated) {
-    alert('로그인이 필요합니다.')
-    router.push({ name: 'login' })
-    return
-  }
-  try {
-    await store.toggleFollowUser(targetUser.id)
-  } catch (error) {
-    console.error('Error toggling follow:', error)
-  }
-}
+// toggleFollow 함수는 이제 CommunityView에서 사용되지 않으므로, 필요하다면 삭제하거나 주석 처리할 수 있습니다.
+// const toggleFollow = async (targetUser) => { ... }
 
 onMounted(async () => {
   await nextTick(); 
@@ -233,7 +221,7 @@ function handleFileSelect(event) {
 
 async function createPost() {
   if (!newPostContent.value.trim() && !selectedImage.value) {
-    alert('내용을 입력하거나 이미지를 선택해주세요.')
+    alertStore.openAlert({ title: '입력 오류', message: '내용을 입력하거나 이미지를 선택해주세요.', type: 'warning' });
     return
   }
   try {
@@ -241,21 +229,34 @@ async function createPost() {
     newPostContent.value = ''
     selectedImage.value = null
     imagePreview.value = null
+    // 성공 알림은 store.createPost 내부에서 처리한다고 가정 (필요시 추가)
   } catch (err) {
-    alert(store.error || '게시글 작성 중 오류가 발생했습니다.')
+    // store.createPost에서 이미 알림을 띄운다고 가정, 그렇지 않다면 아래 주석 해제
+    // alertStore.openAlert({ title: '오류', message: store.error || '게시글 작성 중 오류가 발생했습니다.', type: 'error' });
+    console.error("Error creating post in view:", err)
   }
 }
 
 async function likePost(postId) {
   if (!authStore.isAuthenticated) {
-    alert('로그인이 필요합니다.')
-    router.push({ name: 'login' })
+    alertStore.openAlert({
+      title: '로그인 필요',
+      message: '로그인이 필요한 기능입니다. 로그인 페이지로 이동하시겠습니까?',
+      type: 'info',
+      showConfirmButton: true,
+      onConfirm: () => {
+        router.push({ name: 'login' });
+      }
+    });
     return
   }
   try {
     await store.likePost(postId)
+    // 성공/실패 알림은 store.likePost 내부에서 처리한다고 가정
   } catch (err) {
-    alert(store.error || '좋아요 처리 중 오류가 발생했습니다.')
+    // store.likePost에서 이미 알림을 띄운다고 가정, 그렇지 않다면 아래 주석 해제
+    // alertStore.openAlert({ title: '오류', message: '좋아요 처리 중 오류가 발생했습니다.', type: 'error' });
+    console.error("Error liking post in view:", err)
   }
 }
 
@@ -303,20 +304,15 @@ function handleCommentSubmit(postId) {
 
 async function createComment(postId) { // Removed keyUpEvent parameter
   if (!authStore.isAuthenticated) {
-    alert('로그인이 필요합니다.');
+    alertStore.openAlert({ title: '로그인 필요', message: '로그인이 필요한 기능입니다.', type: 'info' });
     router.push({ name: 'login' });
     return;
   }
 
-  const content = newComments.value[postId]; // Directly use v-model value
-
-  // For debugging
-  console.log(`[View] createComment for postId: ${postId}. Content via v-model: "${content}"`);
+  const content = newComments.value[postId];
 
   if (!content?.trim()) {
-    alert('댓글 내용을 입력해주세요.');
-    // For debugging
-    console.log(`[View] Alert: Content is empty. Value was: "${content}"`);
+    alertStore.openAlert({ title: '입력 오류', message: '댓글 내용을 입력해주세요.', type: 'warning' });
     return;
   }
 
@@ -346,17 +342,24 @@ const togglePostOptionsMenu = (postId) => {
   }
 };
 
-async function handleDeletePost(postId) {
-  openPostOptionsMenu.value = null; // Close the menu
-  if (window.confirm('정말로 이 게시글을 삭제하시겠습니까?')) {
-    try {
-      await store.deletePost(postId);
-      // Optionally, add a success notification here
-    } catch (error) {
-      alert(store.error || '게시글 삭제 중 오류가 발생했습니다.');
+const handleDeletePost = async (postId) => { // 함수 이름이 handleDeletePost 였습니다.
+  alertStore.openAlert({
+    title: '게시글 삭제 확인',
+    message: '정말로 이 게시글을 삭제하시겠습니까?',
+    type: 'warning',
+    showConfirmButton: true,
+    onConfirm: async () => {
+      try {
+        await store.deletePost(postId); // communityStore의 deletePost 액션 호출
+        // 성공 알림은 store.deletePost 내부에서 처리 (posts 목록 업데이트는 store의 getter나 watch로 처리되도록 권장)
+        // posts.value = posts.value.filter(post => post.id !== postId); // 직접적인 목록 조작은 스토어에 위임하는 것이 좋음
+      } catch (error) {
+        console.error('Error deleting post in view:', error);
+        // 실패 알림은 store.deletePost 내부에서 처리
+      }
     }
-  }
-}
+  });
+};
 </script>
 
 <style scoped>

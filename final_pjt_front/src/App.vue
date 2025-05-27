@@ -1,16 +1,38 @@
 <template>
-  <router-view />
+  <div id="app">
+    <RouterView />
+    <CustomAlert 
+      v-if="alertStore.isVisible"
+      :title="alertStore.title"
+      :message="alertStore.message"
+      :type="alertStore.type"
+      :show-confirm-button="!!alertStore.confirmCallback" 
+      @confirm="handleConfirm"
+      @close="handleClose"
+    />
+  </div>
 </template>
 
 <script setup>
+import { RouterView } from 'vue-router';
+import CustomAlert from '@/components/CustomAlert.vue';
+import { useAlertStore } from '@/stores/alertStore';
 import { onMounted } from 'vue'
 import AOS from 'aos'
 import 'aos/dist/aos.css'
 import { useAuthStore } from '@/stores/authStore'
 import '@fortawesome/fontawesome-free/css/all.css'
 
-
+const alertStore = useAlertStore()
 const authStore = useAuthStore()
+
+const handleConfirm = () => {
+  alertStore.confirmAlert()
+}
+
+const handleClose = () => {
+  alertStore.closeAlert()
+}
 
 onMounted(() => {
   // 메인 App 컴포넌트가 마운트될 때 AOS 라이브러리를 초기화
