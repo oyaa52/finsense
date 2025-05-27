@@ -1,6 +1,6 @@
 <template>
-  <div class="map-container">
-    <div class="controls">
+  <div class="page-layout"> <!-- 전체 페이지 레이아웃 컨테이너 -->
+    <div class="controls-bar"> <!-- 상단 컨트롤 바 -->
       <select v-model="selectedBank" @change="filterMarkers">
         <option value="">모든 은행</option>
         <option v-for="bank in uniqueBanks" :key="bank" :value="bank">{{ bank }}</option>
@@ -11,11 +11,44 @@
       </select>
       <button @click="searchPlaces" class="search-button">검색</button>
     </div>
-    <div id="map" class="map-view"></div>
-    <div v-if="isLoading" class="loading-indicator">
+
+    <div class="content-area"> <!-- 지도와 특화 지점 패널을 감싸는 영역 -->
+      <div id="map" class="map-view"></div>
+
+      <div class="special-banks-panel" v-if="isDataReady">
+        <h4>특화 지점 안내</h4>
+        <div v-if="!selectedCity">
+          <p>도시를 선택하시면 해당 지역의 특화 지점 정보를 확인할 수 있습니다.</p>
+        </div>
+        <div v-else-if="displayedSpecialBanks.nineToSix.length === 0 && displayedSpecialBanks.lunchFocus.length === 0">
+          <p>선택하신 <span style="font-weight: bold;">{{ selectedCity }}</span> 지역에는 특화 은행 정보가 없습니다.</p>
+        </div>
+        <div v-else>
+          <div v-if="displayedSpecialBanks.nineToSix.length > 0">
+            <h5><img :src="specialMarkerImageSrc" alt="9to6" class="special-icon"> 9To6 Bank (09:00 ~ 18:00)</h5>
+            <ul>
+              <li v-for="(bank, index) in displayedSpecialBanks.nineToSix" :key="`9to6-${index}`">
+                {{ bank.name }}
+              </li>
+            </ul>
+          </div>
+          <div v-if="displayedSpecialBanks.lunchFocus.length > 0">
+            <h5><img :src="specialMarkerImageSrc" alt="점심집중" class="special-icon"> 점심시간 집중상담 은행</h5>
+            <ul>
+              <li v-for="(bank, index) in displayedSpecialBanks.lunchFocus" :key="`lunch-${index}`">
+                {{ bank.name }}
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 로딩 및 에러 메시지는 content-area 내부 또는 외부에 위치시킬 수 있음 (현재는 외부 유지) -->
+    <div v-if="isLoading && !isDataReady" class="loading-indicator page-level"> <!-- 초기 전체 로딩 -->
       <p>지도 및 데이터를 불러오는 중입니다...</p>
     </div>
-    <div v-if="error" class="error-message">
+    <div v-if="error" class="error-message page-level">
       <p>{{ error }}</p>
     </div>
   </div>
@@ -54,10 +87,76 @@ const currentRouteInfoWindow = ref(null)
 let clusterer = null
 let searchDebounceTimer = null
 
+// 특화 지점 마커 이미지 URL (computed 외부에서 접근 가능하도록)
+const specialMarkerImageSrc = '/KB_SymbolMark.png';
+
 // 전역 변수로 SDK 로드 상태 관리
 const isSDKLoaded = ref(false)
 // 데이터 준비 완료 상태 플래그 추가
 const isDataReady = ref(false)
+
+// 특화 지점 정보를 저장할 ref (지역별 객체 형태)
+const nineToSixKbBanksByRegion = ref({}) // { "서울": ["지점1", ...], ... }
+const lunchFocusKbBanksByRegion = ref({}) // { "서울": ["지점1", ...], ... }
+
+// 지점명 정규화 함수
+function normalizePlaceName(placeName) {
+  if (!placeName) return '';
+  // 주요 은행 이름 패턴 및 일반적인 "은행" 단어 제거
+  let normalized = placeName.replace(/(KB국민은행|신한은행|우리은행|하나은행|NH농협은행|IBK기업은행|은행)/g, '');
+  // 괄호와 그 안의 내용 제거 (예: (점), (출장소) 등)
+  normalized = normalized.replace(/\s*\(.*?\)\s*/g, '');
+  // "지점"이라는 단어 제거 (양쪽 공백도 고려)
+  normalized = normalized.replace(/\s*지점\s*$/, '').trim(); 
+  // 지점, 출장소 등의 단어 제거 (선택적, 필요에 따라 추가) - 이전 주석 유지
+  // normalized = normalized.replace(/(지점|출장소)$/g, '');
+  // 연속 공백을 단일 공백으로 변경하고 양쪽 끝 공백 제거
+  return normalized.replace(/\s\s+/g, ' ').trim();
+}
+
+// 지역명 -> JSON 키 매핑 함수
+function getJsonKeyForRegion(rawRegionName) {
+  if (!rawRegionName) return null;
+
+  const normalizedRegion = rawRegionName
+    .replace('특별시', '')
+    .replace('광역시', '')
+    .replace('특별자치도', '') // 제주특별자치도 처리
+    .replace('특별자치시', ''); // 세종특별자치시 처리
+
+  // 실제 JSON 파일에 있는 키들을 기준으로 매핑
+  // nineToSixKbBanksByRegion와 lunchFocusKbBanksByRegion의 키들을 합쳐서 사용
+  const allJsonKeys = [
+    ...Object.keys(nineToSixKbBanksByRegion.value),
+    ...Object.keys(lunchFocusKbBanksByRegion.value)
+  ];
+  const uniqueJsonKeys = [...new Set(allJsonKeys)];
+
+  for (const jsonKey of uniqueJsonKeys) {
+    if (jsonKey.includes(normalizedRegion)) {
+      return jsonKey;
+    }
+  }
+  // 도 단위 매핑 (예: '경기' -> '경기·인천')
+  if (normalizedRegion === '경기' && uniqueJsonKeys.includes('경기·인천')) return '경기·인천';
+  if (normalizedRegion === '인천' && uniqueJsonKeys.includes('경기·인천')) return '경기·인천';
+  if (normalizedRegion === '경남' && uniqueJsonKeys.includes('부산·울산·경남')) return '부산·울산·경남';
+  if (normalizedRegion === '울산' && uniqueJsonKeys.includes('부산·울산·경남')) return '부산·울산·경남';
+  if (normalizedRegion === '경북' && uniqueJsonKeys.includes('대구·경북')) return '대구·경북';
+  if (normalizedRegion === '충남' && uniqueJsonKeys.includes('세종·대전·충청')) return '세종·대전·충청';
+  if (normalizedRegion === '충북' && uniqueJsonKeys.includes('세종·대전·충청')) return '세종·대전·충청';
+  if (normalizedRegion === '전남' && uniqueJsonKeys.includes('광주·전라')) return '광주·전라';
+  if (normalizedRegion === '전북' && uniqueJsonKeys.includes('광주·전라')) return '광주·전라';
+
+
+  // 정확히 일치하는 키가 있는 경우 (예: '서울', '부산' 등)
+  if (uniqueJsonKeys.includes(normalizedRegion)) {
+      return normalizedRegion;
+  }
+  
+  console.warn(`[getJsonKeyForRegion] No matching JSON key found for rawRegionName: ${rawRegionName} (Normalized: ${normalizedRegion}). Unique keys:`, uniqueJsonKeys);
+  return null; // 매칭되는 키가 없으면 null 반환
+}
 
 // 카카오맵 SDK 동적 로드 (개선된 버전)
 function loadKakaoMapSdk(apiKey) {
@@ -146,38 +245,65 @@ function loadKakaoMapSdk(apiKey) {
 }
 
 // data.json에서 은행 위치 데이터 로드
-async function loadBankData() {
+async function loadAllBankData() {
   try {
-    const response = await api.get('/data.json');
-    
-    if (!response.data) {
-      throw new Error('data.json 데이터를 불러오지 못했습니다.');
+    // 기존 data.json 로드 (필요하다면 유지, 아니라면 제거 가능)
+    const generalResponse = await api.get('/data.json');
+    if (generalResponse.data) {
+      if (Array.isArray(generalResponse.data.mapInfo)) {
+        cityInfoList.value = generalResponse.data.mapInfo;
+      }
+      if (Array.isArray(generalResponse.data.bankInfo)) {
+        bankNameList.value = generalResponse.data.bankInfo;
+      }
+    }
+    console.log('[KakaoMap] 일반 은행/도시 데이터 (data.json) 로드 시도 완료.');
+
+    // 9to6 KB 은행 목록 로드
+    try {
+      const nineToSixResponse = await api.get('/9to6_kb_banks.json');
+      if (typeof nineToSixResponse.data === 'object' && nineToSixResponse.data !== null) {
+        nineToSixKbBanksByRegion.value = nineToSixResponse.data;
+        console.log('[KakaoMap] 9to6 KB 은행 목록 로드 완료.', Object.keys(nineToSixKbBanksByRegion.value).length, "개 지역");
+        console.log('[KakaoMap] Loaded 9to6 KB banks data:', JSON.parse(JSON.stringify(nineToSixKbBanksByRegion.value)));
+      } else {
+        console.warn('[KakaoMap] 9to6_kb_banks.json 데이터가 객체가 아닙니다.');
+        nineToSixKbBanksByRegion.value = {};
+      }
+    } catch (err) {
+      console.error('[KakaoMap] 9to6 KB 은행 목록 로드 실패:', err);
+      nineToSixKbBanksByRegion.value = {};
     }
 
-    if (Array.isArray(response.data.mapInfo)) {
-      cityInfoList.value = response.data.mapInfo;
-    } else {
-      console.warn('[KakaoMap] response.data.mapInfo 누락 또는 배열 아님.');
-      cityInfoList.value = [];
+    // 점심시간 집중 상담 KB 은행 목록 로드
+    try {
+      const lunchFocusResponse = await api.get('/lunch_focus_kb_banks.json');
+      if (typeof lunchFocusResponse.data === 'object' && lunchFocusResponse.data !== null) {
+        lunchFocusKbBanksByRegion.value = lunchFocusResponse.data;
+        console.log('[KakaoMap] 점심시간 집중 KB 은행 목록 로드 완료.', Object.keys(lunchFocusKbBanksByRegion.value).length, "개 지역");
+      } else {
+        console.warn('[KakaoMap] lunch_focus_kb_banks.json 데이터가 객체가 아닙니다.');
+        lunchFocusKbBanksByRegion.value = {};
+      }
+    } catch (err) {
+      console.error('[KakaoMap] 점심시간 집중 KB 은행 목록 로드 실패:', err);
+      lunchFocusKbBanksByRegion.value = {}; // 실패 시 빈 객체로 초기화
     }
 
-    if (Array.isArray(response.data.bankInfo)) {
-      bankNameList.value = response.data.bankInfo;
-    } else {
-      console.warn('[KakaoMap] response.data.bankInfo 누락 또는 배열 아님.');
-      bankNameList.value = [];
-    }
-    
     isDataReady.value = true;
-    console.log('[KakaoMap] 은행/도시 데이터 로드 완료.');
-    return response.data;
+    console.log('[KakaoMap] 모든 은행 관련 데이터 로드 완료.');
+
   } catch (err) {
-    console.error('[KakaoMap] 은행 데이터 로드 실패:', err);
+    console.error('[KakaoMap] 은행 데이터 전체 로드 실패:', err);
+    error.value = '은행 데이터를 불러오는 데 실패했습니다.';
+    // 필요한 값들 초기화
     cityInfoList.value = [];
     bankNameList.value = [];
+    nineToSixKbBanksByRegion.value = {};
+    lunchFocusKbBanksByRegion.value = {};
     allPlaces.value = [];
-    error.value = '드롭다운 및 지도 데이터를 불러오는 데 실패했습니다.';
-    throw err;
+    isDataReady.value = false; 
+    throw err; // 에러를 다시 던져서 상위 호출자가 처리하도록 함
   }
 }
 
@@ -196,7 +322,6 @@ async function initMap() {
 
   try {
     mapContainer.style.visibility = 'visible';
-    mapContainer.style.height = '600px';
     await nextTick();
 
     const samsungPosition = new window.kakao.maps.LatLng(35.0993, 128.8581);
@@ -315,7 +440,7 @@ watch([selectedBank, selectedCity], () => {
   debounceSearch()
 })
 
-// 카카오맵 장소 검색 API 호출 함수 개선
+// 카카오맵 장소 검색 API 호출 함수 개선 (페이지네이션 적용)
 async function searchPlaces() {
   if (!selectedBank.value && !selectedCity.value) {
     allPlaces.value = [];
@@ -325,40 +450,89 @@ async function searchPlaces() {
 
   isLoading.value = true;
   error.value = null;
+  allPlaces.value = []; // 결과를 누적하기 전에 항상 초기화
 
   let searchQuery = selectedBank.value;
   if (selectedCity.value) {
-    searchQuery = `${selectedCity.value} ${selectedBank.value}`;
+    searchQuery = `${selectedCity.value} ${selectedBank.value}`.trim(); // trim 추가
   }
 
-  try {
-    const response = await axios.get(
-      'https://dapi.kakao.com/v2/local/search/keyword.json',
-      {
-        params: {
-          query: searchQuery,
-          size: 15,
-          page: 1
-        },
-        headers: {
-          Authorization: `KakaoAK ${KAKAO_REST_API_KEY.value}`,
-        },
-      }
-    );
-
-    if (response.data && response.data.documents) {
-      allPlaces.value = response.data.documents;
-      filterMarkers();
-    } else {
-      allPlaces.value = [];
-      filterMarkers();
-    }
-  } catch (err) {
-    error.value = '장소 검색 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
-    allPlaces.value = [];
+  if (!searchQuery) { // 은행과 도시 둘 다 선택 안된 경우 (selectedBank만 있는 경우 방지)
+    isLoading.value = false;
     filterMarkers();
+    return;
+  }
+
+  let currentPage = 1;
+  const MAX_PAGES_TO_FETCH = 5; // 최대 5페이지까지 조회 (15 * 5 = 75개)
+  let isLastPage = false;
+
+  console.log(`[searchPlaces] Starting multi-page search for query: "${searchQuery}"`);
+
+  try {
+    while (currentPage <= MAX_PAGES_TO_FETCH && !isLastPage) {
+      console.log(`[searchPlaces] Fetching page ${currentPage}...`);
+      const response = await axios.get(
+        'https://dapi.kakao.com/v2/local/search/keyword.json',
+        {
+          params: {
+            query: searchQuery,
+            size: 15, // 페이지 당 결과 수 (최대 15개)
+            page: currentPage,
+          },
+          headers: {
+            Authorization: `KakaoAK ${KAKAO_REST_API_KEY.value}`,
+          },
+        }
+      );
+
+      if (response.data && response.data.documents) {
+        if (response.data.documents.length > 0) {
+            allPlaces.value = allPlaces.value.concat(response.data.documents);
+            console.log(`[searchPlaces] Page ${currentPage} loaded ${response.data.documents.length} items. Total items: ${allPlaces.value.length}`);
+        } else {
+            console.log(`[searchPlaces] Page ${currentPage} had 0 documents.`);
+        }
+        
+        if (response.data.meta && typeof response.data.meta.is_end !== 'undefined') {
+          isLastPage = response.data.meta.is_end;
+          if (isLastPage) {
+            console.log('[searchPlaces] Reached the last page of results.');
+          }
+        } else {
+          // meta 정보가 없거나 is_end 필드가 없는 경우, 안전하게 더 이상 호출하지 않도록 함
+          console.warn('[searchPlaces] Meta data or is_end flag not found. Stopping pagination.');
+          isLastPage = true; 
+        }
+      } else {
+        console.warn(`[searchPlaces] No data or documents for page ${currentPage}. Stopping pagination.`);
+        isLastPage = true; // 데이터가 없으면 더 이상 시도하지 않음
+      }
+      
+      if (!isLastPage) {
+        currentPage++;
+      }
+    }
+
+    console.log('[searchPlaces] Kakao API multi-page search completed. Total results:', allPlaces.value.length);
+    // console.log('[searchPlaces] Full results:', JSON.parse(JSON.stringify(allPlaces.value))); // 필요시 전체 결과 로그
+    filterMarkers();
+
+  } catch (err) {
+    console.error('[searchPlaces] Error during multi-page search:', err);
+    // Axios 에러의 경우, 응답 내용 확인
+    if (err.response) {
+      console.error('[searchPlaces] Axios error response data:', err.response.data);
+      console.error('[searchPlaces] Axios error response status:', err.response.status);
+      console.error('[searchPlaces] Axios error response headers:', err.response.headers);
+    }
+    error.value = '장소 검색 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+    // 에러 발생 시 allPlaces를 초기화할 수도 있지만, 이미 로드된 데이터는 유지할 수도 있음.
+    // allPlaces.value = []; 
+    filterMarkers(); // 현재까지 로드된 데이터로 필터링 시도 (또는 빈 배열로)
   } finally {
     isLoading.value = false;
+    console.log('[searchPlaces] Search process finished.');
   }
 }
 
@@ -377,7 +551,9 @@ async function updateMarkers(places) {
     return
   }
 
-  console.log(`[updateMarkers] Updating markers for ${places.length} places.`)
+  const markerImageSize = new window.kakao.maps.Size(45, 45);
+  const specialMarkerImage = new window.kakao.maps.MarkerImage(specialMarkerImageSrc, markerImageSize);
+  console.log('[updateMarkers] specialMarkerImage object created:', specialMarkerImage);
 
   const newMarkers = places.map(place => {
     if (!place.y || !place.x) {
@@ -385,36 +561,101 @@ async function updateMarkers(places) {
       return null
     }
 
-    const position = new window.kakao.maps.LatLng(parseFloat(place.y), parseFloat(place.x))
-    const marker = new window.kakao.maps.Marker({
+    const position = new window.kakao.maps.LatLng(parseFloat(place.y), parseFloat(place.x));
+    
+    // 이 장소가 특화 지점인지 확인 (KB국민은행만 대상)
+    let isSpecialBank = false;
+    if (place.place_name && place.place_name.includes('KB국민')) {
+      // 현재 검색된 place의 주소에서 지역명 키워드를 추출해야 함
+      let rawRegionName = selectedCity.value; // 드롭다운에서 선택한 도시명을 우선 사용
+      console.log(`[updateMarkers] Initial rawRegionName (from selectedCity): ${rawRegionName}`);
+
+      if (!rawRegionName) { // 도시 선택이 "모든 도시"인 경우, 장소의 주소에서 지역명 추출 시도
+          if (place.address_name) {
+            const addressParts = place.address_name.split(' ');
+            if (addressParts.length > 0) rawRegionName = addressParts[0];
+            console.log(`[updateMarkers] rawRegionName from place.address_name: ${rawRegionName} (Original Address: ${place.address_name})`);
+          }
+      }
+      
+      const regionKey = getJsonKeyForRegion(rawRegionName);
+      console.log(`[updateMarkers] Mapped regionKey: ${regionKey} (from raw: ${rawRegionName})`);
+      
+      // 디버깅 로그는 유지 (필요시 삭제)
+      // console.log(`[updateMarkers] nineToSixKbBanksByRegion.value:`, nineToSixKbBanksByRegion.value);
+      // console.log(`[updateMarkers] lunchFocusKbBanksByRegion.value:`, lunchFocusKbBanksByRegion.value);
+
+      const nineToSixBranchesInRegion = regionKey ? (nineToSixKbBanksByRegion.value[regionKey] || []) : [];
+      const lunchFocusBranchesInRegion = regionKey ? (lunchFocusKbBanksByRegion.value[regionKey] || []) : [];
+
+      console.log(`[updateMarkers] For place: ${place.place_name} (Mapped Region: ${regionKey})`);
+      console.log(`[updateMarkers] 9to6 branches in ${regionKey}:`, nineToSixBranchesInRegion);
+      console.log(`[updateMarkers] Lunch focus branches in ${regionKey}:`, lunchFocusBranchesInRegion);
+
+      const normalizedPlaceNameForComparison = normalizePlaceName(place.place_name);
+      console.log(`[updateMarkers] Normalized place name for comparison: '${normalizedPlaceNameForComparison}'`);
+
+      const isNineToSix = nineToSixBranchesInRegion.some(branchName => {
+        const normalizedJsonBranchName = normalizePlaceName(branchName.trim());
+        // console.log(`[updateMarkers] Comparing 9to6: API Norm: '${normalizedPlaceNameForComparison}' vs JSON Norm: '${normalizedJsonBranchName}' (Original JSON: '${branchName.trim()}')`);
+        return normalizedPlaceNameForComparison.includes(normalizedJsonBranchName);
+      });
+      const isLunchFocus = lunchFocusBranchesInRegion.some(branchName => {
+        const normalizedJsonBranchName = normalizePlaceName(branchName.trim());
+        if (place.place_name.toLowerCase().includes('해운대') || branchName.toLowerCase().includes('해운대')) {
+          console.log(`[DEBUG LunchFocus Compare] API Norm: '${normalizedPlaceNameForComparison}', JSON Norm: '${normalizedJsonBranchName}', JSON Original: '${branchName.trim()}', Includes: ${normalizedPlaceNameForComparison.includes(normalizedJsonBranchName)}`);
+        }
+        return normalizedPlaceNameForComparison.includes(normalizedJsonBranchName);
+      });
+
+      // 해운대지점 디버깅용 로그
+      if (place.place_name.includes('해운대')) {
+        console.log(`[updateMarkers] DEBUG HEAWUNDAE: Place - ${place.place_name}, isLunchFocus: ${isLunchFocus}, LunchFocusList:`, lunchFocusBranchesInRegion);
+      }
+
+      if (isNineToSix || isLunchFocus) {
+        isSpecialBank = true;
+        console.log(`[updateMarkers] SPECIAL BANK FOUND: ${place.place_name} (9to6: ${isNineToSix}, LunchFocus: ${isLunchFocus})`);
+      } else {
+        console.log(`[updateMarkers] Not a special bank (or regionKey null): ${place.place_name}`);
+      }
+    }
+
+    const markerOptions = {
       position: position,
       clickable: true
-    })
+    };
 
-    window.kakao.maps.event.addListener(marker, 'mouseover', () => showInfoWindow(place, marker))
-    window.kakao.maps.event.addListener(marker, 'mouseout', closeInfoWindow)
-    window.kakao.maps.event.addListener(marker, 'click', () => showRoute(place))
+    if (isSpecialBank) {
+      markerOptions.image = specialMarkerImage; // 특화 지점인 경우 노란색 마커
+      console.log(`[updateMarkers] Applied specialMarkerImage for: ${place.place_name}`, markerOptions); // 디버깅 로그 추가
+    } else {
+      console.log(`[updateMarkers] Applied DEFAULT marker for: ${place.place_name}`, markerOptions); // 디버깅 로그 추가
+    }
 
-    return marker
-  }).filter(marker => marker !== null)
+    const marker = new window.kakao.maps.Marker(markerOptions);
 
-  markers.value = newMarkers
+    window.kakao.maps.event.addListener(marker, 'mouseover', () => showInfoWindow(place, marker));
+    window.kakao.maps.event.addListener(marker, 'mouseout', closeInfoWindow);
+    window.kakao.maps.event.addListener(marker, 'click', () => showRoute(place));
+
+    return marker;
+  }).filter(marker => marker !== null);
+
+  markers.value = newMarkers;
 
   if (newMarkers.length > 0) {
-    newMarkers.forEach(marker => marker.setMap(map.value))
+    newMarkers.forEach(marker => marker.setMap(map.value));
 
-    const bounds = new window.kakao.maps.LatLngBounds()
-    
-    const startPosition = new window.kakao.maps.LatLng(35.0993, 128.8581)
-    bounds.extend(startPosition)
-    
-    newMarkers.forEach(marker => bounds.extend(marker.getPosition()))
-    
-    map.value.setBounds(bounds, 100)
+    const bounds = new window.kakao.maps.LatLngBounds();
+    const startLatLng = new window.kakao.maps.LatLng(35.0993, 128.8581); // 삼성전기 부산사업장
+    bounds.extend(startLatLng);
+    newMarkers.forEach(marker => bounds.extend(marker.getPosition()));
+    map.value.setBounds(bounds, 100);
 
-    await nextTick()
+    await nextTick();
     if (map.value) {
-        map.value.relayout()
+        map.value.relayout();
     }
   }
 }
@@ -432,7 +673,7 @@ const uniqueCities = computed(() => {
   return [...new Set(cities)].sort()
 })
 
-// 인포윈도우 표시 함수
+// 인포윈도우 표시 함수 수정
 function showInfoWindow(place, marker) {
   if (!window.kakao || !window.kakao.maps) {
     console.error('카카오맵 SDK가 준비되지 않았습니다.')
@@ -443,8 +684,46 @@ function showInfoWindow(place, marker) {
     currentInfoWindow.value.close()
   }
 
+  let specialInfo = '';
+  if (place.place_name && place.place_name.includes('KB국민')) {
+    let rawRegionName = selectedCity.value; // 드롭다운 선택 도시
+    // allPlaces 검색 결과에서 지역명 추출 로직 (updateMarkers와 유사하게)
+    if (!rawRegionName && place.address_name) {
+        const addressParts = place.address_name.split(' ');
+        if (addressParts.length > 0) rawRegionName = addressParts[0];
+    }
+    
+    const regionKey = getJsonKeyForRegion(rawRegionName);
+    console.log(`[showInfoWindow] Mapped regionKey: ${regionKey} (from raw: ${rawRegionName}) for place: ${place.place_name}`);
+
+    const normalizedPlaceNameForInfo = normalizePlaceName(place.place_name);
+    console.log(`[showInfoWindow] Normalized place name for info: '${normalizedPlaceNameForInfo}'`);
+
+    const nineToSixBranches = regionKey ? (nineToSixKbBanksByRegion.value[regionKey] || []) : [];
+    const isNineToSix = nineToSixBranches.some(branchName => {
+      const normalizedJsonBranchName = normalizePlaceName(branchName.trim());
+      return normalizedPlaceNameForInfo.includes(normalizedJsonBranchName);
+    });
+
+    const lunchFocusBranches = regionKey ? (lunchFocusKbBanksByRegion.value[regionKey] || []) : [];
+    const isLunchFocus = lunchFocusBranches.some(branchName => {
+      const normalizedJsonBranchName = normalizePlaceName(branchName.trim());
+      if (place.place_name.toLowerCase().includes('해운대') || branchName.toLowerCase().includes('해운대')) {
+        console.log(`[DEBUG InfoWindow LunchFocus Compare] API Norm: '${normalizedPlaceNameForInfo}', JSON Norm: '${normalizedJsonBranchName}', JSON Original: '${branchName.trim()}', Includes: ${normalizedPlaceNameForInfo.includes(normalizedJsonBranchName)}`);
+      }
+      return normalizedPlaceNameForInfo.includes(normalizedJsonBranchName);
+    });
+
+    if (isNineToSix) {
+      specialInfo += `<div style="color:orange; font-weight:bold; margin-top:5px;">운영: 09:00 ~ 18:00 (9To6 Bank)</div>`;
+    }
+    if (isLunchFocus) {
+      specialInfo += `<div style="color:green; font-weight:bold; margin-top:5px;">점심시간 집중상담 운영</div>`;
+    }
+  }
+
   const infowindowContent = `
-    <div style="padding:15px;font-size:13px;width:250px;word-break:break-all;">
+    <div style="padding:15px;font-size:13px;width:auto;min-width:250px;word-break:break-all;">
       <div style="font-size:15px;font-weight:bold;margin-bottom:8px;color:#333;line-height:1.4;">
         ${place.place_name}
       </div>
@@ -452,16 +731,17 @@ function showInfoWindow(place, marker) {
         ${place.road_address_name || place.address_name}
       </div>
       ${place.phone ? `<div style="color:#666;line-height:1.4;">전화: ${place.phone}</div>` : ''}
+      ${specialInfo}
     </div>
-  `
+  `;
 
   currentInfoWindow.value = new window.kakao.maps.InfoWindow({
     content: infowindowContent,
     removable: true,
-    zIndex: 3
-  })
+    zIndex: 3 // 다른 인포윈도우/마커보다 위에 표시되도록
+  });
 
-  currentInfoWindow.value.open(map.value, marker)
+  currentInfoWindow.value.open(map.value, marker);
 }
 
 // 인포윈도우 닫기 함수
@@ -605,6 +885,43 @@ async function showRoute(place) {
   }
 }
 
+// displayedSpecialBanks computed 속성 수정
+const displayedSpecialBanks = computed(() => {
+  const result = {
+    nineToSix: [],
+    lunchFocus: []
+  };
+
+  // 도시가 선택되지 않았으면 ("모든 도시" 등) 빈 목록 반환
+  if (!selectedCity.value) {
+    return result;
+  }
+
+  const targetRegionKey = getJsonKeyForRegion(selectedCity.value);
+
+  if (targetRegionKey) {
+    // 9To6 은행 처리
+    if (nineToSixKbBanksByRegion.value[targetRegionKey]) {
+      nineToSixKbBanksByRegion.value[targetRegionKey].forEach(name => {
+        result.nineToSix.push({ name: name.trim(), region: targetRegionKey });
+      });
+    }
+
+    // 점심시간 집중 은행 처리
+    if (lunchFocusKbBanksByRegion.value[targetRegionKey]) {
+      lunchFocusKbBanksByRegion.value[targetRegionKey].forEach(name => {
+        result.lunchFocus.push({ name: name.trim(), region: targetRegionKey });
+      });
+    }
+  }
+  
+  // 이름순 정렬
+  result.nineToSix.sort((a, b) => a.name.localeCompare(b.name));
+  result.lunchFocus.sort((a, b) => a.name.localeCompare(b.name));
+  
+  return result;
+});
+
 // onMounted 훅 수정
 onMounted(async () => {
   try {
@@ -617,7 +934,7 @@ onMounted(async () => {
     KAKAO_REST_API_KEY.value = response.data.kakaomap_rest_api_key;
 
     await loadKakaoMapSdk(KAKAO_MAP_API_KEY.value);
-    await loadBankData();
+    await loadAllBankData();
     await nextTick();
 
     if (isSDKLoaded.value && isDataReady.value) {
@@ -649,288 +966,141 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.map-container {
-  width: 100%;
-  height: 100vh;
-  position: relative;
-}
-
-.search-container {
-  position: absolute;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 1;
-  width: 90%;
-  max-width: 500px;
-  background: #ffffff;
-  padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-.search-box {
+.page-layout {
   display: flex;
-  gap: 10px;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden; /* 내부 요소가 넘치는 것을 방지 */
 }
 
-.search-input {
-  flex: 1;
-  padding: 12px;
-  border: 1px solid #ddd;
+.controls-bar {
+  display: flex;
+  gap: 15px;
+  padding: 15px;
+  background-color: #f8f9fa; /* 배경색 변경 */
+  border-bottom: 1px solid #dee2e6; /* 하단 경계선 추가 */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  flex-shrink: 0; /* 컨트롤 바 크기 고정 */
+}
+
+.controls-bar select {
+  padding: 10px 15px;
   border-radius: 5px;
+  border: 1px solid #ced4da; /* 테두리 색상 변경 */
   font-size: 1rem;
-  outline: none;
-  transition: border-color 0.3s ease;
+  cursor: pointer;
+  background-color: #ffffff;
+  color: #495057; /* 텍스트 색상 변경 */
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  min-width: 180px; /* 최소 너비 증가 */
 }
 
-.search-input:focus {
-  border-color: #4a90e2;
+.controls-bar select:hover {
+  border-color: #adb5bd;
 }
 
-.search-button {
-  padding: 12px 24px;
-  background: #4a90e2;
+.controls-bar select:focus {
+  outline: 0;
+  border-color: #80bdff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.controls-bar .search-button {
+  padding: 10px 24px; /* 패딩 조정 */
+  background-color: #007bff; /* Bootstrap primary color */
   color: white;
   border: none;
   border-radius: 5px;
   cursor: pointer;
   font-size: 1rem;
-  transition: background-color 0.3s ease;
+  transition: background-color 0.15s ease-in-out;
 }
 
-.search-button:hover {
-  background: #357abd;
+.controls-bar .search-button:hover {
+  background-color: #0056b3; /* Darker shade on hover */
 }
 
-.bank-list {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  width: 300px;
-  max-height: calc(100vh - 40px);
-  background: #ffffff;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  overflow-y: auto;
-  z-index: 1;
-}
-
-.bank-list-header {
-  padding: 15px;
-  border-bottom: 1px solid #eee;
-  background: #f8f9fa;
-  border-radius: 10px 10px 0 0;
-}
-
-.bank-list-header h3 {
-  margin: 0;
-  color: #333;
-  font-size: 1.2rem;
-}
-
-.bank-item {
-  padding: 15px;
-  border-bottom: 1px solid #eee;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.bank-item:hover {
-  background-color: #f8f9fa;
-}
-
-.bank-item h4 {
-  margin: 0 0 5px 0;
-  color: #333;
-  font-size: 1.1rem;
-}
-
-.bank-item p {
-  margin: 0;
-  color: #666;
-  font-size: 0.9rem;
-}
-
-.bank-item .distance {
-  color: #4a90e2;
-  font-weight: 500;
-  margin-top: 5px;
-}
-
-.bank-info {
-  position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #ffffff;
-  padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  z-index: 1;
-  width: 90%;
-  max-width: 500px;
-}
-
-.bank-info h3 {
-  margin: 0 0 10px 0;
-  color: #333;
-  font-size: 1.3rem;
-}
-
-.bank-info p {
-  margin: 5px 0;
-  color: #666;
-}
-
-.bank-info .close-button {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background: none;
-  border: none;
-  color: #666;
-  font-size: 1.5rem;
-  cursor: pointer;
-  padding: 5px;
-}
-
-.bank-info .close-button:hover {
-  color: #333;
-}
-
-/* 스크롤바 스타일링 */
-.bank-list::-webkit-scrollbar {
-  width: 8px;
-}
-
-.bank-list::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
-}
-
-.bank-list::-webkit-scrollbar-thumb {
-  background: #4a90e2;
-  border-radius: 4px;
-}
-
-.bank-list::-webkit-scrollbar-thumb:hover {
-  background: #357abd;
-}
-
-/* 로딩 상태 스타일 */
-.loading {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: rgba(255, 255, 255, 0.9);
-  padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  z-index: 2;
-}
-
-.loading p {
-  margin: 0;
-  color: #333;
-  font-size: 1.1rem;
-}
-
-/* 에러 메시지 스타일 */
-.error-message {
-  position: absolute;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #fff3f3;
-  color: #e74c3c;
-  padding: 15px;
-  border-radius: 5px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  z-index: 2;
-  text-align: center;
-  width: 90%;
-  max-width: 500px;
-}
-
-h1 {
-  color: #333;
-  margin-bottom: 20px;
-  font-size: 2rem;
-  font-weight: bold;
-}
-
-.controls {
+.content-area {
   display: flex;
-  gap: 15px;
-  margin-bottom: 20px;
-  padding: 15px;
-  background-color: #ffffff;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  flex-direction: row;
+  flex-grow: 1; /* 남은 공간을 모두 차지 */
   width: 100%;
-  max-width: 800px;
-}
-
-.controls select {
-  padding: 10px 15px;
-  border-radius: 5px;
-  border: 1px solid #ddd;
-  font-size: 1rem;
-  cursor: pointer;
-  background-color: #ffffff;
-  color: #333;
-  transition: all 0.3s ease;
-  flex: 1;
-}
-
-.controls select:hover {
-  border-color: #4a90e2;
-}
-
-.controls select:focus {
-  outline: none;
-  border-color: #4a90e2;
-  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.25);
+  overflow: hidden; /* 내부 요소가 넘치는 것을 방지 */
 }
 
 .map-view {
-  width: 100%;
-  height: 600px;
-  border-radius: 10px;
-  border: 1px solid #ddd;
-  background-color: #ffffff;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  flex-grow: 1; /* 지도가 가능한 많은 공간을 차지하도록 */
+  height: 100%; /* content-area 높이에 맞춤 */
+  min-width: 0; /* 지도가 축소될 수 있도록 */
+  border-right: 1px solid #dee2e6; /* 패널과의 구분선 */
 }
 
-.loading-indicator,
-.error-message {
-  margin-top: 20px;
-  padding: 15px;
-  border-radius: 10px;
-  width: 100%;
-  text-align: center;
-  background-color: #ffffff;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+.special-banks-panel {
+  width: 350px; /* 패널 너비 고정 */
+  flex-shrink: 0; /* 패널 너비 고정 */
+  height: 100%; /* content-area 높이에 맞춤 */
+  background: #f9f9f9;
+  padding: 20px; /* 패딩 증가 */
+  border-left: 1px solid #e0e0e0; /* 왼쪽 경계선 추가 */
+  box-shadow: -2px 0 5px rgba(0,0,0,0.05); /* 왼쪽에 그림자 효과 */
+  overflow-y: auto; /* 내용이 많을 경우 스크롤 */
+  font-size: 0.9rem;
 }
 
-.loading-indicator p {
-  color: #4a90e2;
-  font-size: 1.1rem;
+.special-banks-panel h4 {
+  margin-top: 0;
+  margin-bottom: 20px; /* 간격 증가 */
+  font-size: 1.2rem; /* 크기 증가 */
+  color: #333;
+  border-bottom: 1px solid #ddd; /* 경계선 색상 변경 */
+  padding-bottom: 12px; /* 간격 증가 */
+}
+.special-banks-panel h5 {
+  font-size: 1.05rem; /* 크기 약간 증가 */
+  color: #444; /* 색상 약간 어둡게 */
+  margin-top: 20px; /* 간격 증가 */
+  margin-bottom: 10px; /* 간격 증가 */
+  display: flex;
+  align-items: center;
+}
+.special-banks-panel ul {
+  list-style: none;
+  padding-left: 10px; /* 패딩 추가 */
+  margin-bottom: 20px; /* 간격 증가 */
+}
+.special-banks-panel li {
+  padding: 8px 0; /* 패딩 증가 */
+  border-bottom: 1px dashed #e0e0e0; /* 경계선 색상 변경 */
+  color: #555; /* 색상 약간 어둡게 */
+  font-size: 0.95rem; /* 글자 크기 약간 증가 */
+}
+.special-banks-panel li:last-child {
+  border-bottom: none;
+}
+.special-banks-panel li span { /* 현재 사용 안함 */
+  font-size: 0.8em;
+  color: #777;
+}
+.special-banks-panel p {
+  color: #555; /* 색상 약간 어둡게 */
+  font-size: 0.95rem; /* 글자 크기 약간 증가 */
+  line-height: 1.6; /* 줄 간격 추가 */
+}
+.special-icon {
+  width: 18px; /* 아이콘 크기 약간 증가 */
+  height: auto;
+  margin-right: 10px; /* 아이콘과 텍스트 간격 증가 */
 }
 
-.error-message {
-  background-color: #fff3f3;
-  border: 1px solid #e74c3c;
+/* 로딩 및 에러 메시지 스타일 조정 */
+.loading-indicator.page-level,
+.error-message.page-level {
+  /* 기존 스타일 중 page-level로 옮기지 않은 것들은 여기서 관리하거나 제거 */
+  /* 예를 들어, margin-top 등은 page-level에서 다르게 처리되므로 여기선 불필요 */
 }
 
-.error-message p {
-  color: #e74c3c;
-  font-size: 1.1rem;
-}
-
-/* 인포윈도우 스타일 커스터마이징 */
+/* 인포윈도우 스타일은 유지 */
 :deep(.kakao-map-info-window) {
   background-color: #ffffff !important;
   color: #333 !important;
