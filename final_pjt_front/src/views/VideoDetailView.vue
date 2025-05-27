@@ -44,6 +44,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import favoriteStore from '@/stores/favoriteStore'
+import { useAlertStore } from '@/stores/alertStore'
 
 const props = defineProps({
   videoId: String
@@ -51,6 +52,7 @@ const props = defineProps({
 
 const route = useRoute()
 const router = useRouter()
+const alertStore = useAlertStore()
 
 const videoData = ref(null)
 const loading = ref(true)
@@ -151,7 +153,7 @@ const goBack = () => {
 
 const toggleChannelFavorite = async () => {
   if (!videoData.value || !videoData.value.channel_id || !videoData.value.channel_title) {
-    alert('채널 정보를 가져올 수 없어 즐겨찾기를 할 수 없습니다.');
+    alertStore.openAlert({ title: '오류', message: '채널 정보를 가져올 수 없어 즐겨찾기를 할 수 없습니다.', type: 'error' });
     return;
   }
 
@@ -159,12 +161,30 @@ const toggleChannelFavorite = async () => {
   try {
     if (isChannelFavorited.value) {
       if (currentFavoriteChannelDBId.value) {
-        await favoriteStore.removeFavoriteChannel(currentFavoriteChannelDBId.value);
-        isChannelFavorited.value = false;
-        currentFavoriteChannelDBId.value = null;
-        alert('채널 즐겨찾기가 해제되었습니다.');
+        alertStore.openAlert({
+          title: '채널 즐겨찾기 해제 확인',
+          message: '정말로 이 채널을 즐겨찾기에서 해제하시겠습니까?',
+          type: 'warning',
+          showConfirmButton: true,
+          onConfirm: async () => {
+            try {
+              await favoriteStore.removeFavoriteChannel(currentFavoriteChannelDBId.value);
+              isChannelFavorited.value = false;
+              currentFavoriteChannelDBId.value = null;
+            } catch (err) {
+              console.error('채널 즐겨찾기 해제 중 오류 (onConfirm):', err);
+            } finally {
+              loading.value = false;
+            }
+          },
+          onCancel: () => {
+            loading.value = false;
+          }
+        });
+        return;
       } else {
-        alert('즐겨찾기 ID를 찾지 못해 해제할 수 없습니다. 페이지를 새로고침 후 다시 시도해주세요.');
+        alertStore.openAlert({ title: '오류', message: '즐겨찾기 ID를 찾지 못해 해제할 수 없습니다. 페이지를 새로고침 후 다시 시도해주세요.', type: 'error' });
+        loading.value = false;
       }
     } else {
       const response = await favoriteStore.addFavoriteChannel({
@@ -173,31 +193,47 @@ const toggleChannelFavorite = async () => {
       });
       isChannelFavorited.value = true;
       currentFavoriteChannelDBId.value = response.data.id;
-      alert('채널이 즐겨찾기에 추가되었습니다.');
+      loading.value = false;
     }
   } catch (err) {
-    console.error('채널 즐겨찾기 처리 중 오류:', err);
-    alert('채널 즐겨찾기 처리 중 오류가 발생했습니다.');
-  } finally {
+    console.error('채널 즐겨찾기 처리 중 오류 (메인 try-catch):', err);
     loading.value = false;
   }
 };
 
 const toggleVideoFavorite = async () => {
   if (!props.videoId || !videoData.value || !videoData.value.title) {
-    alert('영상 정보를 가져올 수 없어 즐겨찾기를 할 수 없습니다.');
+    alertStore.openAlert({ title: '오류', message: '영상 정보를 가져올 수 없어 즐겨찾기를 할 수 없습니다.', type: 'error' });
     return;
   }
   loading.value = true;
   try {
     if (isVideoFavorited.value) {
       if (currentFavoriteVideoDBId.value) {
-        await favoriteStore.removeFavoriteVideo(currentFavoriteVideoDBId.value);
-        isVideoFavorited.value = false;
-        currentFavoriteVideoDBId.value = null;
-        alert('영상 즐겨찾기가 해제되었습니다.');
+        alertStore.openAlert({
+          title: '영상 즐겨찾기 해제 확인',
+          message: '정말로 이 영상을 즐겨찾기에서 해제하시겠습니까?',
+          type: 'warning',
+          showConfirmButton: true,
+          onConfirm: async () => {
+            try {
+              await favoriteStore.removeFavoriteVideo(currentFavoriteVideoDBId.value);
+              isVideoFavorited.value = false;
+              currentFavoriteVideoDBId.value = null;
+            } catch (err) {
+              console.error('영상 즐겨찾기 해제 중 오류 (onConfirm):', err);
+            } finally {
+              loading.value = false;
+            }
+          },
+          onCancel: () => {
+            loading.value = false;
+          }
+        });
+        return;
       } else {
-        alert('즐겨찾기 ID를 찾지 못해 해제할 수 없습니다. 페이지를 새로고침 후 다시 시도해주세요.');
+        alertStore.openAlert({ title: '오류', message: '즐겨찾기 ID를 찾지 못해 해제할 수 없습니다. 페이지를 새로고침 후 다시 시도해주세요.', type: 'error' });
+        loading.value = false;
       }
     } else {
       const response = await favoriteStore.addFavoriteVideo({
@@ -209,12 +245,10 @@ const toggleVideoFavorite = async () => {
       });
       isVideoFavorited.value = true;
       currentFavoriteVideoDBId.value = response.data.id;
-      alert('영상이 즐겨찾기에 추가되었습니다.');
+      loading.value = false;
     }
   } catch (err) {
-    console.error('영상 즐겨찾기 처리 중 오류:', err);
-    alert('영상 즐겨찾기 처리 중 오류가 발생했습니다.');
-  } finally {
+    console.error('영상 즐겨찾기 처리 중 오류 (메인 try-catch):', err);
     loading.value = false;
   }
 };

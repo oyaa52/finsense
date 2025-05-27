@@ -13,6 +13,9 @@ class UserSerializer(serializers.ModelSerializer):
     following_count = serializers.SerializerMethodField()
     is_following = serializers.SerializerMethodField()
     profile_image = serializers.SerializerMethodField()  # 프로필 이미지 필드 추가
+    follow_id_for_current_user = (
+        serializers.SerializerMethodField()
+    )  # 팔로우 관계 ID 필드 추가
 
     class Meta:
         model = User
@@ -25,6 +28,7 @@ class UserSerializer(serializers.ModelSerializer):
             "following_count",
             "is_following",
             "profile_image",
+            "follow_id_for_current_user",  # 필드 목록에 추가
         ]
 
     def get_followers_count(self, obj):
@@ -50,6 +54,18 @@ class UserSerializer(serializers.ModelSerializer):
                 obj.profile.profile_image.url
             )  # request가 없으면 상대 경로 반환 (덜 이상적)
         return None  # 프로필이나 프로필 이미지가 없으면 None 반환
+
+    def get_follow_id_for_current_user(self, obj):  # obj는 대상 사용자 (targetUser)
+        request = self.context.get("request")
+        if request and request.user.is_authenticated:
+            try:
+                follow_instance = Follow.objects.get(
+                    follower=request.user, following=obj
+                )
+                return follow_instance.id
+            except Follow.DoesNotExist:
+                return None
+        return None
 
 
 class ReplySerializer(

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { useAlertStore } from './alertStore'; // alertStore 임포트
 
 // API 기본 URL (환경에 따라 설정 필요)
 const API_BASE_URL = 'http://localhost:8000/api/v1/accounts'; // accounts 앱의 기본 URL
@@ -30,37 +31,66 @@ export const getFavoriteChannels = () => {
   return apiClient.get('/favorite-channels/');
 };
 
-export const addFavoriteChannel = (channelData) => {
-  // channelData 예시: { channel_id: 'UC...', channel_title: '채널 제목' }
-  return apiClient.post('/favorite-channels/', channelData);
+export const addFavoriteChannel = async (channelData) => {
+  const alertStore = useAlertStore();
+  try {
+    const response = await apiClient.post('/favorite-channels/', channelData);
+    alertStore.openAlert({ title: '성공', message: '채널이 즐겨찾기에 추가되었습니다.', type: 'success' });
+    return response; // API 응답 반환
+  } catch (error) {
+    console.error('Error adding favorite channel:', error.response?.data || error.message);
+    alertStore.openAlert({ title: '오류', message: error.response?.data?.detail || '채널 즐겨찾기 추가에 실패했습니다.', type: 'error' });
+    throw error; // 에러를 다시 throw하여 호출한 쪽에서 처리할 수 있도록 함
+  }
 };
 
-export const removeFavoriteChannel = (favoriteChannelId) => {
-  // 여기서 favoriteChannelId는 DB에 저장된 FavoriteChannel 객체의 pk 입니다.
-  return apiClient.delete(`/favorite-channels/${favoriteChannelId}/`);
+export const removeFavoriteChannel = async (favoriteChannelId) => {
+  const alertStore = useAlertStore();
+  try {
+    const response = await apiClient.delete(`/favorite-channels/${favoriteChannelId}/`);
+    alertStore.openAlert({ title: '성공', message: '채널이 즐겨찾기에서 삭제되었습니다.', type: 'info' });
+    return response;
+  } catch (error) {
+    console.error('Error removing favorite channel:', error.response?.data || error.message);
+    alertStore.openAlert({ title: '오류', message: error.response?.data?.detail || '채널 즐겨찾기 해제에 실패했습니다.', type: 'error' });
+    throw error;
+  }
 };
-
 
 export const isChannelFavorite = (channelId) => {
   return apiClient.get(`/favorite-channels/is_favorite/?channel_id=${channelId}`);
 };
-
 
 // --- 즐겨찾는 영상 API ---
 export const getFavoriteVideos = () => {
   return apiClient.get('/favorite-videos/');
 };
 
-export const addFavoriteVideo = (videoData) => {
-  // videoData 예시: { video_id: '...', video_title: '...', thumbnail_url: '...', ... }
-  return apiClient.post('/favorite-videos/', videoData);
+export const addFavoriteVideo = async (videoData) => {
+  const alertStore = useAlertStore();
+  try {
+    const response = await apiClient.post('/favorite-videos/', videoData);
+    alertStore.openAlert({ title: '성공', message: '영상이 즐겨찾기에 추가되었습니다.', type: 'success' });
+    return response;
+  } catch (error) {
+    console.error('Error adding favorite video:', error.response?.data || error.message);
+    alertStore.openAlert({ title: '오류', message: error.response?.data?.detail || '영상 즐겨찾기 추가에 실패했습니다.', type: 'error' });
+    throw error;
+  }
 };
 
-export const removeFavoriteVideo = (favoriteVideoId) => {
-  // 여기서 favoriteVideoId는 DB에 저장된 FavoriteVideo 객체의 pk 입니다.
-  return apiClient.delete(`/favorite-videos/${favoriteVideoId}/`);
+export const removeFavoriteVideo = async (favoriteVideoId) => {
+  const alertStore = useAlertStore();
+  try {
+    const response = await apiClient.delete(`/favorite-videos/${favoriteVideoId}/`);
+    alertStore.openAlert({ title: '성공', message: '영상이 즐겨찾기에서 삭제되었습니다.', type: 'info' });
+    return response;
+  } catch (error) {
+    console.error('Error removing favorite video:', error.response?.data || error.message);
+    alertStore.openAlert({ title: '오류', message: error.response?.data?.detail || '영상 즐겨찾기 해제에 실패했습니다.', type: 'error' });
+    throw error;
+  }
 };
-
 
 export const isVideoFavorite = (videoId) => {
   return apiClient.get(`/favorite-videos/is_favorite/?video_id=${videoId}`);

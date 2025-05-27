@@ -35,8 +35,8 @@
       </div>
     </div>
 
-    <FollowListModal v-if="showFollowersModal" :users="userProfile.followers_list || []" title="팔로워" @close="showFollowersModal = false" />
-    <FollowListModal v-if="showFollowingsModal" :users="userProfile.followings_list || []" title="팔로잉" @close="showFollowingsModal = false" />
+    <FollowListModal v-if="showFollowersModal" :users="followersList" title="팔로워" @close="showFollowersModal = false" />
+    <FollowListModal v-if="showFollowingsModal" :users="followingsList" title="팔로잉" @close="showFollowingsModal = false" />
 
     <div v-if="isOwnProfile && showProfileEditForm" class="profile-management-section" data-aos="fade-up">
       <h2 class="section-title-underline">나의 정보 수정</h2>
@@ -149,13 +149,16 @@ const router = useRouter()
 const authStore = useAuthStore()
 const communityStore = useCommunityStore()
 
-const userProfile = ref(null)
+const userProfile = computed(() => communityStore.userProfileData)
 const isLoading = ref(true)
 const error = ref(null)
 const defaultProfileImageUrl = defaultProfileImage
 
 const showFollowersModal = ref(false)
 const showFollowingsModal = ref(false)
+
+const followersList = computed(() => communityStore.followers)
+const followingsList = computed(() => communityStore.following)
 
 const username = computed(() => route.params.username)
 const isOwnProfile = computed(() => authStore.isAuthenticated && authStore.currentUser?.username === username.value)
@@ -176,25 +179,8 @@ const fetchUserProfile = async () => {
   if (!username.value) return
   isLoading.value = true
   error.value = null
-  userProfile.value = null
   try {
-    const profileData = await communityStore.fetchUserProfileByUsername(username.value)
-    userProfile.value = profileData
-    if (userProfile.value && isOwnProfile.value) {
-      Object.keys(editableProfileData).forEach(key => {
-        if (key !== 'profile_image_file') {
-          editableProfileData[key] = userProfile.value.profile?.[key] ?? (key === 'age' || key === 'monthly_income' || key === 'amount_available' || key === 'investment_term' ? null : '')
-        }
-      });
-      const storeProfile = authStore.getUserProfile;
-      if (storeProfile) {
-        Object.keys(editableProfileData).forEach(key => {
-          if (key !== 'profile_image_file') {
-            editableProfileData[key] = storeProfile[key] ?? (key === 'age' || key === 'monthly_income' || key === 'amount_available' || key === 'investment_term' ? null : '');
-          }
-        });
-      }
-    }
+    await communityStore.fetchUserProfileByUsername(username.value)
   } catch (err) {
     console.error('Error fetching user profile:', err)
     error.value = '사용자 프로필을 불러오는 데 실패했습니다.'
@@ -207,37 +193,65 @@ const fetchUserProfile = async () => {
 }
 
 const toggleFollow = async () => {
-  if (!authStore.isAuthenticated || !userProfile.value) return
+  if (!authStore.isAuthenticated || !userProfile.value) return;
   try {
-    const result = await communityStore.toggleFollowUser(
+    await communityStore.toggleFollowUser(
       userProfile.value.id, 
       userProfile.value.follow_id_for_current_user
-    )
-    
-    if (userProfile.value) {
-        userProfile.value.is_following = result.followed;
-        if (result.followed) {
-            userProfile.value.followers_count += 1;
-            userProfile.value.follow_id_for_current_user = result.followData?.id;
-        } else {
-            userProfile.value.followers_count -= 1;
-            userProfile.value.follow_id_for_current_user = null;
-        }
-    }
-
+    );
   } catch (err) {
-    console.error('Error toggling follow:', err)
-    alert('팔로우 상태 변경에 실패했습니다.')
+    console.error('Error toggling follow:', err);
+    const storeError = communityStore.error;
+    if (storeError) {
+      alert(storeError);
+    } else if (err.response && err.response.data && Array.isArray(err.response.data) && err.response.data.length > 0) {
+      alert(err.response.data.join(', '));
+    } else if (err.response && err.response.data && err.response.data.detail) {
+      alert(err.response.data.detail);
+    } else if (err.message) {
+      alert(err.message);
+    } else {
+      alert('팔로우 상태 변경 중 오류가 발생했습니다.');
+    }
   }
-}
+};
 
 const formatDate = (dateString) => {
   const options = { year: 'numeric', month: 'long', day: 'numeric' }
   return new Date(dateString).toLocaleDateString(undefined, options)
 }
 
-const toggleFollowersModal = () => { showFollowersModal.value = !showFollowersModal.value }
-const toggleFollowingsModal = () => { showFollowingsModal.value = !showFollowingsModal.value }
+const toggleFollowersModal = async () => {
+  if (!userProfile.value) return;
+  if (!showFollowersModal.value) {
+    try {
+      isLoading.value = true;
+      await communityStore.fetchUserFollowers(userProfile.value.id);
+    } catch (err) {
+      console.error('Error fetching followers:', err);
+      alert('팔로워 목록을 가져오는 데 실패했습니다.');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+  showFollowersModal.value = !showFollowersModal.value;
+};
+
+const toggleFollowingsModal = async () => {
+  if (!userProfile.value) return;
+  if (!showFollowingsModal.value) {
+    try {
+      isLoading.value = true;
+      await communityStore.fetchUserFollowing(userProfile.value.id);
+    } catch (err) {
+      console.error('Error fetching followings:', err);
+      alert('팔로잉 목록을 가져오는 데 실패했습니다.');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+  showFollowingsModal.value = !showFollowingsModal.value;
+};
 
 const toggleProfileEdit = () => {
   showProfileEditForm.value = !showProfileEditForm.value
