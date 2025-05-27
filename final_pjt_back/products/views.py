@@ -522,21 +522,30 @@ def subscribe_deposit(request, product_id, option_id):
         option = DepositOption.objects.get(id=option_id, product=product)
         amount = request.data.get("amount", 0)
 
-        subscription, created = DepositSubscription.objects.get_or_create(
-            user=request.user,
-            product=product,
-            option=option,
-            defaults={"amount": amount},
-        )
-
-        if not created:
-            return Response(
-                {"message": "이미 가입한 상품입니다."},
-                status=status.HTTP_400_BAD_REQUEST,
+        # 이전의 get_or_create 로직 대신, 가입과 해지를 분리하여 명시적으로 처리
+        try:
+            # 먼저 user와 product, 그리고 프론트에서 넘어온 option_id로 구독 객체를 찾아본다.
+            subscription = DepositSubscription.objects.get(
+                user=request.user, product=product, option=option # option은 options[0].id에 해당하는 객체
             )
+            # 구독 객체가 존재하면 -> 해지 요청으로 간주하고 삭제
+            subscription.delete()
+            return Response(
+                {"message": f"'{product.fin_prdt_nm}' 상품 가입이 해지되었습니다."},
+                status=status.HTTP_200_OK,
+            )
+        except DepositSubscription.DoesNotExist:
 
-        serializer = DepositSubscriptionSerializer(subscription)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+            # 일단 현재 프론트가 options[0].id만 보내므로, 해당 옵션으로만 가입/해지 시도
+            new_subscription = DepositSubscription.objects.create(
+                user=request.user,
+                product=product,
+                option=option, # 프론트에서 받은 options[0].id에 해당하는 옵션
+                amount=amount,
+            )
+            serializer = DepositSubscriptionSerializer(new_subscription)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     except DepositProduct.DoesNotExist:
         return Response(
@@ -556,17 +565,20 @@ def subscribe_saving(request, product_id, option_id):
         option = SavingOption.objects.get(id=option_id, product=product)
         amount = request.data.get("amount", 0)
 
+        # 구독 정보 조회 또는 생성
         subscription, created = SavingSubscription.objects.get_or_create(
             user=request.user,
-            product=product,
-            option=option,
+            product=product, # product_id로 조회한 상품 객체
+            option=option,   # option_id로 조회한 옵션 객체
             defaults={"amount": amount},
         )
 
         if not created:
+            # 이미 구독 중인 경우 (created == False) -> 해지 처리
+            subscription.delete() # 여기서 subscription 객체가 정확히 해지 대상이어야 함
             return Response(
-                {"message": "이미 가입한 상품입니다."},
-                status=status.HTTP_400_BAD_REQUEST,
+                {"message": f"'{product.fin_prdt_nm}' 상품 가입이 해지되었습니다."},
+                status=status.HTTP_200_OK,
             )
 
         serializer = SavingSubscriptionSerializer(subscription)
