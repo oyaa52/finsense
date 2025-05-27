@@ -13,7 +13,6 @@ urlpatterns = [
     path(
         "save-saving-products/", views.save_saving_products, name="save_saving_products"
     ),  # 금융감독원 API로부터 적금 정보 받아와서 저장
-
     # 예금 상품 API (클라이언트 조회용)
     path(
         "deposit-products/",
@@ -25,9 +24,7 @@ urlpatterns = [
         views.DepositProductDetailAPIView.as_view(),
         name="deposit_product_detail",
     ),  # GET: 특정 예금 상품 상세 조회 (옵션 포함)
-
     # 적금 상품 API (클라이언트 조회용)
-
     path(
         "saving-products/",
         views.SavingProductListAPIView.as_view(),
@@ -40,12 +37,12 @@ urlpatterns = [
     ),  # GET: 특정 적금 상품 상세 조회 (옵션 포함)
     # 상품 가입 API
     path(
-        "deposits/<str:fin_prdt_cd>/subscribe/",
+        "deposits/<str:product_code>/subscribe/",
         views.deposit_product_subscribe,
         name="deposit_product_subscribe",
     ),
     path(
-        "savings/<str:fin_prdt_cd>/subscribe/",
+        "savings/<str:product_code>/subscribe/",
         views.saving_product_subscribe,
         name="saving_product_subscribe",
     ),
@@ -60,18 +57,25 @@ urlpatterns = [
         views.subscribed_saving_products_list,
         name="subscribed_saving_products",
     ),
-    path('deposit/<str:product_id>/<int:option_id>/subscribe/', views.subscribe_deposit, name='subscribe_deposit'),
-    path('saving/<str:product_id>/<int:option_id>/subscribe/', views.subscribe_saving, name='subscribe_saving'),
-    path('subscriptions/', views.get_user_subscriptions, name='get_user_subscriptions'),
-
+    path(
+        "deposit/<str:product_id>/<int:option_id>/subscribe/",
+        views.subscribe_deposit,
+        name="subscribe_deposit",
+    ),
+    path(
+        "saving/<str:product_id>/<int:option_id>/subscribe/",
+        views.subscribe_saving,
+        name="subscribe_saving",
+    ),
+    path("subscriptions/", views.get_user_subscriptions, name="get_user_subscriptions"),
     # 상품 가입 여부 확인 API
     path(
-        "deposit/<str:product_id>/is_subscribed/",
+        "deposits/<str:product_code>/is_subscribed/",
         views.check_deposit_subscription_status,
         name="check_deposit_subscription_status",
     ),
     path(
-        "saving/<str:product_id>/is_subscribed/",
+        "savings/<str:product_code>/is_subscribed/",
         views.check_saving_subscription_status,
         name="check_saving_subscription_status",
     ),
