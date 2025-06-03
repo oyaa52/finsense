@@ -10,7 +10,7 @@ import { useAuthStore } from '@/stores/authStore'
 // import './assets/main.css'
 
 // Axios 기본 URL 설정
-axios.defaults.baseURL = 'http://127.0.0.1:8000'
+axios.defaults.baseURL = import.meta.env.VITE_API_URL
 
 // 인증 토큰이 있다면 모든 요청에 포함
 const token = localStorage.getItem('accessToken')

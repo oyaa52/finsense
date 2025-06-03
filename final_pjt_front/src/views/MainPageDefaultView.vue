@@ -81,13 +81,14 @@ const promoSlides = ref([
 const youtubeVideos = ref([])
 const videosLoading = ref(false)
 const videosError = ref(null)
+const VITE_API_BASE_URL = import.meta.env.VITE_API_URL
 
 const fetchYoutubeVideos = async () => {
   videosLoading.value = true
   videosError.value = null
   
   try {
-    const response = await axios.get('http://127.0.0.1:8000/api/v1/recommendations/youtube/popular-financial-videos/')
+    const response = await axios.get(`${VITE_API_BASE_URL}/api/v1/recommendations/youtube/popular-financial-videos/`)
     
     if (response.data && response.data.videos) {
       youtubeVideos.value = response.data.videos

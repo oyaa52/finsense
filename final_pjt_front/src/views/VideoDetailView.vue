@@ -62,6 +62,7 @@ const isChannelFavorited = ref(false)
 const currentFavoriteChannelDBId = ref(null)
 const isVideoFavorited = ref(false)
 const currentFavoriteVideoDBId = ref(null)
+const VITE_API_BASE_URL = import.meta.env.VITE_API_URL
 
 const fetchVideoDetails = async () => {
   if (!props.videoId) {
@@ -72,7 +73,7 @@ const fetchVideoDetails = async () => {
   loading.value = true
   error.value = null
   try {
-    const response = await axios.get(`http://127.0.0.1:8000/api/v1/recommendations/youtube/economic-news/`, {
+    const response = await axios.get(`${VITE_API_BASE_URL}/api/v1/recommendations/youtube/economic-news/`, {
       params: {
         query: props.videoId,
         max_results: 1

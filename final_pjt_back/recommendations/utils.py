@@ -54,7 +54,7 @@ def get_financial_recommendations_from_gpt(user_profile, available_products):
         ]
 
         completion = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4o-mini",
             messages=prompt_messages,
             temperature=0.7,
             max_tokens=1000,

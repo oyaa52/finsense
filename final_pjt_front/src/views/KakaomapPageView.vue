@@ -59,7 +59,8 @@ import axios from 'axios'
 
 // Axios 인스턴스 (Vite 개발 서버 프록시 대상)
 const api = axios.create({
-  baseURL: 'http://localhost:5173' 
+  baseURL: import.meta.env.VITE_FRONT_URL
+  // baseURL: 'http://localhost:5173'
 })
 
 // 컴포넌트 상태 관리를 위한 ref 변수들
@@ -809,6 +810,8 @@ async function showRoute(place) {
   }
 }
 
+const VITE_API_BASE_URL = import.meta.env.VITE_API_URL
+
 // Vue 컴포넌트가 마운트될 때 실행되는 초기화 로직.
 // API 키 로드, 카카오맵 SDK 로드, 은행 데이터 로드, 지도 초기화 순으로 진행.
 onMounted(async () => {
@@ -818,7 +821,7 @@ onMounted(async () => {
     isDataReady.value = false
 
     // Django 서버로부터 API 키 가져오기
-    const response = await axios.get('http://127.0.0.1:8000/api/v1/kakaomap/get_kakao_map_api_key/')
+    const response = await axios.get(`${VITE_API_BASE_URL}/api/v1/kakaomap/get_kakao_map_api_key/`)
     KAKAO_MAP_API_KEY.value = response.data.kakaomap_api_key
     KAKAO_REST_API_KEY.value = response.data.kakaomap_rest_api_key
 

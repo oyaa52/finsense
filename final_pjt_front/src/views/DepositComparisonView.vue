@@ -257,14 +257,16 @@ const banks = ref([
   { id: 6, name: '농협은행' },
 ])
 
+const VITE_API_BASE_URL = import.meta.env.VITE_API_URL
+
 // API에서 데이터 가져오기
 const fetchProducts = async (page = 1) => {
   loading.value = true
   error.value = null
   try {
     const listEndpoint = productType.value === 'deposit'
-      ? 'http://127.0.0.1:8000/api/v1/products/deposit-products/'
-      : 'http://127.0.0.1:8000/api/v1/products/saving-products/'
+      ? `${VITE_API_BASE_URL}/api/v1/products/deposit-products/`
+      : `${VITE_API_BASE_URL}/api/v1/products/saving-products/`
     
     const token = localStorage.getItem('accessToken')
     const headers = token ? { Authorization: `Token ${token}` } : {}
@@ -411,6 +413,8 @@ const changeProductType = (type) => {
   fetchProducts(1)
 }
 
+const VITE_API_BASE_URL = import.meta.env.VITE_API_URL
+
 const checkSubscriptionStatus = async (productId) => {
   const token = localStorage.getItem('accessToken');
   if (!token || !productId) {
@@ -420,7 +424,7 @@ const checkSubscriptionStatus = async (productId) => {
   try {
     const endpointPath = productType.value === 'deposit' ? 'deposits' : 'savings';
     const response = await axios.get(
-      `http://127.0.0.1:8000/api/v1/products/${endpointPath}/${productId}/is_subscribed/`,
+      `${VITE_API_BASE_URL}/api/v1/products/${endpointPath}/${productId}/is_subscribed/`,
       {
         headers: { Authorization: `Token ${token}` }
       }
@@ -463,7 +467,7 @@ const handleSubscribe = async () => {
   try {
     const endpointPath = productType.value === 'deposit' ? 'deposits' : 'savings';
     const subscribeEndpoint = 
-    `http://127.0.0.1:8000/api/v1/products/${endpointPath}/${selectedProduct.value.id}/${selectedProduct.value.options[0].id}/subscribe/`
+    `${VITE_API_BASE_URL}/api/v1/products/${endpointPath}/${selectedProduct.value.id}/${selectedProduct.value.options[0].id}/subscribe/`
 
     const response = await axios.post(
       subscribeEndpoint,

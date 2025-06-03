@@ -4,7 +4,7 @@
     <div v-if="!hasProfile" class="chat-interface">
       <div class="chat-container">
         <div class="chat-messages" ref="chatContainer">
-          <div v-for="(message, index) in messages" :key="index" 
+          <div v-for="(message, index) in messages" :key="index"
                :class="['message', message.type]">
             <div class="message-content">
               {{ message.content }}
@@ -61,16 +61,19 @@
         초기 전체 로딩 화면 (GPT 추천 생성 전까지)
       -->
       <div v-if="isLoading && currentStep < 3" class="loading-overlay">
-        <div class="loading-steps initial-icon-steps"> 
-          <div class="step" :class="{ active: currentStep === 0, completed: currentStep > 0, inactive: currentStep < 0 }">
+        <div class="loading-steps initial-icon-steps">
+          <div class="step"
+               :class="{ active: currentStep === 0, completed: currentStep > 0, inactive: currentStep < 0 }">
             <i class="fas fa-user-cog"></i>
             <span>프로필 분석</span>
           </div>
-          <div class="step" :class="{ active: currentStep === 1, completed: currentStep > 1, inactive: currentStep < 1 }">
+          <div class="step"
+               :class="{ active: currentStep === 1, completed: currentStep > 1, inactive: currentStep < 1 }">
             <i class="fas fa-comments-dollar"></i>
             <span>추천 생성 중</span>
           </div>
-          <div class="step" :class="{ active: currentStep === 2, completed: currentStep > 2, inactive: currentStep < 2 }">
+          <div class="step"
+               :class="{ active: currentStep === 2, completed: currentStep > 2, inactive: currentStep < 2 }">
             <i class="fas fa-chart-pie"></i>
             <span>수익률 계산</span>
           </div>
@@ -86,9 +89,10 @@
 
       <!-- 시뮬레이션 결과: 프로필이 있으면 항상 이 섹션의 골격은 그림 -->
       <div class="simulation-results" v-if="hasProfile">
-        
+
         <!-- 로딩 스텝 (GPT 호출 시작 후 ~ 이미지 생성 전/중 표시 가능) -->
-        <div v-if="isLoading && currentStep >= 1 && currentStep <= 4 && !(currentStep < 3)" class="loading-steps-container">
+        <div v-if="isLoading && currentStep >= 1 && currentStep <= 4 && !(currentStep < 3)"
+             class="loading-steps-container">
           <div class="loading-steps">
             <div class="step" :class="{ active: currentStep >= 1 }">
               <i class="fas fa-user-cog"></i>
@@ -108,22 +112,23 @@
             </div>
           </div>
         </div>
-        
+
         <!-- 미래 시나리오 제목: 로딩 완료 후, 프로필 및 시나리오 데이터가 있을 때 표시 -->
         <!-- <h3 v-if="!isLoading && hasProfile && simulationData.future_scenario">미래 시나리오</h3> -->
 
         <!-- 스마트폰 UI 기반의 미래 시나리오 표시 -->
         <div class="main-scenario-content-wrapper">
           <div class="scenario-text-container" v-if="simulationData.future_scenario">
-            
+
             <!-- 순서 변경: 텍스트 박스를 이미지 컨테이너 앞으로 이동 -->
-            <div class="scenario-text-content screen-text" 
+            <div class="scenario-text-content screen-text"
                  v-if="simulationData.future_scenario && simulationData.future_scenario.description">
               <p>{{ simulationData.future_scenario.description }}</p>
             </div>
 
             <div class="simulated-screen-content">
-              <div class="visualization-info-tags" v-if="simulationData.future_scenario.visualization && displayHashtags.length > 0">
+              <div class="visualization-info-tags"
+                   v-if="simulationData.future_scenario.visualization && displayHashtags.length > 0">
                 <span v-for="tag in displayHashtags" :key="tag" class="hashtag">{{ tag }}</span>
               </div>
               <div class="cute-3d-container" v-if="simulationData.future_scenario.visualization">
@@ -132,30 +137,40 @@
                      :alt="simulationData.future_scenario.visualization.object"
                      class="cute-3d-image"
                      @error="handleImageError">
-                <div v-else-if="isLoading && currentStep === 4 && simulationData.future_scenario?.visualization" class="loading-image">
+                <div v-else-if="isLoading && currentStep === 4 && simulationData.future_scenario?.visualization"
+                     class="loading-image">
                   <i class="fas fa-palette fa-spin"></i>
-                  <p>{{ simulationData.future_scenario.visualization.object ? simulationData.future_scenario.visualization.object + ' 관련' : '' }} 미래를 그려보는 중...</p>
+                  <p>{{
+                      simulationData.future_scenario.visualization.object ? simulationData.future_scenario.visualization.object + ' 관련' : ''
+                    }} 미래를 그려보는 중...</p>
                 </div>
-                <div v-else-if="!simulationData.future_scenario?.visualization?.image_url && simulationData.future_scenario?.visualization" class="loading-image">
+                <div
+                    v-else-if="!simulationData.future_scenario?.visualization?.image_url && simulationData.future_scenario?.visualization"
+                    class="loading-image">
                   <i class="fas fa-image"></i>
-                  <p>{{ simulationData.future_scenario.visualization.object ? simulationData.future_scenario.visualization.object + ' 관련' : '' }} 시각화 준비 중입니다.</p>
+                  <p>{{
+                      simulationData.future_scenario.visualization.object ? simulationData.future_scenario.visualization.object + ' 관련' : ''
+                    }} 시각화 준비 중입니다.</p>
                 </div>
               </div>
               <!-- 스마트폰 UI 내부의 텍스트 박스는 제거되었으므로, 해당 부분은 없음 -->
-            </div> 
+            </div>
 
-          </div> 
+          </div>
         </div>
 
         <!-- 나머지 시뮬레이션 상세 정보 및 추천 상품 목록 -->
         <div v-if="simulationData.expectedReturn || (recommendations && recommendations.length > 0)">
-          <div class="simulation-details" v-if="simulationData.expectedReturn || simulationData.initialInvestmentAmount">
+          <div class="simulation-details"
+               v-if="simulationData.expectedReturn || simulationData.initialInvestmentAmount">
             <div class="detail-item">
               <i class="fas fa-coins"></i>
               <div class="detail-content">
                 <h4>예상 수익금</h4>
                 <p>
-                  <span v-if="simulationData.initialInvestmentAmount">초기 투자금 {{ formatCurrency(simulationData.initialInvestmentAmount) }}원 기준 / </span>
+                  <span v-if="simulationData.initialInvestmentAmount">초기 투자금 {{
+                      formatCurrency(simulationData.initialInvestmentAmount)
+                    }}원 기준 / </span>
                   {{ formatCurrency(simulationData.expectedReturn) }}원
                 </p>
               </div>
@@ -182,8 +197,8 @@
               </div>
             </div>
             <div class="recommendation-grid">
-              <div v-for="(product, index) in recommendations" 
-                   :key="index" 
+              <div v-for="(product, index) in recommendations"
+                   :key="index"
                    class="recommendation-card"
                    :class="[product.product_type, `risk-${product.risk_level}`]">
                 <div class="card-header">
@@ -191,8 +206,10 @@
                   <div class="card-badges">
                     <span class="score">{{ product.score }}점</span>
                     <span class="risk-badge" :class="product.risk_level">
-                      {{ product.risk_level === 'low' ? '안전' : 
-                         product.risk_level === 'medium' ? '중간' : '고위험' }}
+                      {{
+                        product.risk_level === 'low' ? '안전' :
+                            product.risk_level === 'medium' ? '중간' : '고위험'
+                      }}
                     </span>
                   </div>
                 </div>
@@ -224,7 +241,7 @@
             </div>
           </div>
         </div>
-        
+
         <!-- 기존 initial-loading-message 위치 및 조건 유지 -->
         <div v-else-if="isLoading && currentStep === 3" class="initial-loading-message">
           <p><i class="fas fa-spinner fa-spin"></i> AI가 맞춤 추천을 생성하고 있습니다. 잠시만 기다려주세요...</p>
@@ -236,9 +253,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import {ref, onMounted, computed} from 'vue'
 import axios from 'axios'
-import { useRouter } from 'vue-router'
+import {useRouter} from 'vue-router'
 
 const router = useRouter()
 const messages = ref([])
@@ -261,6 +278,8 @@ const simulationData = ref({
   initialInvestmentAmount: null
 })
 
+const VITE_API_BASE_URL = import.meta.env.VITE_API_URL
+
 const displayHashtags = computed(() => {
   const viz = simulationData.value.future_scenario?.visualization;
   if (!viz) return [];
@@ -282,11 +301,11 @@ const displayHashtags = computed(() => {
       else if (viz.object.includes('해변') || viz.object.includes('바다')) objectKeyword = '해변';
       else if (viz.object.includes('야경')) objectKeyword = '야경';
       else if (viz.object.includes('집') || viz.object.includes('주택')) objectKeyword = '내집마련';
-      
+
       if (objectKeyword) tags.add(`#${objectKeyword}`);
     }
   }
-  
+
   // 3. Style에서 태그 시도
   if (viz.style) {
     if (tags.size < 3) {
@@ -298,16 +317,16 @@ const displayHashtags = computed(() => {
       if (styleTag) tags.add(`#${styleTag}`);
     }
   }
-  
+
   // 만약 태그가 너무 적으면, object나 emotion에서 추가 확보 시도 (이미 위에서 일부 처리됨)
   if (tags.size < 2 && viz.object) {
-     const fallbackObject = viz.object.split(' ').pop(); // 마지막 단어
-     if(fallbackObject) tags.add(`#${fallbackObject}`);
+    const fallbackObject = viz.object.split(' ').pop(); // 마지막 단어
+    if (fallbackObject) tags.add(`#${fallbackObject}`);
   }
   if (tags.size < 3 && viz.emotion) {
     const emotionParts = viz.emotion.split(',');
     if (emotionParts.length > 1 && emotionParts[1].trim()) {
-        tags.add(`#${emotionParts[1].trim()}`);
+      tags.add(`#${emotionParts[1].trim()}`);
     }
   }
 
@@ -318,15 +337,15 @@ const displayHashtags = computed(() => {
 const checkProfile = async () => {
   try {
     const token = localStorage.getItem('accessToken')
-    const response = await axios.get('http://127.0.0.1:8000/api/v1/accounts/profile/', {
-      headers: { Authorization: `Token ${token}` }
+    const response = await axios.get(`${VITE_API_BASE_URL}/api/v1/accounts/profile/`, {
+      headers: {Authorization: `Token ${token}`}
     })
     const userProfile = response.data
-    hasProfile.value = !!(userProfile.investment_purpose && 
-                         userProfile.investment_tendency && 
-                         userProfile.investment_term && 
-                         userProfile.amount_available !== null && userProfile.amount_available !== '')
-    
+    hasProfile.value = !!(userProfile.investment_purpose &&
+        userProfile.investment_tendency &&
+        userProfile.investment_term &&
+        userProfile.amount_available !== null && userProfile.amount_available !== '')
+
     if (hasProfile.value) {
       fetchRecommendations()
     } else {
@@ -343,8 +362,8 @@ const checkProfile = async () => {
 const submitProfile = async () => {
   try {
     const token = localStorage.getItem('accessToken')
-    await axios.put('http://127.0.0.1:8000/api/v1/accounts/profile/', profileData.value, {
-      headers: { Authorization: `Token ${token}` }
+    await axios.put(`${VITE_API_BASE_URL}/api/v1/accounts/profile/`, profileData.value, {
+      headers: {Authorization: `Token ${token}`}
     })
     hasProfile.value = true
     messages.value = []
@@ -360,7 +379,7 @@ const submitProfile = async () => {
 
 // 메시지 추가 함수
 const addMessage = (type, content) => {
-  messages.value.push({ type, content })
+  messages.value.push({type, content})
   setTimeout(() => {
     const chatMessages = document.querySelector('.chat-messages')
     if (chatMessages) {
@@ -373,7 +392,7 @@ const addMessage = (type, content) => {
 const startLoading = () => {
   isLoading.value = true
   currentStep.value = 0
-  
+
   const interval = setInterval(() => {
     currentStep.value++
     if (currentStep.value >= 4) {
@@ -414,11 +433,11 @@ const fetchRecommendations = async () => {
     const token = localStorage.getItem('accessToken')
 
     // API를 통해 최신 프로필 정보 가져오기
-    const profileResponse = await axios.get('http://127.0.0.1:8000/api/v1/accounts/profile/', {
-      headers: { Authorization: `Token ${token}` }
+    const profileResponse = await axios.get(`${VITE_API_BASE_URL}/api/v1/accounts/profile/`, {
+      headers: {Authorization: `Token ${token}`}
     })
     const profile = profileResponse.data
-    
+
     // simulationData에 초기 투자금 저장
     simulationData.value.initialInvestmentAmount = profile.amount_available;
 
@@ -506,11 +525,11 @@ const fetchRecommendations = async () => {
     console.log("Sending prompt to GPT:", prompt)
     currentStep.value = 2
 
-    const gptApiResponse = await axios.post('http://127.0.0.1:8000/api/v1/product-recommender/gpt/', 
-      { prompt }, 
-      { headers: { Authorization: `Token ${token}` } }
+    const gptApiResponse = await axios.post(`${VITE_API_BASE_URL}/api/v1/product-recommender/gpt/`,
+        {prompt},
+        {headers: {Authorization: `Token ${token}`}}
     )
-    
+
     console.log("GPT Response raw object:", gptApiResponse.data)
     let gptResponseText = gptApiResponse.data.response;
 
@@ -521,13 +540,13 @@ const fetchRecommendations = async () => {
         gptResponseText = gptResponseText.substring(3, gptResponseText.length - 3).trim();
       }
     }
-    
+
     let parsedData;
     try {
       parsedData = JSON.parse(gptResponseText);
     } catch (e) {
       console.error("GPT 응답 파싱 실패:", e);
-      console.error("파싱 시도한 텍스트:", gptResponseText); 
+      console.error("파싱 시도한 텍스트:", gptResponseText);
       addMessage('ai', '추천 데이터를 이해하는 데 실패했습니다. 응답 형식을 확인해주세요.');
       isLoading.value = false;
       return;
@@ -538,7 +557,7 @@ const fetchRecommendations = async () => {
     recommendations.value = parsedData.products.map(p => ({
       ...p,
       score: parseInt(p.score) || 0,
-      max_rate: parseFloat(String(p.max_rate).replace('%','')) || 0,
+      max_rate: parseFloat(String(p.max_rate).replace('%', '')) || 0,
       min_amount: parseCurrencyString(p.min_amount),
       expected_return: parseCurrencyString(p.expected_return)
     }));
@@ -546,7 +565,7 @@ const fetchRecommendations = async () => {
     simulationData.value = {
       initialInvestmentAmount: profile.amount_available,
       expectedReturn: parseCurrencyString(parsedData.simulation.expectedReturn),
-      returnRate: parseFloat(String(parsedData.simulation.returnRate).replace('%','')) || 0,
+      returnRate: parseFloat(String(parsedData.simulation.returnRate).replace('%', '')) || 0,
       risk_analysis: parsedData.simulation.risk_analysis,
       diversification: parsedData.simulation.diversification,
       future_scenario: parsedData.simulation.future_scenario,
@@ -559,14 +578,14 @@ const fetchRecommendations = async () => {
       try {
         const imagePrompt = simulationData.value.future_scenario.visualization.image_prompt;
         const imageType = simulationData.value.future_scenario.visualization.object || simulationData.value.future_scenario.visualization.type || 'goal';
-        
-        const imageResponse = await axios.post('http://127.0.0.1:8000/api/v1/product-recommender/generate-image/', 
-          { prompt: imagePrompt, type: imageType }, 
-          { headers: { Authorization: `Token ${token}` } }
+
+        const imageResponse = await axios.post(`${VITE_API_BASE_URL}/api/v1/product-recommender/generate-image/`,
+            {prompt: imagePrompt, type: imageType},
+            {headers: {Authorization: `Token ${token}`}}
         );
 
         if (imageResponse.data && imageResponse.data.status === 'success' && imageResponse.data.image_url) {
-          simulationData.value.future_scenario.visualization.image_url = `http://127.0.0.1:8000${imageResponse.data.image_url}`; 
+          simulationData.value.future_scenario.visualization.image_url = `${VITE_API_BASE_URL}${imageResponse.data.image_url}`;
         } else {
           console.error('이미지 생성 실패:', imageResponse.data.message || '응답 없음');
           if (simulationData.value.future_scenario?.visualization) {
@@ -576,8 +595,8 @@ const fetchRecommendations = async () => {
       } catch (imageError) {
         console.error('이미지 생성 API 호출 오류:', imageError);
         if (simulationData.value.future_scenario?.visualization) {
-            simulationData.value.future_scenario.visualization.image_url = null;
-          }
+          simulationData.value.future_scenario.visualization.image_url = null;
+        }
       }
     }
 
@@ -726,85 +745,85 @@ onMounted(async () => {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(255, 255, 255, 0.9); 
+  background-color: rgba(255, 255, 255, 0.9);
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   z-index: 9999;
   text-align: center;
-  padding: 20px; 
-  box-sizing: border-box; 
+  padding: 20px;
+  box-sizing: border-box;
 }
 
 .loading-overlay .brand-logo {
-  width: 180px; 
-  margin-bottom: 2.5rem; 
+  width: 180px;
+  margin-bottom: 2.5rem;
   opacity: 0.85;
 }
 
 .loading-overlay .loading-spinner-fancy {
-  border: 5px solid #e0e0e0; 
-  border-top: 5px solid #1976d2; 
+  border: 5px solid #e0e0e0;
+  border-top: 5px solid #1976d2;
   border-radius: 50%;
-  width: 70px; 
+  width: 70px;
   height: 70px;
-  animation: spin 1.2s linear infinite; 
-  margin-top: 2rem; 
-  margin-bottom: 1.5rem; 
+  animation: spin 1.2s linear infinite;
+  margin-top: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 .loading-overlay .loading-message-main {
-  font-size: 1.4rem; 
-  color: #000000; 
-  font-weight: bold; 
+  font-size: 1.4rem;
+  color: #000000;
+  font-weight: bold;
   margin-bottom: 1rem;
 }
 
 .loading-overlay .loading-steps.initial-icon-steps {
   display: flex;
-  justify-content: center; 
+  justify-content: center;
   gap: 1rem;
-  width: auto; 
-  max-width: 90%; 
-  margin-bottom: 2.5rem; 
-  padding: 0; 
-  background-color: transparent; 
-  box-shadow: none; 
+  width: auto;
+  max-width: 90%;
+  margin-bottom: 2.5rem;
+  padding: 0;
+  background-color: transparent;
+  box-shadow: none;
 }
 
 .loading-overlay .initial-icon-steps .step {
   background: #ffffff;
-  border: 1px solid #e0e0e0; 
-  border-radius: 12px; 
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08); 
-  padding: 1.2rem 1rem; 
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+  padding: 1.2rem 1rem;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center; 
+  justify-content: center;
   text-align: center;
-  flex: 0 1 180px; 
-  min-height: auto; 
+  flex: 0 1 180px;
+  min-height: auto;
 }
 
 .loading-overlay .initial-icon-steps .step i {
-  font-size: 2rem; 
-  color: #cccccc; 
+  font-size: 2rem;
+  color: #cccccc;
   margin-bottom: 0.8rem;
   transition: color 0.3s ease-in-out;
 }
 
 .loading-overlay .initial-icon-steps .step span {
-  font-size: 0.85rem; 
-  color: black; 
+  font-size: 0.85rem;
+  color: black;
   font-weight: 500;
   transition: color 0.3s ease-in-out;
 }
 
 .loading-overlay .initial-icon-steps .step.active {
   border-bottom-color: #1976d2;
-  background-color: #f8f9fa; 
+  background-color: #f8f9fa;
   transform: translateY(-4px);
   box-shadow: 0 6px 15px rgba(25, 118, 210, 0.15);
   opacity: 1;
@@ -812,23 +831,24 @@ onMounted(async () => {
 
 .loading-overlay .initial-icon-steps .step.active i,
 .loading-overlay .initial-icon-steps .step.active span {
-  color: #1976d2; 
+  color: #1976d2;
 }
+
 .loading-overlay .initial-icon-steps .step.active span {
-    font-weight: 600;
+  font-weight: 600;
 }
 
 .loading-overlay .initial-icon-steps .step.completed {
-  border-bottom-color: #1976d2; 
+  border-bottom-color: #1976d2;
   opacity: 1;
 }
 
 .loading-overlay .initial-icon-steps .step.completed i {
-  color: #1976d2; 
+  color: #1976d2;
 }
 
 .loading-overlay .initial-icon-steps .step.completed span {
-  color: #1976d2; 
+  color: #1976d2;
   font-weight: 500;
 }
 
@@ -836,21 +856,21 @@ onMounted(async () => {
   /* 기본 스타일이 비활성 상태 */
 }
 
-.loading-steps-container { 
+.loading-steps-container {
   width: 100%;
-  padding: 1rem 0; 
-  margin-bottom: 2rem; 
-  background-color: #f9f9f9; 
+  padding: 1rem 0;
+  margin-bottom: 2rem;
+  background-color: #f9f9f9;
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .loading-steps { /* 페이지 내 로딩 스텝 */
   display: flex;
   justify-content: space-around;
-  gap: 1rem; 
+  gap: 1rem;
   width: 100%;
-  max-width: 900px; 
+  max-width: 900px;
   margin: 0 auto;
 }
 
@@ -859,38 +879,39 @@ onMounted(async () => {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 1.2rem 0.8rem; 
-  border-radius: 10px; 
-  background: #e9ecef; 
+  padding: 1.2rem 0.8rem;
+  border-radius: 10px;
+  background: #e9ecef;
   opacity: 0.7;
-  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); 
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
   flex: 1;
-  border-bottom: 5px solid transparent; 
-  position: relative; 
+  border-bottom: 5px solid transparent;
+  position: relative;
 }
 
 .loading-steps .step.active {
-  background: #ffffff; 
+  background: #ffffff;
   opacity: 1;
-  transform: translateY(-8px) scale(1.03); 
+  transform: translateY(-8px) scale(1.03);
   box-shadow: 0 6px 15px rgba(0, 0, 0, 0.12);
   border-bottom-color: #1976d2;
 }
 
 .loading-steps .step i {
-  font-size: 2.2rem; 
+  font-size: 2.2rem;
   margin-bottom: 0.8rem;
   color: #1976d2;
   transition: transform 0.4s ease;
 }
 
 .loading-steps .step span {
-  font-size: 0.95rem; 
+  font-size: 0.95rem;
   font-weight: 500;
-  color: #34495e; 
+  color: #34495e;
 }
+
 .loading-steps .step.active span {
-  color: #1976d2; 
+  color: #1976d2;
   font-weight: 600;
 }
 
@@ -910,19 +931,24 @@ onMounted(async () => {
 }
 
 .loading-image i {
-  font-size: 3rem; 
+  font-size: 3rem;
   color: #1976d2;
   margin-bottom: 1rem;
 }
+
 .loading-image p {
-    margin: 0;
-    font-weight: 500;
-    line-height: 1.4;
+  margin: 0;
+  font-weight: 500;
+  line-height: 1.4;
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .simulation-results {
@@ -942,10 +968,10 @@ onMounted(async () => {
 .scenario-text-container {
   position: relative;
   width: 100%;
-  min-height: 85vh; 
+  min-height: 85vh;
   padding: 20px;
   background-image: url('@/assets/gpt_load.png');
-  background-size: contain; 
+  background-size: contain;
   background-position: center center;
   background-repeat: no-repeat;
   border-radius: 12px;
@@ -953,30 +979,30 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   color: black;
-  overflow: hidden; 
+  overflow: hidden;
 }
 
 .simulated-screen-content { /* 스마트폰 액정 영역 역할 (이제 투명한 위치 지정용 컨테이너) */
   /* 🔴 중요: 아래 값들은 실제 배경 이미지의 스마트폰 흰색 액정 크기/위치/곡률에 맞춰야 합니다. */
-  width: 450px;           /* 예시: 실제 액정 너비 */
-  height: 1000px;          /* 예시: 실제 액정 높이 */
-  border-radius: 30px;    /* 예시: 실제 액정 곡률 (콘텐츠가 이 안을 벗어나지 않도록 overflow와 함께 사용) */
+  width: 450px; /* 예시: 실제 액정 너비 */
+  height: 1000px; /* 예시: 실제 액정 높이 */
+  border-radius: 30px; /* 예시: 실제 액정 곡률 (콘텐츠가 이 안을 벗어나지 않도록 overflow와 함께 사용) */
   position: absolute;
   top: 35%;
   right: 4%;
-  
+
   background-color: transparent; /* 배경을 투명하게 만듦 */
   box-shadow: none; /* 그림자 제거 */
-  
+
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start; 
+  justify-content: flex-start;
   padding: 20px 15px; /* 내부 콘텐츠와 (보이지 않는) 액정 경계 사이의 여백 */
   overflow: hidden; /* 내부 콘텐츠가 border-radius를 벗어나지 않도록 */
   /* margin-top: 450px; */
   /* margin-left: 600px; */
-  
+
   /* 배경 이미지 내 스마트폰 액정의 정확한 위치에 이 div를 배치해야 합니다. */
   /* position: absolute; 와 top/left 사용 또는 부모(.scenario-text-container)의 padding/flex 정렬로 미세 조정 */
   /* 예시: .scenario-text-container가 display:flex, align-items:center, justify-content:center 이면 */
@@ -986,39 +1012,39 @@ onMounted(async () => {
 }
 
 .visualization-info-tags {
-  width: 100%; 
+  width: 100%;
   text-align: center;
-  padding: 5px 0px; 
-  font-size: 0.7em; 
-  margin-bottom: 10px; 
-  display: flex; 
-  justify-content: center; 
-  flex-wrap: wrap; 
-  gap: 6px; 
+  padding: 5px 0px;
+  font-size: 0.7em;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
   /* color, background-color 등은 .hashtag에서 관리 */
 }
 
 .hashtag {
   padding: 3px 8px;
-  border-radius: 12px; 
+  border-radius: 12px;
   font-weight: 500;
   background-color: rgba(220, 220, 220, 0.75); /* 약간 더 불투명하게 하여 가독성 확보 */
   color: #2c3e50; /* 어두운 글자색 */
   border: 1px solid rgba(0, 0, 0, 0.1);
-  white-space: nowrap; 
+  white-space: nowrap;
 }
 
-.cute-3d-container { 
-  width: 90%; 
-  aspect-ratio: 1 / 1; 
+.cute-3d-container {
+  width: 90%;
+  aspect-ratio: 1 / 1;
   background-color: #e0e0e0; /* 이미지 로딩 중 배경 */
-  border-radius: 12px; 
+  border-radius: 12px;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 15px; 
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* 이미지 자체에 약간의 그림자 유지 가능 */
+  margin-bottom: 15px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* 이미지 자체에 약간의 그림자 유지 가능 */
 }
 
 .cute-3d-image {
@@ -1032,24 +1058,24 @@ onMounted(async () => {
   color: #555;
 }
 
-.scenario-text-content.screen-text { 
+.scenario-text-content.screen-text {
   position: absolute;
   bottom: 25%;
   left: 27%;
   transform: translateX(-50%);
-  width: 70%; 
-  max-width: 500px; 
+  width: 70%;
+  max-width: 500px;
   height: auto;
-  max-height: none; 
-  padding: 15px 20px; 
+  max-height: none;
+  padding: 15px 20px;
   background-color: #e7f3fe;
-  border-radius: 10px; 
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15); 
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
   color: black;
   font-weight: bold;
-  text-align: left; 
-  overflow-y: visible; 
-  z-index: 10; 
+  text-align: left;
+  overflow-y: visible;
+  z-index: 10;
 }
 
 .simulation-details {
@@ -1262,6 +1288,7 @@ onMounted(async () => {
     padding: 15px 10px;
     border-radius: 25px; /* 모바일 화면에 맞는 액정 곡률 (조정 필요) */
   }
+
   /* 내부 요소들도 비율에 맞게 조정될 수 있도록 % 단위 사용 또는 미디어쿼리 내에서 재조정 */
 }
 

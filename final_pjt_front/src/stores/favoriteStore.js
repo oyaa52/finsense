@@ -1,8 +1,9 @@
 import axios from 'axios';
 import { useAlertStore } from './alertStore'; // alertStore 임포트
 
+const VITE_API_BASE_URL = import.meta.env.VITE_API_URL
 // API 기본 URL (환경에 따라 설정 필요)
-const API_BASE_URL = 'http://localhost:8000/api/v1/accounts'; // accounts 앱의 기본 URL
+const API_BASE_URL = `${VITE_API_BASE_URL}/api/v1/accounts`; // accounts 앱의 기본 URL
 
 // 인증 토큰을 포함한 axios 인스턴스 생성
 const apiClient = axios.create({

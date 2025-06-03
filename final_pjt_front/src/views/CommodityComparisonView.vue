@@ -3,17 +3,17 @@
     <h2 class="view-title">현물 상품 비교</h2>
     <div class="controls-container">
       <div class="asset-selector">
-        <button 
-          @click="selectAsset('gold')" 
-          :class="{ 'active': selectedAsset === 'gold' }"
-          class="asset-button gold-button"
+        <button
+            @click="selectAsset('gold')"
+            :class="{ 'active': selectedAsset === 'gold' }"
+            class="asset-button gold-button"
         >
           금 (Gold)
         </button>
-        <button 
-          @click="selectAsset('silver')" 
-          :class="{ 'active': selectedAsset === 'silver' }"
-          class="asset-button silver-button"
+        <button
+            @click="selectAsset('silver')"
+            :class="{ 'active': selectedAsset === 'silver' }"
+            class="asset-button silver-button"
         >
           은 (Silver)
         </button>
@@ -38,19 +38,21 @@
       <p>{{ errorMessage }}</p>
     </div>
 
-    <div class="chart-container" v-show="chartData.labels && chartData.labels.length > 0 && !isLoading && !errorMessage">
-      <Line :data="chartData" :options="chartOptions" ref="lineChart" :key="chartKey" />
+    <div class="chart-container"
+         v-show="chartData.labels && chartData.labels.length > 0 && !isLoading && !errorMessage">
+      <Line :data="chartData" :options="chartOptions" ref="lineChart" :key="chartKey"/>
     </div>
-     <div v-if="!isLoading && !errorMessage && chartData.labels && chartData.labels.length === 0 && searchAttempted" class="no-data-message">
+    <div v-if="!isLoading && !errorMessage && chartData.labels && chartData.labels.length === 0 && searchAttempted"
+         class="no-data-message">
       <p>선택하신 조건에 해당하는 데이터가 없습니다.</p>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch, nextTick } from 'vue';
+import {ref, reactive, onMounted, watch, nextTick} from 'vue';
 import axios from 'axios';
-import { Line } from 'vue-chartjs';
+import {Line} from 'vue-chartjs';
 import {
   Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, TimeScale, Filler
 } from 'chart.js';
@@ -82,24 +84,24 @@ const chartOptions = reactive({
       time: {
         unit: 'day',
         tooltipFormat: 'yyyy-MM-dd',
-        displayFormats: { day: 'yyyy-MM-dd' }
+        displayFormats: {day: 'yyyy-MM-dd'}
       },
-      title: { display: true, text: '날짜' }
+      title: {display: true, text: '날짜'}
     },
     y: {
-      title: { display: true, text: '가격' },
-      ticks: { 
+      title: {display: true, text: '가격'},
+      ticks: {
         callback: value => value.toLocaleString(),
         // stepSize: 20000 // y축 눈금 간격을 20000으로 설정
       }
     }
   },
   plugins: {
-    legend: { display: true, position: 'top' },
-    title: { display: true, text: '가격 변동 추이' }, // 동적으로 업데이트됨
+    legend: {display: true, position: 'top'},
+    title: {display: true, text: '가격 변동 추이'}, // 동적으로 업데이트됨
     tooltip: {
       callbacks: {
-        label: function(context) {
+        label: function (context) {
           let label = context.dataset.label || '';
           if (label) label += ': ';
           if (context.parsed.y !== null) label += context.parsed.y.toLocaleString();
@@ -110,8 +112,10 @@ const chartOptions = reactive({
   }
 });
 
+const VITE_API_BASE_URL = import.meta.env.VITE_API_URL
+
 // 한국금거래소 API를 사용하도록 URL 변경
-const API_BASE_URL = 'http://127.0.0.1:8000/api/v1/assetinfo/koreaexgold-prices/';
+const API_BASE_URL = `${VITE_API_BASE_URL}/api/v1/assetinfo/koreaexgold-prices/`;
 
 const fetchAssetPrices = async () => {
   isLoading.value = true;
@@ -159,7 +163,7 @@ const fetchAssetPrices = async () => {
     const today = new Date();
     const oneMonthAgo = new Date();
     oneMonthAgo.setMonth(today.getMonth() - 1);
-    
+
     queryFromDate = formatDate(oneMonthAgo);
     queryToDate = formatDate(today);
   }
@@ -193,7 +197,7 @@ const fetchAssetPrices = async () => {
       to: queryToDate       // 동적으로 결정된 종료일 사용
     };
 
-    const response = await axios.get(API_BASE_URL, { params });
+    const response = await axios.get(API_BASE_URL, {params});
     console.log('New API Response Data:', response.data);
 
     // 백엔드에서 이미 Chart.js 형식으로 데이터를 가공해서 보내주므로, 그대로 사용
@@ -258,14 +262,14 @@ watch(() => chartData.datasets, (newDatasets, oldDatasets) => {
   } else if (newDatasets && newDatasets.length === 0) {
     console.log("Datasets cleared via watch, chart should be empty or updated.");
     if (lineChart.value && lineChart.value.chart) {
-        lineChart.value.chart.update();
+      lineChart.value.chart.update();
     }
   }
-}, { deep: true });
+}, {deep: true});
 
 watch([startDate, endDate], () => {
-    // 날짜 변경 시 자동으로 조회하지 않고, 사용자가 조회 버튼을 누르도록 함.
-    // 필요시 여기서 fetchAssetPrices() 호출 가능
+  // 날짜 변경 시 자동으로 조회하지 않고, 사용자가 조회 버튼을 누르도록 함.
+  // 필요시 여기서 fetchAssetPrices() 호출 가능
 });
 
 onMounted(() => {
@@ -305,7 +309,7 @@ onMounted(() => {
   background-color: #f8f9fa; /* 배경색 추가 */
   padding: 20px;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .asset-selector {
@@ -420,7 +424,7 @@ onMounted(() => {
   background-color: #fff;
   padding: 20px;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   margin-top: 20px;
 }
 

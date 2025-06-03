@@ -92,8 +92,9 @@ const initialSearchPerformed = ref(false)
 
 const nextPageToken = ref(null)
 const prevPageToken = ref(null)
+const VITE_API_BASE_URL = import.meta.env.VITE_API_URL
 
-const API_BASE_URL = 'http://127.0.0.1:8000/api/v1/recommendations/youtube/economic-news/'
+const API_BASE_URL = `${VITE_API_BASE_URL}/api/v1/recommendations/youtube/economic-news/`
 const FIXED_KEYWORDS = '금융 경제 뉴스'
 
 const totalPages = computed(() => {

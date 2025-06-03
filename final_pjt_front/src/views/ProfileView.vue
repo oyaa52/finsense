@@ -72,9 +72,10 @@ const subscriptions = ref({
   saving_subscriptions: []
 })
 
+const VITE_API_BASE_URL = import.meta.env.VITE_API_URL
 const fetchProfile = async () => {
   try {
-    const response = await axios.get(`http://127.0.0.1:8000/api/v1/accounts/profile/${route.params.username}/`)
+    const response = await axios.get(`${VITE_API_BASE_URL}/api/v1/accounts/profile/${route.params.username}/`)
     username.value = response.data.username
     profileImage.value = response.data.profile_image || 'https://via.placeholder.com/150'
     followersCount.value = response.data.followers_count
@@ -86,7 +87,7 @@ const fetchProfile = async () => {
 
 const fetchSubscriptions = async () => {
   try {
-    const response = await axios.get('http://127.0.0.1:8000/api/v1/products/subscriptions/', {
+    const response = await axios.get(`${VITE_API_BASE_URL}/api/v1/products/subscriptions/`, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem('access_token')}`
       }
