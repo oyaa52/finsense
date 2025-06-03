@@ -28,10 +28,10 @@ openai.api_key = GPT_API_KEY
 SECRET_KEY = "django-insecure-5a+8eibjk_91b(54q!-e&_m*9=p9)(skck%pxf9eghuf_063%2"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = [
-    "https://finsense-cs3c.onrender.com",
+    "finsense-cs3c.onrender.com",
 ]
 
 # Application definition
