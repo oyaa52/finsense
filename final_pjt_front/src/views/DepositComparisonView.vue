@@ -413,7 +413,7 @@ const changeProductType = (type) => {
   fetchProducts(1)
 }
 
-const VITE_API_BASE_URL = import.meta.env.VITE_API_URL
+// const VITE_API_BASE_URL = import.meta.env.VITE_API_URL
 
 const checkSubscriptionStatus = async (productId) => {
   const token = localStorage.getItem('accessToken');
