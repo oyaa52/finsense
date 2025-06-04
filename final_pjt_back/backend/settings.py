@@ -14,6 +14,8 @@ KAKAO_API_KEY = env("KAKAO_API_KEY")
 KAKAO_REST_API_KEY = env("KAKAO_REST_API_KEY")
 YOUTUBE_API_KEY = env("YOUTUBE_API_KEY")
 GPT_API_KEY = env("GPT_API_KEY")
+SUPABASE_USER = env("SUPABASE_USER")
+SUPABASE_PASSWORD = env("SUPABASE_PASSWORD")
 
 # OpenAI API 설정
 openai.api_key = GPT_API_KEY
@@ -129,8 +131,8 @@ DATABASES = {
         # "NAME": BASE_DIR / "db.sqlite3",
         "ENGINE": "django.db.backends.postgresql",
         "NAME": "postgres",
-        "USER": "",
-        "PASSWORD": "",
+        "USER": SUPABASE_USER,
+        "PASSWORD": SUPABASE_PASSWORD,
         "HOST": "aws-0-ap-southeast-1.pooler.supabase.com",
         "PORT": "5432",
     }
