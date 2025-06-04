@@ -113,6 +113,7 @@ prompt_toolkit==3.0.48
 proto-plus==1.26.1
 protobuf==6.31.0
 psutil==6.1.1
+psycopg2-binary==2.9.10
 ptyprocess==0.7.0
 pure_eval==0.2.3
 py-cpuinfo==9.0.0
