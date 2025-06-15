@@ -332,55 +332,65 @@ const triggerFileInput = () => {
   }
 };
 
-const handleFileChange = (event) => {
-  const file = event.target.files[0];
-  if (file) {
-    profileImageFile.value = file;
-    selectedFileName.value = file.name;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      profileImagePreviewUrl.value = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  } 
-};
-
 const handleProfileUpdate = async () => {
   isUpdating.value = true;
   updateSuccessMessage.value = '';
   generalErrorMessage.value = '';
   fieldErrors.value = {};
 
-  const formData = new FormData();
-  const { profile_image, ...otherProfileData } = profileData;
-  for (const key in otherProfileData) {
-    if (otherProfileData[key] !== null && otherProfileData[key] !== '') { 
-      formData.append(key, otherProfileData[key]);
-    } 
-  }
-
-  if (profileImageFile.value) {
-    formData.append('profile_image', profileImageFile.value);
-  }
-
   try {
-    await authStore.updateProfile(formData);
+    // profileData에서 profile_image 제외하고 나머지 데이터 복사
+    const { profile_image, ...otherProfileData } = profileData;
+
+    console.log("원본 profileData:", profileData);
+    console.log("profile_image 제외한 데이터:", otherProfileData);
+    console.log("선택된 파일:", profileImageFile.value);
+    console.log("기존 사용자 프로필 이미지:", authStore.userProfile?.profile_image);
+
+    // 이미지 업로드 처리
+    if (profileImageFile.value) {
+      console.log("이미지 업로드 시작:", profileImageFile.value);
+      const publicImageUrl = await authStore.uploadImageToSupabase(profileImageFile.value);
+      console.log("이미지 업로드 완료:", publicImageUrl);
+
+      // 업로드된 URL을 추가
+      otherProfileData.profile_image = publicImageUrl;
+    } else if (authStore.userProfile?.profile_image) {
+      // 기존 이미지 유지 (기존 사용자의 profile_image URL)
+      otherProfileData.profile_image = authStore.userProfile.profile_image;
+      console.log("기존 이미지 URL 사용:", authStore.userProfile.profile_image);
+    }
+    // 새 이미지도 없고 기존 이미지도 없으면 profile_image 필드 자체를 보내지 않음
+
+    console.log("Django로 전송할 최종 데이터:", otherProfileData);
+    console.log("데이터 타입 확인:", typeof otherProfileData, otherProfileData instanceof FormData);
+
+    // ⚠️ 중요: JSON 객체로 전달 (FormData 아님)
+    await authStore.updateProfile(otherProfileData);
+
     updateSuccessMessage.value = '프로필 정보가 성공적으로 업데이트되었습니다.';
-    profileImageFile.value = null; 
+
+    // 성공 후 초기화
+    profileImageFile.value = null;
     selectedFileName.value = '';
-    await authStore.fetchProfile(); 
+    profileImagePreviewUrl.value = '';
+
+    // 프로필 다시 가져오기
+    await authStore.fetchProfile();
+
   } catch (error) {
-    console.error("프로필 업데이트 오류:", error.response?.data || error)
+    console.error("프로필 업데이트 오류:", error.response?.data || error);
     if (error.response && error.response.data && typeof error.response.data === 'object') {
-      fieldErrors.value = error.response.data // 필드별 오류
-      generalErrorMessage.value = "입력 내용을 다시 확인해주세요."
+      fieldErrors.value = error.response.data;
+      generalErrorMessage.value = "입력 내용을 다시 확인해주세요.";
     } else {
-      generalErrorMessage.value = error.response?.data?.detail || error.message || '프로필 업데이트에 실패했습니다.'
+      generalErrorMessage.value = error.response?.data?.detail || error.message || '프로필 업데이트에 실패했습니다.';
     }
   } finally {
     isUpdating.value = false;
   }
 };
+
 
 const formatDate = (dateString) => {
   const date = new Date(dateString)

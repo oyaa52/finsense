@@ -49,9 +49,9 @@ class UserSerializer(serializers.ModelSerializer):
         if hasattr(obj, "profile") and obj.profile.profile_image:
             request = self.context.get("request")
             if request:
-                return request.build_absolute_uri(obj.profile.profile_image.url)
+                return request.build_absolute_uri(obj.profile.profile_image)
             return (
-                obj.profile.profile_image.url
+                obj.profile.profile_image
             )  # request가 없으면 상대 경로 반환 (덜 이상적)
         return None  # 프로필이나 프로필 이미지가 없으면 None 반환
 

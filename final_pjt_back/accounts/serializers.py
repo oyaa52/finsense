@@ -77,7 +77,8 @@ class FavoriteVideoSerializer(serializers.ModelSerializer):
 # UserProfileSerializer 추가
 class UserProfileSerializer(serializers.ModelSerializer):
     posts = PostSerializer(many=True, read_only=True)
-    profile_image = serializers.SerializerMethodField()
+    profile_image = serializers.CharField(source='profile.profile_image', allow_blank=True, allow_null=True, required=False)
+    # profile_image = serializers.SerializerMethodField()
     followers_count = serializers.SerializerMethodField()
     following_count = serializers.SerializerMethodField()
     is_following = serializers.SerializerMethodField()
@@ -95,13 +96,13 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'posts'
         ]
 
-    def get_profile_image(self, obj):
-        if hasattr(obj, 'profile') and obj.profile.profile_image:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.profile.profile_image.url)
-            return obj.profile.profile_image.url
-        return None
+    # def get_profile_image(self, obj):
+    #     if hasattr(obj, 'profile') and obj.profile.profile_image:
+    #         request = self.context.get('request')
+    #         if request:
+    #             return request.build_absolute_uri(obj.profile.profile_image.url)
+    #         return obj.profile.profile_image.url
+    #     return None
 
     def get_followers_count(self, obj):
         return obj.followers.count()

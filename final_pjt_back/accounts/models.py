@@ -24,7 +24,8 @@ class Profile(models.Model):
     investment_tendency = models.CharField(
         max_length=20, null=True, blank=True
     )  # 안정형, 안정추구형, 위험중립형, 적극투자형, 공격투자형
-    profile_image = models.ImageField(upload_to='profile_images/', null=True, blank=True)
+    profile_image = models.URLField(max_length=500, blank=True, null=True)
+    # profile_image = models.ImageField(upload_to='profile_images/', null=True, blank=True)
 
     def __str__(self):
         return f"{self.user.username}'s profile"
