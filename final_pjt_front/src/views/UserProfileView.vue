@@ -311,28 +311,16 @@ const handleProfileUpdateSubmit = async () => {
     // editableProfileData에서 profile_image_file 제외하고 나머지 데이터 복사
     const { profile_image_file, ...otherProfileData } = editableProfileData
 
-    console.log("원본 editableProfileData:", editableProfileData);
-    console.log("profile_image_file 제외한 데이터:", otherProfileData);
-    console.log("선택된 파일:", profile_image_file);
-    console.log("기존 사용자 프로필 이미지:", authStore.userProfile?.profile_image);
-
     // 이미지 업로드 처리
     if (profile_image_file instanceof File) {
-      console.log("이미지 업로드 시작:", profile_image_file);
       const publicImageUrl = await authStore.uploadImageToSupabase(profile_image_file);
-      console.log("이미지 업로드 완료:", publicImageUrl);
 
       // 업로드된 URL을 추가
       otherProfileData.profile_image = publicImageUrl;
     } else if (authStore.userProfile?.profile_image) {
       // 기존 이미지 유지 (기존 사용자의 profile_image URL)
       otherProfileData.profile_image = authStore.userProfile.profile_image;
-      console.log("기존 이미지 URL 사용:", authStore.userProfile.profile_image);
     }
-    // 새 이미지도 없고 기존 이미지도 없으면 profile_image 필드 자체를 보내지 않음
-
-    console.log("Django로 전송할 최종 데이터:", otherProfileData);
-    console.log("데이터 타입 확인:", typeof otherProfileData, otherProfileData instanceof FormData);
 
     // ⚠️ 중요: JSON 객체로 전달 (FormData 아님)
     await authStore.updateProfile(otherProfileData);
